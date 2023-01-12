@@ -15,14 +15,16 @@ robot_params = {'ur5': {'dt': 0.001,
                         # 'q_0': np.array([2.4168, -2.5879, 0., 1.0171, 1.5709, -0.846]),
                         # limits([0,pi],   [0, -pi], [-pi/2,pi/2],)
                         'joint_names': ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'],
-                        'gripper_jnames': ['hand_1_joint', 'hand_2_joint'],
+                        'soft_gripper_joint_names': ['hand_1_joint', 'hand_2_joint'],
+                        'gripper_joint_names': ['hand_1_joint', 'hand_2_joint', 'hand_3_joint'],
                         'ee_frame': 'tool0',
                         'control_mode': 'trajectory',  # 'trajectory','point'
                         'real_robot': False,
                         'control_type': 'position',  # 'position', 'torque'
-                        'gripper_sim': True,
+                        'gripper_sim': True,  # False: the gripper is treated as a Rigid Body, True: you can move the finger joints
+                        'gripper_type': 'soft',  # '3finger': 3 finger rigid gripper, 'soft': 2 finger soft gripper
+                        'soft_gripper': True,
                         'vel_limit': 3.14,
-                        # False: the gripper is treated as a Rigid Body, True: you can move the finger joints
                         'spawn_x': 0.5,
                         'spawn_y': 0.35,
                         'spawn_z': 1.8}}

@@ -67,6 +67,11 @@ class Ur5Generic(BaseControllerFixed):
 
         if conf.robot_params[self.robot_name]['gripper_sim']:
             self.gripper = True
+            self.gripper_type = conf.robot_params[self.robot_name]['gripper_type']
+            if self.gripper_type == 'soft':
+                self.soft_gripper = True
+            else:
+                self.soft_gripper = False
         else:
             self.gripper = False
 
@@ -214,9 +219,6 @@ class Ur5Generic(BaseControllerFixed):
         self.switch_controller_srv(srv)
         self.active_controller = target_controller
 
-    def plotStuff(self):
-        plotJoint('position', 0, self.time_log, self.q_log, self.q_des_log)
-
     def homing_procedure(self, dt, v_des, q_home, rate):
         # broadcast base world TF
         self.broadcaster.sendTransform(self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
@@ -247,7 +249,7 @@ def talker(p):
     if p.real_robot:
         p.startRealRobot()
     else:
-        additional_args = ['gripper:=' + str(p.gripper), 'soft_gripper:=true', 'gui:=true', 'rviz:=false']
+        additional_args = ['gripper:=' + str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'gui:=true', 'rviz:=false']
         p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 
     # specify xacro location
@@ -310,5 +312,3 @@ if __name__ == '__main__':
     except (ros.ROSInterruptException, ros.service.ServiceException):
         ros.signal_shutdown("killed")
         p.deregister_node()
-        if conf.plotting:
-            p.plotStuff()

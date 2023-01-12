@@ -8,14 +8,13 @@ from trajectory_msgs.msg import JointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from sensor_msgs.msg import JointState
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+from base_controllers.components.controller_manager import ControllerManager
 from kinematics import *
+import keyboard
 import time
-import sys
-import rospy
-from vision.srv import *
 import os
 from pprint import pprint
-
+from vision.srv import *
 
 
 class JointStatePublisher:
@@ -26,12 +25,22 @@ class JointStatePublisher:
         self.filter_1 = np.zeros(6)
         self.filter_2 = np.zeros(6)
         self.frame_name = conf.robot_params[self.robot_name]['ee_frame']
-        self.gripper_sim = conf.robot_params[self.robot_name]['gripper_sim']
         self.real_robot = conf.robot_params[self.robot_name]['real_robot']
         self.homing_position = conf.robot_params[self.robot_name]['q_0']
         self.q = np.zeros(6)
+
         self.joint_names = conf.robot_params[self.robot_name]['joint_names']
-        self.gripper_jnames = conf.robot_params[self.robot_name]['gripper_jnames']
+        if conf.robot_params[self.robot_name]['gripper_sim']:
+            self.gripper = True
+            self.gripper_type = conf.robot_params[self.robot_name]['gripper_type']
+            self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
+            if self.soft_gripper:
+                self.gripper_joint_names = conf.robot_params[self.robot_name]['soft_gripper_joint_names']
+            else:
+                self.gripper_joint_names = conf.robot_params[self.robot_name]['gripper_joint_names']
+        else:
+            self.gripper = False
+
         self.vel_limits = conf.robot_params[self.robot_name]['vel_limit']
         self.ds = 0.05
         self.samples = 200
@@ -48,9 +57,9 @@ class JointStatePublisher:
     def send_des_jstate(self, q_des, q_des_gripper):
         # No need to change the convention because in the HW interface we use our conventtion (see ros_impedance_contoller_xx.yaml)
         msg = Float64MultiArray()
-        if self.gripper_sim and not self.real_robot:
+        if self.gripper and not self.real_robot:
             msg.data = np.append(q_des, q_des_gripper)
-            print(msg.data)  # aperto: 0.45, chiuso: -0.25
+            #print(msg.data)  # aperto: 0.45, chiuso: -0.25
         else:
             msg.data = q_des
         self.pub_des_jstate.publish(msg)
@@ -58,8 +67,8 @@ class JointStatePublisher:
     def send_des_trajectory(self, positions, velocities, durations):
         jt = JointTrajectory()
 
-        if self.gripper_sim:
-            jt.joint_names = self.joint_names + self.gripper_jnames
+        if self.gripper:
+            jt.joint_names = self.joint_names + self.gripper_joint_names
         else:
             jt.joint_names = self.joint_names
 
@@ -87,53 +96,6 @@ class JointStatePublisher:
                 if self.joint_names[joint_idx] == msg.name[msg_idx]:
                     self.q[joint_idx] = msg.position[msg_idx]
 
-    def movement_planning(self, des_positions, actual_jstate=None):
-        # modo per passare come parametro di default ad "actual_jstate" la homing position
-        if actual_jstate is None:
-            actual_jstate = self.q
-
-        self.des_jstates.append(inverse_kin(des_positions[0], actual_jstate))
-        for i in range(1, len(des_positions)):
-            self.des_jstates.append(inverse_kin(des_positions[i], self.des_jstates[i - 1]))
-
-    def fai_i_cerchiettini_carini(self):
-        desired_positions = []
-
-        T = np.linspace(0, 20, self.samples)
-
-        for t in T:
-            pos_ee = [0.4, 0.4 * cos(2 * pi * t), 0.4 * sin(2 * pi * t) - 0.2]
-            desired_positions.append(mat([[0, 0, 1, 0.4],
-                                          [0, 1, 0, pos_ee[1]],
-                                          [-1, 0, 0, pos_ee[2]],
-                                          [0, 0, 0, 1]]))
-
-        self.movement_planning(desired_positions)
-
-    def pathPlanning(self, starting_pos, ending_pos):
-        direction = ending_pos - starting_pos
-        l = np.linalg.norm(ending_pos - starting_pos)
-        n = int(np.floor(l / self.ds))
-
-        dsx = direction[0] / n
-        dsy = direction[1] / n
-        dsz = direction[2] / n
-
-        traj_points = [list(starting_pos)]
-
-        for i in range(n):
-            x = traj_points[i][0] + dsx
-            y = traj_points[i][1] + dsy
-            z = traj_points[i][2] + dsz
-            traj_points.append([x, y, z])
-
-        jstates = []
-        for point in traj_points:
-            jstates.append(
-                inverse_kin(mat([[1, 0, 0, point[0]], [0, 0, 1, point[1]], [0, -1, 0, point[2]], [0, 0, 0, 1]])))
-
-        self.des_jstates = jstates
-
     def nthRoot(self, x, n):
         if x > 0:
             return math.pow(x, float(1) / n)
@@ -143,6 +105,7 @@ class JointStatePublisher:
             return 0
 
     def jquintic(self, T, qi, qf, vi, vf, ai, af):
+        # traiettoria nello spazio dei joint
         h = qf - qi
         a0 = np.ndarray.copy(qi)
         a1 = np.ndarray.copy(vi)
@@ -188,73 +151,59 @@ class JointStatePublisher:
         self.des_jvels = velocities
         self.times = times
 
-    def trajectoryPlanning(self, starting_pos, ending_pos, vel, vi=np.array([0, 0, 0, 0, 0, 0]), vf=np.array([0, 0, 0, 0, 0, 0])):
-        # planning della traiettoria nello SPAZIO DEI JOINT
-        # per il momento, l'orientamento dell'ee non cambia nel corso della traiettoria (in teoria bisogna usare un altro procedimento)
-        sp = starting_pos[0:3, 3]
-        ep = ending_pos[0:3, 3]
-        sr = starting_pos[0:3, 0:3]
-        er = ending_pos[0:3, 0:3]
-
-        qi = inverse_kin(sp, sr)
-        qf = inverse_kin(ep, er)
-
-        # definisco l'intervallo temporale della traiettoria in base alla distanza che percorre l'ee e la velocità a cui si vuole comandare
-        l = np.linalg.norm(ep - sp)
-        T = float(l / vel)
-
-        self.jcubic(T, qi, qf, vi, vf)
-        # self.jquintic(T, qi, qf, vi, vf, np.array([1,1,1,1,1,1]), np.array([1,1,1,1,1,1]))
-
     def quinticMovement(self, t, a0, a1, a2, a3, a4, a5):
         return a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
 
+    def getGripperJointState(self, diameter):
+        if self.soft_gripper:
+            D0 = 40
+            L = 60
+            delta = 0.5 * (diameter - D0)
+            return math.atan2(delta, L) * np.ones(2)
+        else:
+            return ((diameter - 22) / (130 - 22) * (-np.pi) + np.pi)  * np.ones(3)  # D = 130-> q = 0, D = 22 -> q = 3.14
+
     def grip(self, jstate, times, gripper_pos, ungrip):
         if not ungrip:
-            gripping = np.append(jstate, gripper_pos)
-            self.send_des_trajectory([gripping], None, [times])
+            q_gripper = self.getGripperJointState(gripper_pos)
+            final_q = np.append(jstate, q_gripper)
+            self.send_des_trajectory([final_q], None, [times])
 
         time.sleep(5.)
         req = AttachRequest()
+
         req.model_name_1 = "ur5"
         req.link_name_1 = "hand_1_link"
         req.model_name_2 = "brick1"
         req.link_name_2 = "link"
 
         if not ungrip:
-            rospy.loginfo("Attaching hand_1 and block")
+            rospy.loginfo("Attaching block")
             self.attach_srv.call(req)
         else:
-            rospy.loginfo("Detaching hand_1 and block")
-            self.detach_srv(req)
-
-        req = AttachRequest()
-        req.model_name_1 = "ur5"
-        req.link_name_1 = "hand_2_link"
-        req.model_name_2 = "brick1"
-        req.link_name_2 = "link"
-
-        if not ungrip:
-            rospy.loginfo("Attaching hand_2 and block")
-            self.attach_srv.call(req)
-        else:
-            rospy.loginfo("Detaching hand_2 and block")
+            rospy.loginfo("Detaching block")
             self.detach_srv(req)
 
         if ungrip:
-            ungripping = np.append(jstate, gripper_pos)
-            self.send_des_trajectory([ungripping], None, [times])
+            q_gripper = self.getGripperJointState(gripper_pos)
+            final_q = np.append(jstate, q_gripper)
+            self.send_des_trajectory([final_q], None, [times])
             time.sleep(5.)
+
+        return final_q
 
     def moveTo(self, jstate, final_pos, final_rotm, gripper_pos, old_time=0):
         poss, vels, times = differential_kin(jstate, final_pos, final_rotm)
         final_jstate = poss[-1]
 
         for i in range(len(poss)):
-            poss[i] = np.append(poss[i], gripper_pos)
+            q_gripper = self.getGripperJointState(gripper_pos)
+            poss[i] = np.append(poss[i], q_gripper)
             # vels[i] = np.append(vels[i], np.array([0, 0]))
 
-        time.sleep(1.)
+        print(poss)
+
+        time.sleep(2.)
         times = [t + old_time for t in times]
         final_time = times[-1]
 
@@ -265,19 +214,27 @@ class JointStatePublisher:
 
     def pickUpBlock(self, block_pos, block_orient, final_pos):
         # block_pos   : coordinate x,y del centro del blocco
-        # block_orient: angolo rotazione rispetto al world frame
+        # block_orient: rotazione del blocco
         # final_pos   : posizione x,y finale dove deve venire posizionato il blocco
         print('moving robot to desired position: ', block_pos)
 
-        gripper_opened = np.array([0.25, 0.25])
-        gripper_closed = np.array([-0.05, -0.05])
+        # range gripper: 130-22
+        gripper_opened = 100
+        gripper_closed = 40
 
+        print('------ moving frontal position -------')
+        frontal_p = np.array([0, 0.4, -0.5])
+        frontal_phi = np.array([-pi, 0, 0])
+        frontal_rotm = eul2rotm(frontal_phi)
+
+        current_jstate, current_time = self.moveTo(self.homing_position, frontal_p, frontal_rotm, gripper_opened)
+
+        time.sleep(5.)
         print('------- moving to block --------')
-        block_pos = np.array([block_pos[0], block_pos[1], -0.82])
-        block_eul = [-pi, 0, -block_orient]
-        block_rotm = eul2rotm(block_eul)
+        block_pos = np.array([block_pos[0], block_pos[1], -0.83])
+        block_rotm = eul2rotm([-pi, 0, block_orient])
 
-        current_jstate, current_time = self.moveTo(self.homing_position, block_pos, block_rotm, gripper_opened)
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm, gripper_opened, current_time)
 
         time.sleep(3.)
         print('-------- gripping ---------')
@@ -291,7 +248,7 @@ class JointStatePublisher:
         current_jstate, current_time = self.moveTo(current_jstate, frontal_p, frontal_rotm, gripper_closed, current_time)
 
         print('------ moving to final position -------')
-        final_p = np.array([final_pos[0], final_pos[1], -0.82])
+        final_p = np.array([final_pos[0], final_pos[1], -0.83])
         final_phi = np.array([-pi, 0, pi / 2])
         final_rotm = eul2rotm(final_phi)
 
@@ -300,7 +257,6 @@ class JointStatePublisher:
         time.sleep(5.)
         print('------- un-gripping --------')
         self.grip(current_jstate, current_time, gripper_opened, True)
-        time.sleep(3.)
 
         print('----- moving to frontal position ------')
         frontal_p = np.array([0, 0.4, -0.5])
@@ -320,21 +276,25 @@ def talker(mypub):
     loop_frequency = 1000.
     loop_rate = ros.Rate(loop_frequency)
 
-    #get data from vision
     rospy.wait_for_service('vision_service')
     try:
-        results = rospy.ServiceProxy('vision_service', vision)
-        res=results()
         print("server called")
+        results = rospy.ServiceProxy('vision_service', vision)
+        res = results()
         print(res)
-    except rospy.ServiceException as e:
-        print("Service call failed: %s"%e)
+        # for i in range(res.n_res):
+        #     if res.xcentre[i] < 0.5 and res.ycentre[i] < 0.4:
+        #         block_pos = [res.xcentre[i], res.ycentre[i]]
+        #         angle = res.angle[i]
 
-    #prendo solo il primo
-    mypub.pickUpBlock([res.xcentre[0]-0.5, res.ycentre[0]-0.35], res.angle[0], [0.45, 0.3])
+        mypub.pickUpBlock(block_pos, angle, [0.45, 0.3])
+    except rospy.ServiceException as e:
+        print("Service call failed: %s" % e)
+
 
     ros.spin()
     loop_rate.sleep()
+
 
 if __name__ == '__main__':
     mypub = JointStatePublisher()
