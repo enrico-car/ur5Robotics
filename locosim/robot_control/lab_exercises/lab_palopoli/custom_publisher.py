@@ -27,7 +27,6 @@ class JointStatePublisher:
         self.frame_name = conf.robot_params[self.robot_name]['ee_frame']
         self.real_robot = conf.robot_params[self.robot_name]['real_robot']
         self.homing_position = conf.robot_params[self.robot_name]['q_0']
-        self.q = np.zeros(6)
 
         self.joint_names = conf.robot_params[self.robot_name]['joint_names']
         if conf.robot_params[self.robot_name]['gripper_sim']:
@@ -36,10 +35,14 @@ class JointStatePublisher:
             self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
             if self.soft_gripper:
                 self.gripper_joint_names = conf.robot_params[self.robot_name]['soft_gripper_joint_names']
+                self.q_gripper = np.zeros(2)
             else:
                 self.gripper_joint_names = conf.robot_params[self.robot_name]['gripper_joint_names']
+                self.q_gripper = np.zeros(3)
         else:
             self.gripper = False
+
+        self.q = np.zeros(6)
 
         self.vel_limits = conf.robot_params[self.robot_name]['vel_limit']
         self.ds = 0.05
@@ -53,6 +56,9 @@ class JointStatePublisher:
         self.attach_srv.wait_for_service()
         self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
         self.detach_srv.wait_for_service()
+
+        self.vision_service = rospy.ServiceProxy('vision_service', vision)
+        self.vision_service.wait_for_service()
 
     def send_des_jstate(self, q_des, q_des_gripper):
         # No need to change the convention because in the HW interface we use our conventtion (see ros_impedance_contoller_xx.yaml)
@@ -95,6 +101,9 @@ class JointStatePublisher:
             for joint_idx in range(len(self.joint_names)):
                 if self.joint_names[joint_idx] == msg.name[msg_idx]:
                     self.q[joint_idx] = msg.position[msg_idx]
+            for joint_idx in range(len(self.gripper_joint_names)):
+                if self.gripper_joint_names[joint_idx] == msg.name[msg_idx]:
+                    self.q_gripper[joint_idx] = msg.position[msg_idx]
 
     def nthRoot(self, x, n):
         if x > 0:
@@ -154,7 +163,7 @@ class JointStatePublisher:
     def quinticMovement(self, t, a0, a1, a2, a3, a4, a5):
         return a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
 
-    def getGripperJointState(self, diameter):
+    def mapGripperJointState(self, diameter):
         if self.soft_gripper:
             D0 = 40
             L = 60
@@ -163,13 +172,14 @@ class JointStatePublisher:
         else:
             return ((diameter - 22) / (130 - 22) * (-np.pi) + np.pi)  * np.ones(3)  # D = 130-> q = 0, D = 22 -> q = 3.14
 
-    def grip(self, jstate, times, gripper_pos, ungrip):
+    def grip(self, jstate, actual_time, gripper_pos, ungrip):
         if not ungrip:
-            q_gripper = self.getGripperJointState(gripper_pos)
+            q_gripper = self.mapGripperJointState(gripper_pos)
             final_q = np.append(jstate, q_gripper)
-            self.send_des_trajectory([final_q], None, [times])
+            self.send_des_trajectory([final_q], None, [actual_time+0.1])
+            while np.linalg.norm(self.q_gripper - q_gripper) > 0.005:
+                pass
 
-        time.sleep(5.)
         req = AttachRequest()
 
         req.model_name_1 = "ur5"
@@ -182,33 +192,31 @@ class JointStatePublisher:
             self.attach_srv.call(req)
         else:
             rospy.loginfo("Detaching block")
-            self.detach_srv(req)
+            self.detach_srv.call(req)
 
         if ungrip:
-            q_gripper = self.getGripperJointState(gripper_pos)
+            q_gripper = self.mapGripperJointState(gripper_pos)
             final_q = np.append(jstate, q_gripper)
-            self.send_des_trajectory([final_q], None, [times])
-            time.sleep(5.)
-
-        return final_q
+            self.send_des_trajectory([final_q], None, [actual_time+0.1])
+            while np.linalg.norm(self.q_gripper - q_gripper) > 0.005:
+                pass
 
     def moveTo(self, jstate, final_pos, final_rotm, gripper_pos, old_time=0):
         poss, vels, times = differential_kin(jstate, final_pos, final_rotm)
         final_jstate = poss[-1]
 
         for i in range(len(poss)):
-            q_gripper = self.getGripperJointState(gripper_pos)
+            q_gripper = self.mapGripperJointState(gripper_pos)
             poss[i] = np.append(poss[i], q_gripper)
             # vels[i] = np.append(vels[i], np.array([0, 0]))
 
         print(poss)
 
-        time.sleep(2.)
+        time.sleep(1.)
         times = [t + old_time for t in times]
         final_time = times[-1]
 
         self.send_des_trajectory(poss, vels, times)
-        time.sleep(5.)
 
         return final_jstate, final_time
 
@@ -219,8 +227,8 @@ class JointStatePublisher:
         print('moving robot to desired position: ', block_pos)
 
         # range gripper: 130-22
-        gripper_opened = 100
-        gripper_closed = 40
+        gripper_opened = 70
+        gripper_closed = 45
 
         print('------ moving frontal position -------')
         frontal_p = np.array([0, 0.4, -0.5])
@@ -229,14 +237,15 @@ class JointStatePublisher:
 
         current_jstate, current_time = self.moveTo(self.homing_position, frontal_p, frontal_rotm, gripper_opened)
 
-        time.sleep(5.)
         print('------- moving to block --------')
         block_pos = np.array([block_pos[0], block_pos[1], -0.83])
-        block_rotm = eul2rotm([-pi, 0, block_orient])
+        block_rotm = eul2rotm([-pi, 0, -block_orient])
 
         current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm, gripper_opened, current_time)
 
-        time.sleep(3.)
+        while np.linalg.norm(current_jstate - self.q) > 0.001:
+            pass
+
         print('-------- gripping ---------')
         self.grip(current_jstate, current_time, gripper_closed, False)
 
@@ -254,7 +263,9 @@ class JointStatePublisher:
 
         current_jstate, current_time = self.moveTo(current_jstate, final_p, final_rotm, gripper_closed, current_time)
 
-        time.sleep(5.)
+        while np.linalg.norm(current_jstate - self.q) > 0.001:
+            pass
+
         print('------- un-gripping --------')
         self.grip(current_jstate, current_time, gripper_opened, True)
 
@@ -276,18 +287,14 @@ def talker(mypub):
     loop_frequency = 1000.
     loop_rate = ros.Rate(loop_frequency)
 
-    rospy.wait_for_service('vision_service')
     try:
         print("server called")
-        results = rospy.ServiceProxy('vision_service', vision)
-        res = results()
+        res = mypub.vision_service.call()
         print(res)
-        # for i in range(res.n_res):
-        #     if res.xcentre[i] < 0.5 and res.ycentre[i] < 0.4:
-        #         block_pos = [res.xcentre[i], res.ycentre[i]]
-        #         angle = res.angle[i]
+        block_pos = [res.xcentre[0]-0.5, res.ycentre[0]-0.35]
+        angle = res.angle[0]
 
-        mypub.pickUpBlock(block_pos, angle, [0.45, 0.3])
+        mypub.pickUpBlock(block_pos, angle, [-0.45, 0.25])
     except rospy.ServiceException as e:
         print("Service call failed: %s" % e)
 
