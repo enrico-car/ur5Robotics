@@ -13,7 +13,7 @@
 
   <arg name="gazebo" default="true" doc="starts model that works with gazebo" />
   <arg name="gripper" default="false" doc="starts model with gripper activated"/>
-  <arg name="soft_gripper" default="true" doc="starts model with soft gripper"/>
+  <arg name="soft_gripper" default="false" doc="starts model with soft gripper"/>
 
 
   <param name="robot_description" command="$(find xacro)/xacro '$(find ur_description)/urdf/ur5.urdf.xacro'

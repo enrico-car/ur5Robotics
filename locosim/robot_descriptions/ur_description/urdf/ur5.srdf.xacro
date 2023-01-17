@@ -8,7 +8,7 @@
     <joint name="elbow_joint" value="-2.1" />
     <joint name="wrist_1_joint" value="-1.63" />
     <joint name="wrist_2_joint" value="-1.57" />
-    <joint name="wrist_3_joint" value="3.49" />
+    <joint name="wrist_3_joint" value="-1.00" />
 </group_state>
 
 

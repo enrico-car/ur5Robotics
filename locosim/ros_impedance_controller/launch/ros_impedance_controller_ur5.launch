@@ -1,8 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
         <arg name="robot_name" default="ur5" />
-        <arg name="gripper" default="false" />
-        <arg name="soft_gripper" default="false" />
         <arg name="rviz" default="true" />
         <arg name="gui" default="true" />
         <arg name="rviz_conf" default="$(find ros_impedance_controller)/config/operator.rviz"/>
@@ -18,6 +16,10 @@
         <arg name="use_torque_control" default="false" />
  	<arg name="gazebo" value="true" />
 	<arg name="physics" default="ode" />
+	
+	<arg name="gripper" default="true" />
+	<arg name="soft_gripper" default="false" />
+	<arg name="vision" default="true" />
 
         <!-- load robot name into param server-->
         <param name="robot_name" type="str" value="$(arg robot_name)" />
@@ -85,13 +87,16 @@
 		 	<rosparam file="$(find ur_description)/config/ros_impedance_controller_soft_gripper.yaml" ns="/$(arg robot_name)" command="load"/>
 		</group>
 		
-		<group unless="$(arg gripper)">	
+		<group unless="$(arg soft_gripper)">	
 		 	<rosparam file="$(find ur_description)/config/ur5e/ur5e_controllers_gripper.yaml" ns="/$(arg robot_name)" command="load"/>
          		<rosparam file="$(find ur_description)/config/ros_impedance_controller_gripper.yaml" ns="/$(arg robot_name)" command="load"/>
          	 </group>			
         </group>
 	
-
+	<!-- Start the server for the computer vision part -->
+	<group if="$(arg vision)"> 
+		<node name="vision_server" pkg="vision" type="server.py" />
+	</group>
 
         <!-- 5  - Loading the controllers (joint state publisher (install ros-kinetic-joint-state-controller) is necessary for robot_state publisher to compute the TFs) -->
 	<node if="$(arg use_torque_control)" name="ros_impedance_controller" pkg="controller_manager" type="spawner" respawn="false"

@@ -25,12 +25,13 @@ from base_controllers.utils.math_tools import *
 import pinocchio as pin
 from termcolor import colored
 from base_controllers.utils.common_functions import plotJoint, plotEndeff
-import  params as conf
+import params as conf
 
 # controller manager management
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
 from controller_manager_msgs.srv import LoadControllerRequest, LoadController
 from std_msgs.msg import Float64MultiArray
+from sensor_msgs.msg import JointState
 from gazebo_msgs.msg import ContactState
 from base_controllers.base_controller_fixed import BaseControllerFixed
 import tf
@@ -67,19 +68,18 @@ class Ur5Generic(BaseControllerFixed):
 
         if conf.robot_params[self.robot_name]['gripper_sim']:
             self.gripper = True
-            self.gripper_type = conf.robot_params[self.robot_name]['gripper_type']
-            if self.gripper_type == 'soft':
-                self.soft_gripper = True
-            else:
-                self.soft_gripper = False
+            self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
         else:
             self.gripper = False
+
+        self.joint_names = conf.robot_params[self.robot_name]['joint_names']
 
         self.vision = conf.robot_params[self.robot_name]['vision']
 
         self.controller_manager = ControllerManager(conf.robot_params[self.robot_name])
 
         self.dt = conf.robot_params[self.robot_name]['dt']
+        self.q = np.zeros(6)
         self.q_des_q0 = conf.robot_params[self.robot_name]['q_0']
 
         # self.world_name = None # only the workbench
@@ -87,7 +87,7 @@ class Ur5Generic(BaseControllerFixed):
         # self.world_name = 'empty.world'
         # self.world_name = 'palopoli.world'
 
-        print("Initialized ur5 generic  controller---------------------------------------------------------------")
+        print("Initialized ur5 generic controller---------------------------------------------------------------")
 
     def startRealRobot(self):
         os.system("killall  rviz gzserver gzclient")
@@ -124,6 +124,8 @@ class Ur5Generic(BaseControllerFixed):
         super().loadModelAndPublishers(xacro_path)
 
         self.sub_ftsensor = ros.Subscriber("/" + self.robot_name + "/wrench", WrenchStamped, callback=self._receive_ftsensor, queue_size=1, tcp_nodelay=True)
+
+        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState, callback=self._receive_jstate, queue_size=1, buff_size=2 ** 24, tcp_nodelay=True)
 
         self.switch_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/switch_controller", SwitchController)
         self.load_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/load_controller", LoadController)
@@ -221,12 +223,18 @@ class Ur5Generic(BaseControllerFixed):
         self.switch_controller_srv(srv)
         self.active_controller = target_controller
 
+    def _receive_jstate(self, msg):
+        for msg_idx in range(len(msg.name)):
+            for joint_idx in range(len(self.joint_names)):
+                if self.joint_names[joint_idx] == msg.name[msg_idx]:
+                    self.q[joint_idx] = msg.position[msg_idx]
+
     def homing_procedure(self, dt, v_des, q_home, rate):
         # broadcast base world TF
-        self.broadcaster.sendTransform(self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
+        #self.broadcaster.sendTransform(self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
         v_ref = 0.0
         print(colored("STARTING HOMING PROCEDURE", 'red'))
-        self.q_des = np.copy(self.q)
+        self.q_des = np.copy(self.q[0:6])
         print("Initial joint error = ", np.linalg.norm(self.q_des - q_home))
         print("q = ", self.q.T)
         print("Homing v des", v_des)
@@ -251,7 +259,7 @@ def talker(p):
     if p.real_robot:
         p.startRealRobot()
     else:
-        additional_args = ['soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision),
+        additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision),
                            'gui:=true', 'rviz:=false']
         p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 
@@ -286,7 +294,7 @@ def talker(p):
     gripper_on = 0
 
     while not ros.is_shutdown():
-        p.updateKinematicsDynamics()
+        #p.updateKinematicsDynamics()
 
         # test gripper
         # in Simulation remember to set gripper_sim : True in params.yaml!

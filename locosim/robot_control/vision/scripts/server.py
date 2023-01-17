@@ -79,7 +79,7 @@ class Listener:
         self.depth_sub_cloud.unregister()
 
     def call(self, cx, cy, cla):
-        self.depth_sub_cloud = rospy.Subscriber("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, self.callback, callback_args=(cx, cy, cla), queue_size=1)
+        self.depth_sub_cloud = rospy.Subscriber("/ur5/zed_node/point_cloud/cloud_registered", PointCloud2, self.callback, callback_args=(cx, cy, cla), queue_size=1)
 
     def tempMatch(self, xc, yc):
         print("template matching")

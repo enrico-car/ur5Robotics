@@ -4,23 +4,23 @@
 <xacro:include filename="$(find ur_description)/urdf/inc/ur_macro.xacro"/>
 
 <xacro:arg name="vision_sensor" default="true"/>
-<xacro:arg name="gazebo" default="true"/>
-<xacro:arg name="gripper" default="false"/>
-<xacro:arg name="soft_gripper" default="true" />
+<xacro:arg name="gazebo"        default="true"/>
+<xacro:arg name="gripper"       default="true"/>
+<xacro:arg name="soft_gripper"  default="false" />
 
 <xacro:arg name="prefix" default=""/>
 <xacro:arg name="transmission_hw_interface" default="hardware_interface/EffortJointInterface"/>
 
 <xacro:arg name="joint_limit_params" default="$(find ur_description)/config/ur5e/joint_limits.yaml"/>
-<xacro:arg name="kinematics_params" default="$(find ur_description)/config/ur5e/default_kinematics.yaml"/>
-<xacro:arg name="physical_params" default="$(find ur_description)/config/ur5e/physical_parameters.yaml"/>
-<xacro:arg name="visual_params" default="$(find ur_description)/config/ur5e/visual_parameters.yaml"/>
+<xacro:arg name="kinematics_params"  default="$(find ur_description)/config/ur5e/default_kinematics.yaml"/>
+<xacro:arg name="physical_params"    default="$(find ur_description)/config/ur5e/physical_parameters.yaml"/>
+<xacro:arg name="visual_params"      default="$(find ur_description)/config/ur5e/visual_parameters.yaml"/>
 <!-- legal values:
  - hardware_interface/PositionJointInterface
  - hardware_interface/VelocityJointInterface
  - hardware_interface/EffortJointInterface
 -->
-<xacro:arg name="safety_limits" default="false"/>
+<xacro:arg name="safety_limits"     default="false"/>
 <xacro:arg name="safety_pos_margin" default="0.15"/>
 <xacro:arg name="safety_k_position" default="20"/>
 
@@ -40,7 +40,7 @@ safety_k_position="$(arg safety_k_position)"/>
 	<xacro:include filename="$(find gripper_description)/urdf/soft_gripper.macro.xacro" />
 	<xacro:soft_gripper 
 	transmission_hw_interface="$(arg transmission_hw_interface)"			
-	grasp_plugin="$(arg gripper)"			
+	grasp_plugin=  "$(arg gripper)"			
 	gripper_active="$(arg gripper)"/>
 </xacro:if>
 
@@ -48,28 +48,50 @@ safety_k_position="$(arg safety_k_position)"/>
 	<xacro:include filename="$(find gripper_description)/urdf/gripper.macro.xacro" />
 	<xacro:gripper 
 		transmission_hw_interface="$(arg transmission_hw_interface)"			
-		grasp_plugin="$(arg gripper)"			
+		grasp_plugin=  "$(arg gripper)"			
 		gripper_active="$(arg gripper)"/>
 </xacro:unless>
 
 
 <joint name="gripper_robot_joint" type="fixed">
         <parent link="tool0_without_gripper"/>
-        <child link="gripper_base"/>
-        <origin xyz="0 0 0" rpy="0 0 1.57"/>
+        <child  link="gripper_base"/>
+        <origin xyz="0 0 0" rpy="0 0 3.14"/>
 </joint>
 
 <xacro:if value="$(arg vision_sensor)">
-
 	<xacro:if value="$(arg gazebo)">
-		<xacro:include filename="$(find ur_description)/sensors/zed2/simulation/zed2.xacro"/>
+		<xacro:include filename="$(find ur_description)/sensors/zed2/zed2.xacro"/>
+
 		<xacro:zed2
 			parent="base_link"
 			name="zed_camera1">
-			<origin xyz="-0.9 0.065 -0.30" rpy="0. 0.523 0."/>
+			<origin xyz="-0.9 0.065 -0.3" rpy="0. 0.523 0."/>
 		</xacro:zed2>
+		
 		<xacro:zed2_gazebo/>
   	</xacro:if>
+	
+	<xacro:unless value="$(arg gazebo)">
+
+		<include file="$(find zed_wrapper)/launch/include/zed_camera.launch.xml">
+		    <arg name="camera_name"         value="zed2" />
+		    <arg name="svo_file"            value="" />
+		    <arg name="stream"              value="" />
+		    <arg name="node_name"           value="zed_node" />
+		    <arg name="camera_model"        value="zed2" />
+		    <arg name="base_frame"          value="world" />
+		    <arg name="publish_urdf"        value="true" />
+		    <arg name="cam_pos_x"           value="-1.0" />
+		    <arg name="cam_pos_y"           value="0.5" />
+		    <arg name="cam_pos_z"           value="-0.3" />
+		    <arg name="cam_roll"            value="0." />
+		    <arg name="cam_pitch"           value="0.3" />
+		    <arg name="cam_yaw"             value="0." />
+		</include>
+
+  	</xacro:unless>
+
 		
 <!--	<xacro:include filename="$(find ur_description)/sensors/d435_camera.urdf.xacro"/>-->
 

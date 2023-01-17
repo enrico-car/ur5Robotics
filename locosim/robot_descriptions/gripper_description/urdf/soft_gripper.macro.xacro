@@ -76,9 +76,9 @@
 			</arm>
 		       <forces_angle_tolerance>100</forces_angle_tolerance>
 		       <update_rate>500</update_rate>
-		       <grip_count_threshold>4</grip_count_threshold>
-		       <max_grip_count>20</max_grip_count>
-		       <release_tolerance>0.01</release_tolerance>
+		       <grip_count_threshold>3</grip_count_threshold>
+		       <max_grip_count>10</max_grip_count>
+		       <release_tolerance>0.005</release_tolerance>
 		       <disable_collisions_on_attach>true</disable_collisions_on_attach>
 		       <contact_topic>__default_topic__</contact_topic>
 		    </plugin>

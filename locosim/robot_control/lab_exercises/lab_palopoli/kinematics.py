@@ -13,6 +13,7 @@ from pprint import pprint
 import copy
 from scipy.optimize import fsolve
 import time
+import params as conf
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -22,7 +23,10 @@ zero_array = np.array([0, 0, 0, 0, 0, 0])
 
 # ****** Coefficients ******
 global d1, a2, a3, d4, d5, d6, gripper_lenght
-gripper_lenght = 0.16
+if conf.robot_params['ur5']['soft_gripper']:
+    gripper_lenght = 0.16
+else:
+    gripper_lenght = 0.18
 d1 = 0.089159
 a2 = -0.425
 a3 = -0.39225
@@ -804,7 +808,8 @@ def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     points = []
 
     mid_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])/2,
-                       ((abs(start_pos[1]) + abs(end_pos[1]))/2)*5, start_pos[2]+(end_pos[2]-start_pos[2])/2])
+                       ((abs(start_pos[1]) + abs(end_pos[1]))/2)*5,
+                        start_pos[2]+(end_pos[2]-start_pos[2])/2])
 
     mid2_pos = np.array([end_pos[0], end_pos[1]-0.1,
                         end_pos[2]+((abs(end_pos[2]-start_pos[2])+0.025)*1.5)])
@@ -821,6 +826,10 @@ def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     rotms = matrixLinspace(rotm_i, rotm_f, n)
 
     return points, rotms
+
+
+def linePath(start_pos, end_pos, rotm_i, rotm_f, n):
+    return np.linspace(start_pos, end_pos, n), matrixLinspace(rotm_i, rotm_f, n)
 
 
 def skewOperator(w):
@@ -867,8 +876,9 @@ def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, t
         svd = np.linalg.svd(J, compute_uv=False)
         min_sing_val = np.amin(svd)
 
-        if min_sing_val < 0.005:
+        if min_sing_val < 0.0001:
             dtheta = np.transpose(J) @ np.linalg.inv(J @ np.transpose(J) + np.dot(damping**2, np.eye(6))) @ step
+            print('correzione singolarità')
         else:
             dtheta = np.linalg.inv(J) @ step
 
@@ -897,7 +907,10 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     ds = 0.05
     if curve_type == 'bezier':
         path, rotms = bezierPath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
+    elif curve_type == 'line':
+        path, rotms = linePath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
     else:
+        print('curva non disponibile')
         return
 
     actual_jstate = np.ndarray.copy(initial_jstate)
@@ -956,5 +969,5 @@ final_p = np.array([-0.2, 0.4, -0.6])
 final_phi = np.array([-pi, 0, 0])
 final_rotm = eul2rotm(final_phi)
 
-#poss, vels, times = differential_kin(initial_jstate, final_p, final_rotm)
+#poss, vels, times = differential_kin(initial_jstate, final_p, final_rotm, curve_type='line')
 #pprint(poss)
