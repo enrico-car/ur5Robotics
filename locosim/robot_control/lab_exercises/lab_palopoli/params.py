@@ -23,7 +23,7 @@ robot_params = {'ur5': {'dt': 0.001,
                         'real_robot': False,
                         'control_type': 'position',  # 'position', 'torque'
                         'gripper_sim': True,  # False: the gripper is treated as a Rigid Body, True: you can move the finger joints
-                        'soft_gripper': True,
+                        'soft_gripper': False,
                         'vision': True,
                         'vel_limit': 3.14,
                         'spawn_x': 0.5,

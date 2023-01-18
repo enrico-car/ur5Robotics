@@ -211,7 +211,7 @@ class JointStatePublisher:
         else:
             return ((diameter - 22) / (130 - 22) * (-np.pi) + np.pi) * np.ones(3)  # D = 130-> q = 0, D = 22 -> q = 3.14
 
-    def grip(self, jstate, actual_time, gripper_pos, ungrip, classe):
+    def grip(self, jstate, actual_time, gripper_pos, ungrip):
         if not ungrip:
             q_gripper = self.mapGripperJointState(gripper_pos)
             final_q = np.append(jstate, q_gripper)
@@ -241,7 +241,10 @@ class JointStatePublisher:
             final_q = np.append(jstate, q_gripper)
             self.send_des_trajectory([final_q], None, [actual_time + 0.1])
             print('waiting to reach gripper position')
-            while np.linalg.norm(self.q_gripper - q_gripper) > 0.01:
+            while np.linalg.norm(self.q_gripper - q_gripper) > 0.035:
+                print(np.linalg.norm(self.q_gripper - q_gripper))
+                print(q_gripper)
+                print(self.q_gripper)
                 pass
 
     def moveTo(self, jstate, final_pos, final_rotm, gripper_pos, old_time=0, curve_type='bezier'):
@@ -262,7 +265,7 @@ class JointStatePublisher:
 
         return final_jstate, final_time
 
-    def pickUpBlock(self, block_pos, block_orient, classe, final_pos, initial_jstate=None, initial_time=0):
+    def pickUpBlock(self, block_pos, block_orient, final_pos, initial_jstate=None, initial_time=0):
         # block_pos   : coordinate x,y del centro del blocco
         # block_orient: rotazione del blocco
         # final_pos   : posizione x,y finale dove deve venire posizionato il blocco
@@ -283,7 +286,7 @@ class JointStatePublisher:
             current_jstate, current_time = self.moveTo(self.homing_position, frontal_p, frontal_rotm, gripper_opened, 0.1)
 
         print('------- moving to block --------')
-        block_pos = np.array([block_pos[0]+0.01, block_pos[1], -0.835])
+        block_pos = np.array([block_pos[0]+0.01, block_pos[1], -0.825])
         block_rotm = eul2rotm([-pi, 0, -block_orient])
 
         current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm, gripper_opened, 0.1)
@@ -291,9 +294,10 @@ class JointStatePublisher:
         print('waiting to reach position')
         while np.linalg.norm(current_jstate - self.q) > 0.005:
             pass
+        #input("Press Enter to continue...")
 
         print('-------- gripping ---------')
-        self.grip(current_jstate, 0.1, gripper_closed, False, classe)
+        self.grip(current_jstate, 0.1, gripper_closed, False)
 
         time.sleep(1.)
 
@@ -303,7 +307,7 @@ class JointStatePublisher:
         frontal_rotm = eul2rotm(frontal_phi)
 
         current_jstate, current_time = self.moveTo(current_jstate, frontal_p, frontal_rotm, gripper_closed, 0.1)
-        input("Press Enter to continue...")
+
         print('------ moving to final position -------')
         final_p = np.array([final_pos[0], final_pos[1], final_pos[2]])
         final_phi = np.array([-pi, 0, pi / 2])
@@ -316,7 +320,7 @@ class JointStatePublisher:
             pass
 
         print('------- un-gripping --------')
-        self.grip(current_jstate, 0.1, gripper_opened, True, classe)
+        self.grip(current_jstate, 0.1, gripper_opened, True)
 
         # print('----- moving to frontal position ------')
         # frontal_p = np.array([0, 0.4, -0.5])
@@ -330,6 +334,62 @@ class JointStatePublisher:
 
         return current_jstate, current_time
 
+    def multipleBlocks(self, h):
+        print("vision server called")
+        res = mypub.vision_service.call()
+        print(res)
+
+        # res = Res()
+        # res.n_res = 7
+        # res.xcentre = [0.05, 0.05, 0.05, 0.5, 0.95, 0.95, 0.95]
+        # res.ycentre = [0.25, 0.5, 0.75, 0.75, 0.75, 0.5, 0.25]
+        # res.angle = [0, 0, 0, 0, 0, 0, 0]
+        # res.class_ = [0, 0, 0, 0, 0, 0, 0]
+
+        for i in range(0, res.n_res):
+            temp = h @ [res.xcentre[i] - 0.5, res.ycentre[i] - 0.35, 1]
+            block_pos = [temp[0], temp[1]]
+            if abs(block_pos[0]) < 1. and abs(block_pos[1]) < 0.8:
+                angle = pi/2 - res.angle[i]
+
+                if i == 0:
+                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, [0.2, 0.4, -0.825 + i * 0.04])
+                else:
+                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, [0.2, 0.4, -0.825 + i * 0.04], current_jstate)
+
+    def rotateBlock(self, initial_jstate, block_pos, block_orient, h):
+        gripper_opened = 65
+        gripper_closed = 31
+
+        print('------ moving frontal position -------')
+        frontal_p = np.array([0, 0.4, -0.5])
+        frontal_phi = np.array([-pi, 0, 0])
+        frontal_rotm = eul2rotm(frontal_phi)
+
+        current_jstate, current_time = self.moveTo(initial_jstate, frontal_p, frontal_rotm, gripper_opened, 0.1)
+
+        theta = pi/4
+        rotY = mat([[cos(-theta), 0, sin(-theta)], [0, 1, 0], [-sin(-theta), 0, cos(-theta)]])
+        block_rotm = eul2rotm(block_orient)
+        initial_rotm = block_rotm @ rotY
+        temp = h @ np.array([block_pos[0], block_pos[1], 1])
+        block_pos = np.array([temp[0], temp[1], block_pos[2]+0.2])
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos, initial_rotm, gripper_opened, 0.1)
+        while np.linalg.norm(current_jstate - self.q) > 0.01:
+            pass
+        block_pos = np.array([block_pos[0], block_pos[1], block_pos[2]-0.2])
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos, initial_rotm, gripper_opened, 0.1, curve_type='line')
+        input("Press Enter to continue...")
+
+        print('-------- gripping ---------')
+        self.grip(current_jstate, 0.1, gripper_closed, False)
+
+        rotY = mat([[cos(theta), 0, sin(theta)], [0, 1, 0], [-sin(theta), 0, cos(theta)]])
+        final_rotm = block_rotm @ rotY
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos, final_rotm, gripper_closed, 0.1, curve_type='line')
+
+        print('------- un-gripping --------')
+        self.grip(current_jstate, 0.1, gripper_opened, True)
 
 class Res:
     def __init__(self):
@@ -339,6 +399,26 @@ class Res:
         self.ycentre = []
         self.angle = []
 
+
+def checkPosition(h):
+    points = [[0, 0.4, -0.5], [-0.52, -0.2, -0.7], [-0.52, 0.45, -0.85], [0.5, 0.45, -0.85], [0.5, -0.2, -0.7]]
+    angle = [-pi, 0, -pi / 2]
+    rotm = eul2rotm(angle)
+    temp = points[0]
+    temp1 = h @ [temp[0], temp[1], 1]
+    point = [temp1[0], temp1[1], temp[2]]
+    current_jstate, current_time = mypub.moveTo(mypub.homing_position, point, rotm, 40, 0.1)
+    while np.linalg.norm(current_jstate - mypub.q) > 0.005:
+        pass
+
+    for i in range(1, len(points)):
+        temp = points[i]
+        temp1 = h @ [temp[0], temp[1], 1]
+        point = [temp1[0], temp1[1], temp[2]]
+        current_jstate, current_time = mypub.moveTo(current_jstate, point, rotm, 40, 0.1, curve_type='line')
+        while np.linalg.norm(current_jstate - mypub.q) > 0.005:
+            pass
+        input("Press Enter to continue...")
 
 
 def talker(mypub):
@@ -352,98 +432,20 @@ def talker(mypub):
     loop_frequency = 1000.
     loop_rate = ros.Rate(loop_frequency)
 
-    print("vision server called")
-    res = mypub.vision_service.call()
-    print(res)
+    #mypub.multipleBlocks()
 
-    distorted_points = mat([[-0.5 - 0.013, 0.45 - 0.016], [-0.5, -0.2 - 0.028],
-                            [0.5 + 0.03, -0.2 + 0.023], [0.5 - 0.012, 0.45 + 0.017]])
-    correct_points = mat([[-0.5, 0.45], [-0.5, -0.2], [0.5, -0.2], [0.5, 0.45]])
+    distorted_points = mat([[-0.5, -0.2 - 0.03],  [-0.5 - 0.02, 0.45-0.015],
+                            [ 0.5 - 0.01,  0.45 + 0.025], [ 0.5 + 0.02, -0.2 + 0.015]])
+    correct_points   = mat([[-0.5, -0.2], [-0.5, 0.45], [0.5, 0.45], [0.5, -0.2]])
     h, status = cv2.findHomography(distorted_points, correct_points)
 
-    # res = Res()
-    # res.xcentre = [0.05, 0.95, 0.95]
-    # res.ycentre = [0.75, 0.25, 0.7]
-    # res.angle = [pi/2-1.117, pi/2-0.52, pi/2-1.57]
-    # res.class_ = [0, 0, 0]
-    # res.n_res = len(res.xcentre)
+    # block_pos = np.array([0.3, 0.3, -0.83])
+    # block_orient = np.array([-pi, 0, pi/4])
+    # mypub.rotateBlock(mypub.homing_position, block_pos, block_orient, h)
 
-    for i in range(0, res.n_res):
-        temp = h @ [res.xcentre[i] - 0.5, res.ycentre[i] - 0.35, 1]
-        block_pos = [temp[0], temp[1]]
-        if abs(block_pos[0]) < 1. and abs(block_pos[1]) < 0.8:
-            angle = res.angle[i]
-            classe = res.class_[i]
-
-            if i == 0:
-                current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, classe,
-                                                                 [0, 0.4, -0.835 + i * 0.04])
-            else:
-                current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, classe,
-                                                                 [0, 0.4, -0.835 + i * 0.04], current_jstate)
+    mypub.multipleBlocks(h)
 
 
-
-
-    # front = h @ [0, 0.4, 1]
-    # front[2] = -0.5
-    # fourth = h @ [0.5, 0.45, 1]
-    # fourth[2] = -0.85
-    # third = h @ [0.5, -0.25, 1]
-    # third[2] = -0.7
-    # second = h @ [-0.5, -0.25, 1]
-    # second[2] = -0.7
-    # first = h @ [-0.5, 0.45, 1]
-    # first[2] = -0.85
-    # angle = [-pi, 0, 0]
-    # rotm = eul2rotm(angle)
-    #
-    # print(first)
-    # print(second)
-    # print(third)
-    # print(fourth)
-    #
-    # input("Press Enter to continue...")
-    #
-    # print('moving robot to: ', front)
-    #
-    # # range gripper: 130-22
-    # gripper_opened = 40
-    #
-    # current_jstate, current_time = mypub.moveTo(mypub.homing_position, front, rotm, gripper_opened)
-    # print('moving to frontal position')
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    #
-    # current_jstate, current_time = mypub.moveTo(current_jstate, first, rotm, gripper_opened)
-    # print('moving to first position: ', first)
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    # input("Press Enter to continue...")
-    #
-    # current_jstate, current_time = mypub.moveTo(current_jstate, second, rotm, gripper_opened, curve_type='line')
-    # print('moving to second position: ', second)
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    # input("Press Enter to continue...")
-    #
-    # current_jstate, current_time = mypub.moveTo(current_jstate, third, rotm, gripper_opened, curve_type='line')
-    # print('moving to third position')
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    # input("Press Enter to continue...")
-    #
-    # current_jstate, current_time = mypub.moveTo(current_jstate, fourth, rotm, gripper_opened, curve_type='line')
-    # print('moving to fourth position: ', third)
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    # input("Press Enter to continue...")
-    #
-    # current_jstate, current_time = mypub.moveTo(current_jstate, first, rotm, gripper_opened, curve_type='line')
-    # print('moving to first position: ', fourth)
-    # while np.linalg.norm(current_jstate - mypub.q) > 0.005:
-    #     pass
-    # input("Press Enter to continue...")
 
     ros.spin()
     loop_rate.sleep()

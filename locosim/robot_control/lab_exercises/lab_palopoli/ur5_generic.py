@@ -283,9 +283,9 @@ def talker(p):
 
     # use the point to point position controller
     if p.control_mode == 'trajectory':
-        p.switch_controller('pos_joint_traj_controller')
+        p.switch_controller(p.available_controllers[1])
     else:
-        p.switch_controller('joint_group_pos_controller')
+        p.switch_controller(p.available_controllers[0])
 
 
     p.ros_pub.add_marker([0.4, 0.4, -0.7]+p.base_offset, 0.05)

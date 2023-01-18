@@ -26,7 +26,7 @@ global d1, a2, a3, d4, d5, d6, gripper_lenght
 if conf.robot_params['ur5']['soft_gripper']:
     gripper_lenght = 0.16
 else:
-    gripper_lenght = 0.18
+    gripper_lenght = 0.17
 d1 = 0.089159
 a2 = -0.425
 a3 = -0.39225
@@ -693,7 +693,7 @@ def sistemOfEquations(vars, *data):
     return [eq1, eq2]
 
 
-def parabolaPath(pi, pf, phi_i, phi_f, ds):
+def parabolaPath(pi, pf, rotm_i, rotm_f, ds):
     # dati due punti pi e pf (punto iniziale e punto finale nello spazio xyz) riferiti al base frame
     # questa funzione calcola n punti appartenenti ad un path parabolico, ognuno distante circa ds l'uno dall'altro
     # input: pi, pf punti nello spazio xyz riferiti al base frame
@@ -770,9 +770,9 @@ def parabolaPath(pi, pf, phi_i, phi_f, ds):
     path.append([pfc[0], pfc[1], 0, 1])
     pathBF.append(np.array(np.dot(Tbc, path[-1]).flat))
 
-    angles = np.linspace(phi_i, phi_f, i)
+    rotms = matrixLinspace(rotm_i, rotm_f, int(1/ds))
 
-    return pathBF, angles
+    return pathBF, rotms
 
 
 def matrixLinspace(rotm_i, rotm_f, n):
@@ -909,6 +909,8 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
         path, rotms = bezierPath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
     elif curve_type == 'line':
         path, rotms = linePath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
+    elif curve_type == 'parabola':
+        path, rotms = parabolaPath(initial_p, final_p, initial_rotm, final_rotm, ds)
     else:
         print('curva non disponibile')
         return
