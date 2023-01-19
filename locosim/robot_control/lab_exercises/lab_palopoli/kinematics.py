@@ -904,7 +904,7 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     initial_p = np.array(initial_pose[0:3, 3].flat)
     initial_rotm = initial_pose[0:3, 0:3]
 
-    ds = 0.05
+    ds = 0.005
     if curve_type == 'bezier':
         path, rotms = bezierPath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
     elif curve_type == 'line':
@@ -958,7 +958,7 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
         # metto come attuale jstate quello che ho appena calcolato e passo al prossimo punto
         # actual_jstate = next_jstate
 
-    times = np.round(np.linspace(0, np.round(len(positions)/30, 5), len(positions)), 5)
+    times = np.round(np.linspace(0, np.round(len(positions)/10, 5), len(positions)), 5)
 
     return positions, None, times
 

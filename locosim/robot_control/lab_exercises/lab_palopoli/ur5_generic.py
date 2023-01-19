@@ -20,7 +20,7 @@ import rosnode
 import rosgraph
 import rospkg
 
-#other utils
+# other utils
 from base_controllers.utils.math_tools import *
 import pinocchio as pin
 from termcolor import colored
@@ -40,11 +40,12 @@ import time
 from base_controllers.components.controller_manager import ControllerManager
 
 robotName = "ur5"
-np.set_printoptions(threshold=np.inf, precision=5, linewidth=1000, suppress=True)
+np.set_printoptions(threshold=np.inf, precision=5,
+                    linewidth=1000, suppress=True)
 
 
 class Ur5Generic(BaseControllerFixed):
-    
+
     def __init__(self, robot_name="ur5"):
         super().__init__(robot_name=robot_name)
 
@@ -76,7 +77,8 @@ class Ur5Generic(BaseControllerFixed):
 
         self.vision = conf.robot_params[self.robot_name]['vision']
 
-        self.controller_manager = ControllerManager(conf.robot_params[self.robot_name])
+        self.controller_manager = ControllerManager(
+            conf.robot_params[self.robot_name])
 
         self.dt = conf.robot_params[self.robot_name]['dt']
         self.q = np.zeros(6)
@@ -107,14 +109,15 @@ class Ur5Generic(BaseControllerFixed):
 
         if (not rosgraph.is_master_online()) or (
                 "/" + self.robot_name + "/ur_hardware_interface" not in rosnode.get_node_names()):
-           pass
-           # print(colored('Launching the ur driver!', 'blue'))
-          #  parent.start()
+            pass
+            # print(colored('Launching the ur driver!', 'blue'))
+           #  parent.start()
 
         # run rviz
         package = 'rviz'
         executable = 'rviz'
-        args = '-d ' + rospkg.RosPack().get_path('ros_impedance_controller') + '/config/operator.rviz'
+        args = '-d ' + rospkg.RosPack().get_path('ros_impedance_controller') + \
+            '/config/operator.rviz'
         node = roslaunch.core.Node(package, executable, args=args)
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
@@ -123,25 +126,34 @@ class Ur5Generic(BaseControllerFixed):
     def loadModelAndPublishers(self, xacro_path):
         super().loadModelAndPublishers(xacro_path)
 
-        self.sub_ftsensor = ros.Subscriber("/" + self.robot_name + "/wrench", WrenchStamped, callback=self._receive_ftsensor, queue_size=1, tcp_nodelay=True)
+        self.sub_ftsensor = ros.Subscriber(
+            "/" + self.robot_name + "/wrench", WrenchStamped, callback=self._receive_ftsensor, queue_size=1, tcp_nodelay=True)
 
-        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState, callback=self._receive_jstate, queue_size=1, buff_size=2 ** 24, tcp_nodelay=True)
+        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState,
+                                         callback=self._receive_jstate, queue_size=1, buff_size=2 ** 24, tcp_nodelay=True)
 
-        self.switch_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/switch_controller", SwitchController)
-        self.load_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/load_controller", LoadController)
+        self.switch_controller_srv = ros.ServiceProxy(
+            "/" + self.robot_name + "/controller_manager/switch_controller", SwitchController)
+        self.load_controller_srv = ros.ServiceProxy(
+            "/" + self.robot_name + "/controller_manager/load_controller", LoadController)
 
         # specific publisher for joint_group_pos_controller that publishes only position
-        self.pub_reduced_des_jstate = ros.Publisher("/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
+        self.pub_reduced_des_jstate = ros.Publisher(
+            "/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
 
-        self.zero_sensor = ros.ServiceProxy("/" + self.robot_name + "/ur_hardware_interface/zero_ftsensor", Trigger)
+        self.zero_sensor = ros.ServiceProxy(
+            "/" + self.robot_name + "/ur_hardware_interface/zero_ftsensor", Trigger)
         self.controller_manager.initPublishers(self.robot_name)
 
         #  different controllers are available from the real robot and in simulation
         if self.real_robot:
-            self.pub_reduced_des_jstate = ros.Publisher("/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
-            self.available_controllers = ["joint_group_pos_controller", "scaled_pos_joint_traj_controller"]
+            self.pub_reduced_des_jstate = ros.Publisher(
+                "/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
+            self.available_controllers = [
+                "joint_group_pos_controller", "scaled_pos_joint_traj_controller"]
         else:
-            self.available_controllers = ["joint_group_pos_controller", "pos_joint_traj_controller"]
+            self.available_controllers = [
+                "joint_group_pos_controller", "pos_joint_traj_controller"]
 
         self.active_controller = self.available_controllers[0]
 
@@ -163,12 +175,13 @@ class Ur5Generic(BaseControllerFixed):
         self.contactMomentW = self.w_R_tool0.dot(contactMomentTool0)
 
     def deregister_node(self):
-        print( "deregistering nodes"     )
+        print("deregistering nodes")
         self.ros_pub.deregister_node()
         if not self.real_robot:
-            os.system(" rosnode kill /"+self.robot_name+"/ros_impedance_controller")
+            os.system(" rosnode kill /"+self.robot_name +
+                      "/ros_impedance_controller")
             os.system(" rosnode kill /gzserver /gzclient")
-                                                                                                                                     
+
     def updateKinematicsDynamics(self):
         # q is continuously updated
         # to compute in the base frame  you should put neutral base
@@ -177,24 +190,29 @@ class Ur5Generic(BaseControllerFixed):
         self.M = self.robot.mass(self.q)
         # bias terms
         self.h = self.robot.nle(self.q, self.qd)
-        #gravity terms
+        # gravity terms
         self.g = self.robot.gravity(self.q)
-        #compute ee position  in the world frame
+        # compute ee position  in the world frame
         frame_name = conf.robot_params[self.robot_name]['ee_frame']
         # this is expressed in the base frame
-        self.x_ee = self.robot.framePlacement(self.q, self.robot.model.getFrameId(frame_name)).translation
-        self.w_R_tool0 = self.robot.framePlacement(self.q, self.robot.model.getFrameId(frame_name)).rotation
+        self.x_ee = self.robot.framePlacement(
+            self.q, self.robot.model.getFrameId(frame_name)).translation
+        self.w_R_tool0 = self.robot.framePlacement(
+            self.q, self.robot.model.getFrameId(frame_name)).rotation
         # compute jacobian of the end effector in the base or world frame (they are aligned so in terms of velocity they are the same)
-        self.J6 = self.robot.frameJacobian(self.q, self.robot.model.getFrameId(frame_name), False, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)                    
-        # take first 3 rows of J6 cause we have a point contact            
-        self.J = self.J6[:3,:] 
+        self.J6 = self.robot.frameJacobian(self.q, self.robot.model.getFrameId(
+            frame_name), False, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+        # take first 3 rows of J6 cause we have a point contact
+        self.J = self.J6[:3, :]
         # broadcast base world TF
-        self.broadcaster.sendTransform(self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
+        self.broadcaster.sendTransform(
+            self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
 
     def startupProcedure(self):
         if self.use_torque_control:
             # set joint pdi gains
-            self.pid.setPDjoints( conf.robot_params[self.robot_name]['kp'], conf.robot_params[self.robot_name]['kd'], np.zeros(self.robot.na))
+            self.pid.setPDjoints(conf.robot_params[self.robot_name]['kp'],
+                                 conf.robot_params[self.robot_name]['kd'], np.zeros(self.robot.na))
 
         if self.real_robot:
             self.zero_sensor()
@@ -207,17 +225,17 @@ class Ur5Generic(BaseControllerFixed):
         print('Available controllers: ', self.available_controllers)
         print('Controller manager: loading ', target_controller)
 
-        other_controllers = self.available_controllers
+        other_controllers = self.available_controllers.copy()
         other_controllers.remove(target_controller)
         print('Controller manager:Switching off  :  ', other_controllers)
 
         srv = LoadControllerRequest()
         srv.name = target_controller
 
-        self.load_controller_srv(srv)  
-        
+        self.load_controller_srv(srv)
+
         srv = SwitchControllerRequest()
-        srv.stop_controllers = other_controllers 
+        srv.stop_controllers = other_controllers
         srv.start_controllers = [target_controller]
         srv.strictness = SwitchControllerRequest.BEST_EFFORT
         self.switch_controller_srv(srv)
@@ -261,10 +279,12 @@ def talker(p):
     else:
         additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision),
                            'gui:=true', 'rviz:=false']
-        p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
+        p.startSimulator(world_name=p.world_name,
+                         use_torque_control=p.use_torque_control, additional_args=additional_args)
 
     # specify xacro location
-    xacro_path = rospkg.RosPack().get_path('ur_description') + '/urdf/' + p.robot_name + '.urdf.xacro'
+    xacro_path = rospkg.RosPack().get_path('ur_description') + \
+        '/urdf/' + p.robot_name + '.urdf.xacro'
     p.loadModelAndPublishers(xacro_path)
     p.initVars()
     p.startupProcedure()
@@ -276,17 +296,14 @@ def talker(p):
     rate = ros.Rate(1 / p.dt)
 
     p.q_des = np.copy(p.q_des_q0)
+    p.switch_controller(p.available_controllers[0])
 
     # homing procedure
     if p.homing_flag:
-        p.homing_procedure(p.dt, 1, p.q_des, rate)
+        p.homing_procedure(p.dt, 0.5, p.q_des, rate)
 
     # use the point to point position controller
-    if p.control_mode == 'trajectory':
-        p.switch_controller(p.available_controllers[1])
-    else:
-        p.switch_controller(p.available_controllers[0])
-
+    p.switch_controller(p.available_controllers[1])
 
     p.ros_pub.add_marker([0.4, 0.4, -0.7]+p.base_offset, 0.05)
     p.ros_pub.publishVisual()
@@ -294,7 +311,7 @@ def talker(p):
     gripper_on = 0
 
     while not ros.is_shutdown():
-        #p.updateKinematicsDynamics()
+        # p.updateKinematicsDynamics()
 
         # test gripper
         # in Simulation remember to set gripper_sim : True in params.yaml!
@@ -306,7 +323,7 @@ def talker(p):
         #     print("gripper 100")
         #     p.controller_manager.gm.move_gripper(100)
         #     gripper_on = 2
-        # # need to uncomment this to be able to send joints references (leave it commented if you have an external node setting them)
+        # need to uncomment this to be able to send joints references (leave it commented if you have an external node setting them)
         # p.controller_manager.sendReference(p.q_des, p.qd_des, p.h)
 
         # wait for synconization of the control loop

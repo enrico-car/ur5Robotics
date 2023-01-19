@@ -325,90 +325,85 @@
     <parent link="forearm_link"/>
     <child link="forearm_link_end"/>
   </joint>
-  <material name="Grey">
-    <color rgba="0.2 0.2 0.2 1"/>
-  </material>
-  <material name="Blue">
-    <color rgba="0 0 1 1"/>
-  </material>
-  <link name="gripper_base">
+  <link name="gripper_base_down">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+      <origin rpy="-1.5707963267948966 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_base_down.stl"/>
+        <mesh filename="package://gripper_description/meshes/gripper_base_down.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 -0.0095"/>
+      <origin rpy="-1.5707963267948966 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_base_down.stl"/>
+        <mesh filename="package://gripper_description/meshes/gripper_base_down.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="2.073e-05   1.45286e-03  -1.1049e-03"/>
-      <mass value="0.168"/>
-      <inertia ixx="6.69695624e-05" ixy="5.21511788e-09" ixz="-2.74383009e-08" iyy="7.85088161e-05" iyz="5.41105193e-07" izz="1.41819717e-04"/>
-    </inertial>
   </link>
+  <link name="gripper_base">
+    <visual>
+      <origin rpy="-1.5707963267948966 0 0" xyz="0.2275 0 0 "/>
+      <geometry>
+        <mesh filename="package://gripper_description/meshes/gripper_base_up.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-1.5707963267948966 0 0" xyz="0.2275 0 0"/>
+      <geometry>
+        <mesh filename="package://gripper_description/meshes/gripper_base_up.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="flange" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.06"/>
+    <parent link="gripper_base"/>
+    <child link="gripper_base_down"/>
+  </joint>
   <joint name="fixed_ee_gripper" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0.12"/>
     <parent link="gripper_base"/>
     <child link="tool0"/>
   </joint>
   <link name="tool0"/>
-  <joint name="hand_1_joint" type="fixed">
-    <parent link="gripper_base"/>
+  <transmission name="hand_1_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="hand_1_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="hand_1_pan_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <joint name="hand_1_joint" type="revolute">
+    <parent link="gripper_base_down"/>
     <child link="hand_1_link"/>
-    <origin rpy=" 0 0 0" xyz="0 -0.028 0.09"/>
+    <axis xyz="0 -1 0"/>
+    <origin rpy="-1.5707963267948966 0 0" xyz="0.0  -0.03 0.05"/>
+    <limit effort="50" lower="0" upper="3.14" velocity="10.0"/>
   </joint>
   <link name="hand_1_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="2.073e-05   1.45286e-03  -1.1049e-03"/>
-      <mass value="0.168"/>
-      <inertia ixx="6.69695624e-05" ixy="5.21511788e-09" ixz="-2.74383009e-08" iyy="7.85088161e-05" iyz="5.41105193e-07" izz="1.41819717e-04"/>
+      <origin xyz="0.0 0.0 0.0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger1.stl"/>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger1.stl"/>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
-  <joint name="hand_1_joint2" type="fixed">
-    <origin rpy=" 0 0 0" xyz="0 0.009 0.042"/>
-    <parent link="hand_1_link"/>
-    <child link="hand_1_link2"/>
-  </joint>
-  <link name="hand_1_link2">
-    <visual>
-      <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger2.stl"/>
-      </geometry>
-      <material name="Blue"/>
-    </visual>
-    <collision>
-      <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger2.stl"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="2.073e-05   1.45286e-03  -1.1049e-03"/>
-      <mass value="0.168"/>
-      <inertia ixx="6.69695624e-05" ixy="5.21511788e-09" ixz="-2.74383009e-08" iyy="7.85088161e-05" iyz="5.41105193e-07" izz="1.41819717e-04"/>
-    </inertial>
-  </link>
-  <gazebo reference="hand_1_link2">
-    <material>Gazebo/Blue</material>
-  </gazebo>
-  <gazebo reference="hand_1_link2">
-    <material>Gazebo/Blue</material>
-  </gazebo>
   <gazebo reference="hand_1_link">
     <collision name="hand_1_link_collision">
       <surface>
@@ -435,59 +430,41 @@
     <maxContacts>1</maxContacts>
     <material>Gazebo/RedBright</material>
   </gazebo>
-  <joint name="hand_2_joint" type="fixed">
-    <parent link="gripper_base"/>
+  <transmission name="hand_2_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="hand_2_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="hand_2_pan_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <joint name="hand_2_joint" type="revolute">
+    <parent link="gripper_base_down"/>
     <child link="hand_2_link"/>
-    <origin rpy=" 0 0 -3.141592653589793" xyz="0 0.028 0.09"/>
+    <axis xyz="0 -1 0"/>
+    <origin rpy="-1.5707963267948966 0 2.0943951023931953" xyz="0.02598 0.015 0.05"/>
+    <limit effort="50" lower="0" upper="3.14" velocity="10.0"/>
   </joint>
   <link name="hand_2_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="2.073e-05   1.45286e-03  -1.1049e-03"/>
-      <mass value="0.168"/>
-      <inertia ixx="6.69695624e-05" ixy="5.21511788e-09" ixz="-2.74383009e-08" iyy="7.85088161e-05" iyz="5.41105193e-07" izz="1.41819717e-04"/>
+      <origin xyz="0.0 0.0 0.0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger1.stl"/>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
       <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger1.stl"/>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
-  <joint name="hand_2_joint2" type="fixed">
-    <origin rpy=" 0 0 0" xyz="0 0.009 0.042"/>
-    <parent link="hand_2_link"/>
-    <child link="hand_2_link2"/>
-  </joint>
-  <link name="hand_2_link2">
-    <visual>
-      <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger2.stl"/>
-      </geometry>
-      <material name="Blue"/>
-    </visual>
-    <collision>
-      <geometry>
-        <mesh filename="package://gripper_description/meshes/soft_gripper_finger2.stl"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <origin rpy="0 0 0" xyz="2.073e-05   1.45286e-03  -1.1049e-03"/>
-      <mass value="0.168"/>
-      <inertia ixx="6.69695624e-05" ixy="5.21511788e-09" ixz="-2.74383009e-08" iyy="7.85088161e-05" iyz="5.41105193e-07" izz="1.41819717e-04"/>
-    </inertial>
-  </link>
-  <gazebo reference="hand_2_link2">
-    <material>Gazebo/Blue</material>
-  </gazebo>
-  <gazebo reference="hand_2_link2">
-    <material>Gazebo/Blue</material>
-  </gazebo>
   <gazebo reference="hand_2_link">
     <collision name="hand_2_link_collision">
       <surface>
@@ -514,17 +491,93 @@
     <maxContacts>1</maxContacts>
     <material>Gazebo/RedBright</material>
   </gazebo>
-  <gazebo reference="gripper_base">
-    <material>Gazebo/Grey</material>
+  <transmission name="hand_3_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="hand_3_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="hand_3_pan_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <joint name="hand_3_joint" type="revolute">
+    <parent link="gripper_base_down"/>
+    <child link="hand_3_link"/>
+    <axis xyz="0 -1 0"/>
+    <origin rpy="-1.5707963267948966 0 -2.0943951023931953" xyz="-0.02598 0.015 0.05"/>
+    <limit effort="50" lower="0" upper="3.14" velocity="10.0"/>
+  </joint>
+  <link name="hand_3_link">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
+      <geometry>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0.05 0.03"/>
+      <geometry>
+        <mesh filename="package://gripper_description/meshes/finger.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="hand_3_link">
+    <collision name="hand_3_link_collision">
+      <surface>
+        <friction>
+          <torsional>
+            <coefficient>10.0</coefficient>
+            <use_patch_radius>true</use_patch_radius>
+            <patch_radius>0.05</patch_radius>
+          </torsional>
+        </friction>
+        <contact>
+          <poissons_ratio>0.5</poissons_ratio>
+          <elastic_modulus>1e8</elastic_modulus>
+        </contact>
+      </surface>
+    </collision>
+    <mu1>10</mu1>
+    <mu2>10</mu2>
+    <kp>1000000.0</kp>
+    <kd>10.0</kd>
+    <fdir1>0 0 1</fdir1>
+    <minDepth>0.001</minDepth>
+    <maxVel>0.0</maxVel>
+    <maxContacts>1</maxContacts>
+    <material>Gazebo/RedBright</material>
+  </gazebo>
+  <gazebo>
+    <plugin filename="libgazebo_grasp_fix.so" name="gazebo_grasp_fix">
+      <arm>
+        <arm_name>ur5</arm_name>
+        <palm_link> wrist_3_link  </palm_link>
+        <gripper_link> hand_1_link </gripper_link>
+        <gripper_link> hand_2_link </gripper_link>
+        <gripper_link> hand_3_link </gripper_link>
+      </arm>
+      <forces_angle_tolerance>100</forces_angle_tolerance>
+      <update_rate>500</update_rate>
+      <grip_count_threshold>4</grip_count_threshold>
+      <max_grip_count>20</max_grip_count>
+      <release_tolerance>0.005</release_tolerance>
+      <disable_collisions_on_attach>true</disable_collisions_on_attach>
+      <contact_topic>__default_topic__</contact_topic>
+    </plugin>
   </gazebo>
   <joint name="gripper_robot_joint" type="fixed">
     <parent link="tool0_without_gripper"/>
     <child link="gripper_base"/>
-    <origin rpy="0 0 1.57" xyz="0 0 0"/>
+    <origin rpy="0 0 3.14" xyz="0 0 0"/>
   </joint>
   <!-- camera body, with origin at bottom screw mount -->
   <joint name="zed_camera_fixed_joint" type="fixed">
-    <origin rpy="0. 0.523 0." xyz="-0.9 0.065 -0.30"/>
+    <origin rpy="0. 0.523 0." xyz="-0.9 0.065 -0.3"/>
     <parent link="base_link"/>
     <child link="zed2_camera_center"/>
   </joint>
@@ -537,12 +590,12 @@
     </inertial>
     <visual>
       <geometry>
-        <mesh filename="package://ur_description/sensors/zed2/simulation/ZED2.dae"/>
+        <mesh filename="package://ur_description/sensors/zed2/ZED2.dae"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://ur_description/sensors/zed2/simulation/ZED2.dae"/>
+        <mesh filename="package://ur_description/sensors/zed2/ZED2.dae"/>
       </geometry>
     </collision>
   </link>
@@ -632,7 +685,7 @@
       </camera>
       <plugin filename="libgazebo_ros_camera.so" name="camera_controller">
         <robotNamespace></robotNamespace>
-        <cameraName>zed_node/left_raw</cameraName>
+        <cameraName>zed2/left_raw</cameraName>
         <imageTopicName>image_raw_color</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
         <frameName>zed2_left_camera_optical_frame</frameName>
@@ -641,9 +694,9 @@
         <distortionT1>-0.006573319</distortionT1>
         <distortionT2>-0.000216900</distortionT2>
         <distortionK3>0.000084328</distortionK3>
-        <CxPrime>640</CxPrime>
-        <Cx>640</Cx>
-        <Cy>360</Cy>
+        <CxPrime>648.5</CxPrime>
+        <Cx>648.5</Cx>
+        <Cy>366.8340148925781</Cy>
         <hackBaseline>0.0</hackBaseline>
       </plugin>
     </sensor>
@@ -671,7 +724,7 @@
       </camera>
       <plugin filename="libgazebo_ros_openni_kinect.so" name="camera_controller">
         <robotNamespace></robotNamespace>
-        <cameraName>zed_node</cameraName>
+        <cameraName>zed2</cameraName>
         <imageTopicName>left/image_rect_color</imageTopicName>
         <cameraInfoTopicName>left/camera_info</cameraInfoTopicName>
         <depthImageTopicName>depth/depth_registered</depthImageTopicName>
@@ -680,10 +733,14 @@
         <pointCloudCutoff>0.1</pointCloudCutoff>
         <pointCloudCutoffMax>20.0</pointCloudCutoffMax>
         <frameName>zed2_left_camera_optical_frame</frameName>
+        <!-- DA CONTROLLARE!!!! -->
         <baseline>0.12</baseline>
         <CxPrime>640</CxPrime>
         <Cx>640</Cx>
         <Cy>360</Cy>
+        <!-- CxPrime>658.8206787109375</CxPrime>
+          <Cx>658.8206787109375</Cx>
+          <Cy>372.25787353515625</Cy-->
         <hackBaseline>0.0</hackBaseline>
       </plugin>
     </sensor>
@@ -722,7 +779,7 @@
       </camera>
       <plugin filename="libgazebo_ros_camera.so" name="camera_controller">
         <robotNamespace></robotNamespace>
-        <cameraName>zed_node/right_raw</cameraName>
+        <cameraName>zed2/right_raw</cameraName>
         <imageTopicName>image_raw_color</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
         <frameName>zed2_right_camera_optical_frame</frameName>
@@ -731,9 +788,9 @@
         <distortionT1>-0.004429849</distortionT1>
         <distortionT2>0.000192024</distortionT2>
         <distortionK3>-0.000320880</distortionK3>
-        <CxPrime>640</CxPrime>
-        <Cx>640</Cx>
-        <Cy>360</Cy>
+        <CxPrime>659.3049926757812</CxPrime>
+        <Cx>659.3049926757812</Cx>
+        <Cy>371.39849853515625</Cy>
         <hackBaseline>0.12</hackBaseline>
       </plugin>
     </sensor>
@@ -761,13 +818,13 @@
       </camera>
       <plugin filename="libgazebo_ros_camera.so" name="camera_controller">
         <robotNamespace></robotNamespace>
-        <cameraName>zed_node/right</cameraName>
+        <cameraName>zed2/right</cameraName>
         <imageTopicName>image_rect_color</imageTopicName>
         <cameraInfoTopicName>camera_info</cameraInfoTopicName>
         <frameName>zed2_right_camera_optical_frame</frameName>
-        <CxPrime>640</CxPrime>
-        <Cx>640</Cx>
-        <Cy>360</Cy>
+        <CxPrime>658.8206787109375</CxPrime>
+        <Cx>658.8206787109375</Cx>
+        <Cy>372.25787353515625</Cy>
         <hackBaseline>0.12</hackBaseline>
       </plugin>
     </sensor>
@@ -778,7 +835,7 @@
       <update_rate>100</update_rate>
       <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
         <robotNamespace></robotNamespace>
-        <topicName>/ur5/zed_node/imu/data</topicName>
+        <topicName>/ur5/zed2/imu/data</topicName>
         <frameName>zed2_imu_link</frameName>
         <updateRateHZ>100.0</updateRateHZ>
         <gaussianNoise>0.01</gaussianNoise>
