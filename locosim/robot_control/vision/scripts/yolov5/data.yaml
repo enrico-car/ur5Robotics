@@ -1,0 +1,13 @@
+train: ../dataset/train/images/p1
+val: ../dataset/valid/images/p1
+test: ../dataset/test/images/p1
+
+nc: 11
+names: ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET', 'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
+
+roboflow:
+  workspace: project
+  project: test2-lv4wl
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/project/test2-lv4wl/dataset/1

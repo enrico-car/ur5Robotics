@@ -18,37 +18,9 @@ import time
 import glob
 
 path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                         "yolov5")
+                        "yolov5")
 path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                             "template")
-
-
-# def retImageDepth(data, args):
-#     print(data.is_bigendian)
-#     print(data.encoding)
-#     xc_, yc_ =args
-#     bridge = CvBridge()
-#     depth_image = bridge.imgmsg_to_cv2(data, "32FC1")
-#     depth_image=cv2.resize(depth_image, [640,640],interpolation = cv2.INTER_CUBIC)
-#     rows, cols=depth_image.shape
-#     depth_image=depth_image[145:rows-310, 120:cols-100]
-#     #cv2.imshow("data read", depth_image)
-#     #cv_image_array = np.array(depth_image, dtype = np.dtype('f8'))
-#     cv_image_norm = cv2.normalize(depth_image, depth_image, 0, 1, cv2.NORM_MINMAX)
-#     #depth_image=cv2.resize(cv_image_norm, [640,640],interpolation = cv2.INTER_CUBIC)
-#     # cv2.imwrite("depth.jpg",depth_image)
-#     # cv2.imshow("after", depth_image)
-#     # cv2.waitKey(0)
-#     #cv2.imshow("Image window", depth_image)
-#     #cv2.waitKey(1)
-#     depth_sub.unregister()
-#     #depth_image.data
-#     print(depth_image[int(xc_),int(yc_)])
-#     print(depth_image[int(xc_),int(yc_)])
-
-# x_tavolo=-1
-# y_tavolo=-1
-# cl=-1
+                            "template")
 
 
 class Listener:
@@ -59,12 +31,12 @@ class Listener:
         self.y_tavolo = []
         self.x_tavolo_def = []
         self.angle = []
-        self.depth_sub_cloud = -1
+        self.pointCloud = 0
 
-    def callback(self, data, args):
-        xc_, yc_, cl = args
-
-        data_out = pc2.read_points(data, field_names=("x", "y", "z"), skip_nans=False, uvs=[[int(xc_), int((yc_ + 2))]])
+    def call(self, cxmin, cxmax, cymin, cymax):
+        print("-----------------------------getting distances----------------------------")
+        self.pointCloud=rospy.wait_for_message("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, timeout=None)
+        data_out = pc2.read_points(self.pointCloud, field_names=("x", "y", "z"), skip_nans=False, uvs=[[int((cxmax+cxmin)/2), int(((cymax+cymin)/2))]])
         int_data = next(data_out)
         a, b, c = int_data
 
@@ -76,74 +48,64 @@ class Listener:
         self.x_tavolo.append(round(res[0, 0], 4))
         self.y_tavolo.append(round(res[0, 1], 4))
         print(self.x_tavolo, self.y_tavolo)
-        self.depth_sub_cloud.unregister()
 
-    def call(self, cx, cy, cla):
-        self.depth_sub_cloud = rospy.Subscriber("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, self.callback, callback_args=(cx, cy, cla), queue_size=1)
-
-    def tempMatch(self, xc, yc):
-        print("template matching")
+        print("-----------------------------template matching----------------------------")
         img = cv2.imread(
             os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                         "yolov5", "cv_img.jpg"), 0)
-        gap = 0
-        # resize basato sulla distanza dalla camera
-        if self.x_tavolo[len(self.x_tavolo) - 1] <= 0.34:
-            template = os.path.join(path_template, "l", "*jpg")  # prendo tutta la cartella
-            gap = 10
-            img = img[int(yc) - 52:int(yc) + 52, int(xc) - 52:int(xc) + 52]
-        elif self.x_tavolo[len(self.x_tavolo) - 1] <= 0.68:
-            template = os.path.join(path_template, "m", "*jpg")  # prendo tutta la cartella
-            gap = 6
-            img = img[int(yc) - 29:int(yc) + 29, int(xc) - 35:int(xc) + 35]
-        else:
-            template = os.path.join(path_template, "h", "*jpg")  # prendo tutta la cartella
-            gap = 4
-            img = img[int(yc) - 21:int(yc) + 21, int(xc) - 27:int(xc) + 27]
+                        "yolov5", "cv_img.jpg"), 0)
 
+        img = img[int(cymin):int(cymax), int(cxmin):int(cxmax)] #crop come box di yolo
         method = cv2.TM_CCORR_NORMED
 
+        #scelgo la cartella relativa alla dimensione
+        # if self.x_tavolo[len(self.x_tavolo) - 1] <= 0.34:
+        #     template = os.path.join(path_template, "l", "*jpg")
+        # elif self.x_tavolo[len(self.x_tavolo) - 1] <= 0.68:
+        #     template = os.path.join(path_template, "m", "*jpg")
+        # else:
+        #     template = os.path.join(path_template, "h", "*jpg")
+            
+        template = os.path.join(path_template, "*jpg")   
         val_name = {}
         max_corr_index = ""
         max_val_rel = -1
+        #almeno_uno=False
         for t in glob.glob(template):  # provo tutti i template a quella distanza
             temp = cv2.imread(t, 0)
             h, w = temp.shape
-            # img3=img[ int(yc)-gap-int(h/2):int(yc)+gap+int(h/2), int(xc)-gap-int(w/2):int(xc)+gap+int(w/2)]
+            if (h/w-0.2 <= ((cymax-cymin)/(cxmax-cxmin))<=h/w+0.2):
+                #resize immagine
+                img2 = img.copy()
+                if(h>cymax-cymin):
+                    temp=cv2.resize(temp, (int(cxmax-cxmin), int(cymax-cymin)-2))
+                else:
+                    img2=cv2.resize(img2, (w+2,h+2))
+                
+                # cv2.imshow("img",img2)
+                # cv2.imshow("res",temp)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
 
-            # cv2.imshow("cropped", img3)
-            # cv2.imshow("template", temp)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+                result = cv2.matchTemplate(img2, temp, method) 
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                location = max_loc
+                val_name[t] = max_val
+                if max_val_rel < val_name[t]:
+                    max_corr_index = t
+                    max_val_rel = val_name[t]
+                #bottom_right = (location[0] + w, location[1] + h)
 
-            img2 = img.copy()
-            result = cv2.matchTemplate(img2, temp, method)  # dim is (W-w+1, H-h+1), upper is value of base img
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-            location = max_loc
-            #print("val: ", max_val)
-            val_name[t] = max_val
-            if max_val_rel < val_name[t]:
-                max_corr_index = t
-                max_val_rel = val_name[t]
-            #print(location)
-            bottom_right = (location[0] + w, location[1] + h)
-            # cv2.rectangle(img2, location, bottom_right, 255, 5)
-            # cv2.imshow("Match", img2)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
 
-        #print(val_name)
-        #print("best_correnspondance name: ", max_corr_index, " with val: ", val_name[max_corr_index])
-
+        # print("index:",max_corr_index)
+        # print("val_rel:",max_val_rel)
         info = max_corr_index.split("/")
-        info = info[11]
+        print(info)
+        info = info[10]
         info = info.split("_")
-        #print((info[0]))
-        #print((info[3]))
         self.cl.append(int(info[0]))
         self.angle.append(float(info[3]))
 
-        # correzione di tavolo_x basata sull'angolo
+        print("---------------------correzione posizione-----------------------------")
         if self.x_tavolo[len(self.x_tavolo) - 1] < 0.06:
             self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1])
         else:
@@ -176,53 +138,6 @@ class Listener:
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)
 
 
-# def retImageCloud(data, args):
-#     global x_tavolo
-#     global y_tavolo
-#     global cl
-#     # width, height, point_step, row_step, data, isnan = data.width, data.height, data.point_step, data.row_step, data.data, False
-#     # print(width, height, point_step, row_step)
-#     xc_, yc_, cl= args
-
-#     # lista=[]
-#     # for i in range(int(xc_-50), int(xc_+50)):
-#     #     for j in range(int(yc_-20), int(yc_+20)):
-#     #         lista.append([int(i),int(j)])
-#     # data_out = pc2.read_points(data, field_names=("x", "y", "z"), skip_nans=True, uvs=lista) #, uvs=[[int(xc_+5), int(yc_)]])
-#     # #print(len(data_out))
-#     #print(sum(1 for _ in data_out)) #306847
-#     # pcd=o3d.geometry.PointCloud()
-#     # pcd.points=o3d.utility.Vector3dVector(data_out)
-#     # o3d.visualization.draw_geometries([pcd])
-#     data_out = pc2.read_points(data, field_names=("x", "y", "z"), skip_nans=False, uvs=[[int(xc_),int(yc_)]])
-#     int_data = next(data_out)
-#     #for p in list(data_out):
-#     a,b,c=int_data
-#     depth=math.sqrt(a**2+b**2+c**2)
-#     y_tavolo=0.525-a 
-#     x_tavolo=math.sqrt(depth**2-0.6**2)-0.5
-#     #print("x ", x_tavolo, "  y ",y_tavolo, cl)
-#     depth_sub_cloud.unregister()   
-
-#     # print(m)
-#     # depth_sub_cal cloud.unregister()
-
-
-# def getDepthCloud(cx, cy, cla):
-#     global depth_sub_cloud
-#     # global x_tavolo
-#     # global y_tavolo
-#     # global cl
-#     l=Listener()
-#     #depth_sub_cloud=rospy.Subscriber("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, retImageCloud ,callback_args=(cx,cy, cla), queue_size=1)
-#     depth_sub_cloud=rospy.Subscriber("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, l.callback ,l, callback_args=(cx,cy, cla), queue_size=1)
-#     #print("risultati di depth ", cl, x_tavolo, y_tavolo)retImageCloud
-
-
-# def getDepth(cx,cy):
-#     global depth_sub
-#     depth_sub=rospy.Subscriber("/ur5/zed2/depth/depth_registered", Image, retImageDepth,callback_args=(cx,cy), queue_size=1)
-
 
 def presenceControl(arr, xmin, ymin):
     for xmin1, ymin1, xmax1, ymax1, prob1, cl1 in arr:
@@ -234,71 +149,48 @@ def presenceControl(arr, xmin, ymin):
 def dataProcessing():
     det_res = []
     with open(os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                           "yolov5", "res_save.txt")) as file:
+                        "yolov5", "res_save.txt")) as file:
         det_res = [ast.literal_eval(line.rstrip("\n")) for line in file]
-    # print(det_res)
-    # print(det_res[0][0])
     print(det_res)
-    print("data converted")
     blocks_info = []
     to_ret = []
     if len(det_res):
+        xmin, ymin, xmax, ymax, p,c=det_res[0]
         blocks_info.append(det_res[0])
-        # global xc_resp,yc_resp
-        xc_ = ((det_res[0][2] + det_res[0][0]) / 2) * 2  # //-145
-        yc_ = ((det_res[0][3] + det_res[0][1]) / 2) * 1.88  # //-120
+        xc_ = ((xmax + xmin) / 2)
+        yc_ = ((ymin+ymax) / 2)
         l = Listener()
-        l.call(xc_, yc_, int(det_res[0][5]))
-        time.sleep(3.)
-        l.tempMatch(xc_, yc_)
-        time.sleep(1.)
-        to_ret.append([int(det_res[0][5]), xc_, yc_])
+        l.call(xmin,xmax,ymin,ymax)
+        to_ret.append([c, xc_, yc_])
         for xmin, ymin, xmax, ymax, prob, cl in det_res:
             if (not presenceControl(blocks_info, xmin, ymin)):
                 blocks_info.append([xmin, ymin, xmax, ymax, prob, cl])
-                xc_ = ((xmax + xmin) / 2) * 2  # -145
-                yc_ = ((ymax + ymin) / 2) * 1.88  # -120
-                l.call(xc_, yc_, int(cl))
-                time.sleep(3.)
-                l.tempMatch(xc_, yc_)
-                time.sleep(1.)
+                xc_ = ((xmax + xmin) / 2)
+                yc_ = ((ymax + ymin) / 2)
+                l.call(xmin, xmax, ymin, ymax)
                 to_ret.append([int(cl), xc_, yc_])
 
         print("results in data: ", l.cl, l.x_tavolo_def, l.y_tavolo)
         return visionResponse(len(l.cl), l.cl, l.x_tavolo_def, l.y_tavolo, l.angle)
-        # print(to_ret)        
-        # return visionResponse(to_ret[0][0], to_ret[0][1], to_ret[0][2])
 
 
 def detection():
+    print("------------------------running yolo----------------------------")
     os.system(
         "python3 " + path_yolo + "/detect.py --weights " + path_yolo + "/best2.pt --source " + path_yolo + "/cv_img.jpg --data " + path_yolo + "/data.yaml")
     print("post detection")
 
 
-def retImageCallback(data):
-    print("callback begins")
-    global cv_image
+def retImage():
+    print("------------------------taking image----------------------------")
+    image = rospy.wait_for_message("/ur5/zed2/left/image_rect_color", Image, timeout=None)
     bridge = CvBridge()
-    cv_image = bridge.imgmsg_to_cv2(data, "mono8")
-    # cv_image=cv2.resize(cv_image, [640,640])
-    # cv2.imshow("wind",cv_image)
-    # cv2.waitKey(0)
-    # rows, cols=cv_image.shape
-    # cv_image=cv_image[145:rows-310, 120:cols-100]
-    # cv2.imshow("Image window", cv_image)
+    cv_image = bridge.imgmsg_to_cv2(image, "mono8")
     if not cv2.imwrite(
             os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                         "yolov5", "cv_img.jpg"), cv_image):
+                        "yolov5", "cv_img.jpg"), cv_image):
         raise Exception("Image not saved")
     print("image passed")
-    sub.unregister()
-
-
-def retImage():
-    global sub
-    print("ret image begins")
-    sub = rospy.Subscriber("/ur5/zed2/left/image_rect_color", Image, retImageCallback, queue_size=1)
 
 
 def imageProcessing(req):
@@ -306,8 +198,6 @@ def imageProcessing(req):
     retImage()
     detection()
     return dataProcessing()
-
-    # print("Returning [%s + %s = %s]"%(req.a, req.b, (req.a + req.b)))
 
 
 def visionServerFunc():
