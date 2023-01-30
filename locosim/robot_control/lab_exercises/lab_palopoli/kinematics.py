@@ -27,12 +27,19 @@ if conf.robot_params['ur5']['soft_gripper']:
     gripper_lenght = 0.16
 else:
     gripper_lenght = 0.17
-d1 = 0.089159
-a2 = -0.425
+# d1 = 0.089159
+# a2 = -0.425
+# a3 = -0.39225
+# d4 = 0.10915
+# d5 = 0.09465
+# d6 = np.round(0.0823 + gripper_lenght, 5)
+
+d1 = 0.163
+a2 = -0.42500
 a3 = -0.39225
-d4 = 0.10915
-d5 = 0.09465
-d6 = np.round(0.0823 + gripper_lenght, 5)
+d4 = 0.134         # wrist1_length = d4 - elbow_offset - shoulder_offset
+d5 = 0.100
+d6 = 0.100 + gripper_lenght
 
 global d, a, alph
 #       0 -> 1  -> 2 ->3 ->4  -> 5   -> 6
@@ -899,12 +906,12 @@ def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, t
     return positions
 
 
-def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', vel=1):
+def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', vel=2):
     initial_pose = direct_kin(initial_jstate)
     initial_p = np.array(initial_pose[0:3, 3].flat)
     initial_rotm = initial_pose[0:3, 0:3]
 
-    ds = 0.005
+    ds = 0.05
     if curve_type == 'bezier':
         path, rotms = bezierPath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
     elif curve_type == 'line':
@@ -958,8 +965,13 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
         # metto come attuale jstate quello che ho appena calcolato e passo al prossimo punto
         # actual_jstate = next_jstate
 
-    times = np.round(np.linspace(0, np.round(len(positions)/10, 5), len(positions)), 5)
-
+    # times = np.round(np.linspace(0, np.round(len(positions)/10, 5), len(positions)), 5)
+    
+    times = [0.]
+    for i in range(1, len(positions)):
+        dtheta = positions[i] - positions[i-1]
+        times.append(times[i-1] + np.amax(abs(dtheta)) / vel)
+    
     return positions, None, times
 
 
