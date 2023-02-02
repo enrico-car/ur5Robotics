@@ -10,6 +10,8 @@ from sensor_msgs.msg import JointState
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
+from gazebo_grasp_plugin_ros.msg import GazeboGraspEvent
 from base_controllers.components.controller_manager import ControllerManager
 from kinematics import *
 import keyboard
@@ -67,10 +69,16 @@ class JointStatePublisher:
         self.times = []
         self.t = 0
 
-        # self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
-        # self.attach_srv.wait_for_service()
-        # self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
-        # self.detach_srv.wait_for_service()
+        self.attach_srv = ros.ServiceProxy('/link_attacher_node/attach', Attach)
+        self.attach_srv.wait_for_service()
+        self.detach_srv = ros.ServiceProxy('/link_attacher_node/detach', Attach)
+        self.detach_srv.wait_for_service()
+
+        self.setstatic_srv = ros.ServiceProxy("/link_attacher_node/setstatic", SetStatic)
+        self.setstatic_srv.wait_for_service()
+
+        self.block_grasped = False
+        self.grasped_block_name = None
 
         self.vision = conf.robot_params[self.robot_name]['vision']
         if self.vision:
@@ -281,15 +289,27 @@ class JointStatePublisher:
         # print(result)
         ros.sleep(0.1)
 
-    def grip(self, jstate, actual_time, gripper_pos, ungrip):
-        if not ungrip:
+    def grasp_manager(self, data):
+        if data.attached:
+            print('******* block grasped ********')
+            self.block_grasped = data.attached
+            self.grasped_block_name = data.object.split("::")[0]
+            print('block name: ', self.grasped_block_name)
+        # else:
+        #     print('******* block un-grasped ********')
+        #     self.block_grasped = False
+        #     self.grasped_block_name = None
+
+
+    def grip(self, jstate, actual_time, gripper_pos, grip):
+        if grip:
             if not self.real_robot:
                 q_gripper = self.mapGripperJointState(gripper_pos)
                 final_q = np.append(jstate, q_gripper)
                 self.send_des_trajectory([final_q], None, [actual_time + 0.1])
                 time.sleep(1.)
                 print('waiting to reach gripper position')
-                while np.linalg.norm(self.q_gripper - q_gripper) > 0.01:
+                while np.linalg.norm(self.q_gripper - q_gripper) > 0.1:
                     pass
             else:
                 self.moveRealGripper(gripper_pos)
@@ -310,14 +330,33 @@ class JointStatePublisher:
         #     self.detach_srv.call(req)
 
         time.sleep(1.)
-        if ungrip:
+        if not grip:
             if not self.real_robot:
                 q_gripper = self.mapGripperJointState(gripper_pos)
                 final_q = np.append(jstate, q_gripper)
+
                 self.send_des_trajectory([final_q], None, [actual_time + 0.1])
+
                 print('waiting to reach gripper position')
-                while np.linalg.norm(self.q_gripper - q_gripper) > 0.035:
+                while np.linalg.norm(self.q_gripper - q_gripper) > 0.5:
                     pass
+
+                # Attach block to table
+                req = AttachRequest()
+                req.model_name_1 = self.grasped_block_name
+                req.link_name_1 = "link"
+                req.model_name_2 = "tavolo"
+                req.link_name_2 = "link"
+                self.attach_srv.call(req)
+                time.sleep(0.5)
+
+                # Set model static
+                req = SetStaticRequest()
+                req.model_name = self.grasped_block_name
+                req.link_name = "link"
+                req.set_static = True
+                self.setstatic_srv.call(req)
+                time.sleep(0.5)
             else:
                 self.moveRealGripper(gripper_pos)
                 time.sleep(3.)
@@ -374,7 +413,7 @@ class JointStatePublisher:
 
         print('-------- gripping ---------')
         if self.gripper:
-            self.grip(current_jstate, 0.1, gripper_closed, False)
+            self.grip(current_jstate, 0.1, gripper_closed, True)
 
         time.sleep(1.)
 
@@ -398,7 +437,7 @@ class JointStatePublisher:
 
         print('------- un-gripping --------')
         if self.gripper:
-            self.grip(current_jstate, 0.1, gripper_opened, True)
+            self.grip(current_jstate, 0.1, gripper_opened, False)
 
         return current_jstate, current_time
 
@@ -412,18 +451,27 @@ class JointStatePublisher:
             res.n_res = 7
             res.xcentre = [0.05, 0.05, 0.05, 0.5, 0.8, 0.8, 0.8]
             res.ycentre = [0.25, 0.5, 0.75, 0.75, 0.75, 0.5, 0.25]
-            res.angle = [pi/4, pi/4, pi/4, pi/4, 0, 0, 0]
+            res.angle = [0, 0, 0, 0, 0, 0, 0]
             res.class_ = [0, 0, 0, 0, 0, 0, 0]
 
         final_block_pos = np.array([0.2, 0.4, -0.92])
         for i in range(0, res.n_res):
-            block_pos = [res.xcentre[i]-0.5, res.ycentre[i]-0.35]
+            block_pos = [res.xcentre[res.n_res-1-i]-0.51, res.ycentre[res.n_res-1-i]-0.35]
             if abs(block_pos[0]) < 1. and abs(block_pos[1]) < 0.8:
                 angle = pi/2 - res.angle[i]
                 if i == 0:
                     current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos)
                 else:
-                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos + np.array([0, 0, i * 0.043]), current_jstate)
+                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos + np.array([0, 0, i * 0.038]), current_jstate)
+            input('Press enter to continue ....')
+
+        print('------ Moving to frontal position ------')
+        frontal_p = np.array([0, 0.4, -0.5])
+        frontal_phi = np.array([-pi, 0, 0])
+        frontal_rotm = eul2rotm(frontal_phi)
+
+        self.moveTo(self.q, frontal_p, frontal_rotm, 80)
+
 
     def rotateBlock(self, initial_jstate, block_pos, block_orient):
         gripper_opened = 65
@@ -491,12 +539,11 @@ def talker(mypub):
     loop_frequency = 1000.
     loop_rate = ros.Rate(loop_frequency)
 
+    ros.Subscriber('/grasp_event_republisher/grasp_events', GazeboGraspEvent, mypub.grasp_manager)
+
     mypub.multipleBlocks()
     print('------- task completato -------')
 
-    # block_pos = np.array([0.3, 0.3, -0.83])
-    # block_orient = np.array([-pi, 0, pi/4])
-    # mypub.rotateBlock(mypub.homing_position, block_pos, block_orient, h)
 
     ros.spin()
     loop_rate.sleep()

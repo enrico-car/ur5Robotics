@@ -10,9 +10,12 @@ else:
     class_to_attach='lego_X1-Y2-Z2-CHAMFER'
 if __name__ == '__main__':
     rospy.init_node('demo_detach_links')
+    rospy.loginfo("Creating ServiceProxy to /link_attacher_node/detach")
     attach_srv = rospy.ServiceProxy('/link_attacher_node/detach',
                                     Attach)
     attach_srv.wait_for_service()
+    rospy.loginfo("Created ServiceProxy to /link_attacher_node/detach")
+
     # Link them
     rospy.loginfo("Detaching object and gripper")
     req = AttachRequest()

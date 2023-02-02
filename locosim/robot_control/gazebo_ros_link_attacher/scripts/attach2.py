@@ -3,28 +3,29 @@ import sys
 import rospy
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
-class_to_attach=""
-if len(sys.argv) != 1:
-    class_to_attach=sys.argv[1]
-else:
-    class_to_attach='lego_X1-Y2-Z2-CHAMFER'
+    
+   
 if __name__ == '__main__':
-    rospy.init_node('demo_detach_links')
-    attach_srv = rospy.ServiceProxy('/link_attacher_node/detach',
+    class_to_attach=""
+    obj1=sys.argv[1]
+    obj2=sys.argv[2]
+    
+    rospy.init_node('demo_attach_links')
+    attach_srv = rospy.ServiceProxy('/link_attacher_node/attach',
                                     Attach)
     attach_srv.wait_for_service()
+    
     # Link them
-    rospy.loginfo("Detaching object and gripper")
+    rospy.loginfo("Attaching objects")
     req = AttachRequest()
-    req.model_name_1 = class_to_attach
+    req.model_name_1 = obj1
     req.link_name_1 = "link"
-    req.model_name_2 = "robot"
-    req.link_name_2 = "wrist_3_link"
-
+    req.model_name_2 = obj2
+    req.link_name_2 = "link"
     attach_srv.call(req)
     # From the shell:
     """
-rosservice call /link_attacher_node/detach "model_name_1: 'cube1'
+rosservice call /link_attacher_node/attach "model_name_1: 'cube1'
 link_name_1: 'link'
 model_name_2: 'cube2'
 link_name_2: 'link'"

@@ -4,14 +4,23 @@
     <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>
     <physics type='ode'>
       <gravity>0 0 -9.81</gravity>
-      <!-- max step size has to be a multiple of the desired task rate-->
       <max_step_size>0.001</max_step_size> 
       <real_time_factor>1</real_time_factor>
     </physics>
     <!-- A global light source -->
-    <include>
-      <uri>model://sun</uri>
-    </include>
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>0.2 0.3 -0.6</direction>
+    </light>
     <!-- A ground plane -->
     <include>
       <uri>model://ground_plane</uri>
@@ -21,8 +30,7 @@
       <uri>model://tavolo</uri>
       <pose>0.0 0.0 0.0 0 0 0</pose>
     </include>
-
-
+   
     <include>
       <name>brick1</name>
       <uri>model://X1-Y1-Z2</uri>

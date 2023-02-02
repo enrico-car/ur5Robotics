@@ -15,14 +15,14 @@
 
 	<model name="box">
 
-	        <static>true</static>
+	        <static>false</static>
 		<link name="link">
 			
 		   
 		      <collision name="collision">
 			<geometry>
 			  <box>
-			    <size>0.25 0.25 0.25</size>
+			    <size>0.25 0.25 0.85</size>
 			  </box>
 			</geometry>
 		      </collision>
@@ -39,7 +39,7 @@
 
 			<geometry>
 			  <box>
-			    <size>0.25 0.25 0.25</size>
+			    <size>0.25 0.25 0.85</size>
 			  </box>
 			</geometry>
 		      </visual>

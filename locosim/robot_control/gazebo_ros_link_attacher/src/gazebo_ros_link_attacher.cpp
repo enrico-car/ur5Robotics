@@ -1,10 +1,17 @@
 #include <boost/thread/recursive_mutex.hpp>
+
 #include <gazebo/common/Plugin.hh>
+
 #include <ros/ros.h>
 #include "gazebo_ros_link_attacher.h"
 #include "gazebo_ros_link_attacher/Attach.h"
 #include "gazebo_ros_link_attacher/AttachRequest.h"
 #include "gazebo_ros_link_attacher/AttachResponse.h"
+
+#include "gazebo_ros_link_attacher/SetStatic.h"
+#include "gazebo_ros_link_attacher/SetStaticRequest.h"
+#include "gazebo_ros_link_attacher/SetStaticResponse.h"
+
 #include <ignition/math/Pose3.hh>
 
 namespace gazebo
@@ -38,6 +45,9 @@ namespace gazebo
     this->physics = this->world->Physics();
     this->physics_mutex = this->physics->GetPhysicsUpdateMutex();
 
+    this->setstatic_service_ = this->nh_.advertiseService("setstatic", &GazeboRosLinkAttacher::setstatic_callback, this);
+    ROS_INFO_STREAM("SetStatic service at: " << this->nh_.resolveName("setstatic"));
+
     this->attach_service_ = this->nh_.advertiseService("attach", &GazeboRosLinkAttacher::attach_callback, this);
     ROS_INFO_STREAM("Attach service at: " << this->nh_.resolveName("attach"));
     this->detach_service_ = this->nh_.advertiseService("detach", &GazeboRosLinkAttacher::detach_callback, this);
@@ -62,29 +72,27 @@ namespace gazebo
     else{
         ROS_INFO_STREAM("Creating new joint.");
     }
+
     j.model1 = model1;
     j.link1 = link1;
     j.model2 = model2;
     j.link2 = link2;
-    ROS_DEBUG_STREAM("Getting BasePtr of " << model1);
-    physics::BasePtr b1 = this->world->ModelByName(model1);
-
-    if (b1 == NULL){
-      ROS_ERROR_STREAM(model1 << " model was not found");
-      return false;
-    }
-    ROS_DEBUG_STREAM("Getting BasePtr of " << model2);
-    physics::BasePtr b2 = this->world->ModelByName(model2);
-    if (b2 == NULL){
-      ROS_ERROR_STREAM(model2 << " model was not found");
-      return false;
-    }
 
     ROS_DEBUG_STREAM("Casting into ModelPtr");
-    physics::ModelPtr m1(dynamic_cast<physics::Model*>(b1.get()));
+    physics::ModelPtr m1 = this->world->ModelByName(model1);
     j.m1 = m1;
-    physics::ModelPtr m2(dynamic_cast<physics::Model*>(b2.get()));
+    physics::ModelPtr m2 = this->world->ModelByName(model2);
     j.m2 = m2;
+
+    if (m1 == NULL){
+      ROS_ERROR_STREAM(m1 << " model was not found");
+      return false;
+    }
+    if (m2 == NULL){
+      ROS_ERROR_STREAM(m2 << " model was not found");
+      return false;
+    }
+    
 
     ROS_DEBUG_STREAM("Getting link: '" << link1 << "' from model: '" << model1 << "'");
     physics::LinkPtr l1 = m1->GetLink(link1);
@@ -114,7 +122,8 @@ namespace gazebo
     ROS_DEBUG_STREAM("Links are: "  << l1->GetName() << " and " << l2->GetName());
 
     ROS_DEBUG_STREAM("Creating revolute joint on model: '" << model1 << "'");
-    j.joint = this->physics->CreateJoint("revolute", m1);
+    j.joint = this->physics->CreateJoint("fixed", m1);
+    
     this->joints.push_back(j);
 
     ROS_DEBUG_STREAM("Attach");
@@ -123,6 +132,7 @@ namespace gazebo
     j.joint->Load(l1, l2, ignition::math::Pose3d());
     ROS_DEBUG_STREAM("SetModel");
     j.joint->SetModel(m2);
+
     /*
      * If SetModel is not done we get:
      * ***** Internal Program Error - assertion (this->GetParentModel() != __null)
@@ -147,17 +157,42 @@ namespace gazebo
 
     return true;
   }
+  
+  bool GazeboRosLinkAttacher::setStatic(std::string model, std::string link, bool set_static)
+  {
+    physics::ModelPtr m = this->world->ModelByName(model);
+
+    ROS_DEBUG_STREAM("Getting BasePtr of " << model);
+    if (m == NULL){
+      ROS_ERROR_STREAM(model << " model was not found");
+      return false;
+    }
+
+    ROS_DEBUG_STREAM("Getting link: '" << link << "' from model: '" << model << "'");
+    physics::LinkPtr l = m->GetLink(link);
+    if (l == NULL){
+      ROS_ERROR_STREAM(link << " link was not found");
+      return false;
+    }
+
+    ROS_DEBUG_STREAM("Setting is_static for link " << link << " of model " << model << " to " << std::boolalpha << set_static);
+    m->SetCollideMode("none");
+    m->SetGravityMode(false);
+    m->ResetPhysicsStates();
+
+    return true;
+  }
 
   bool GazeboRosLinkAttacher::detach(std::string model1, std::string link1,
                                      std::string model2, std::string link2)
   {
-      // search for the instance of joint and do detach
-      fixedJoint j;
-      if(this->getJoint(model1, link1, model2, link2, j)){
-          boost::recursive_mutex::scoped_lock lock(*this->physics_mutex);
-          j.joint->Detach();
-          return true;
-      }
+    // search for the instance of joint and do detach
+    fixedJoint j;
+    if(this->getJoint(model1, link1, model2, link2, j)){
+        boost::recursive_mutex::scoped_lock lock(*this->physics_mutex);
+        j.joint->Detach();
+        return true;
+    }
 
     return false;
   }
@@ -175,6 +210,22 @@ namespace gazebo
         }
     }
     return false;
+
+  }
+
+  bool GazeboRosLinkAttacher::setstatic_callback(gazebo_ros_link_attacher::SetStatic::Request &req,
+                                              gazebo_ros_link_attacher::SetStatic::Response &res)
+  {
+    ROS_INFO_STREAM("Received request to change is_static of model: " << req.model_name);
+    if (! this->setStatic(req.model_name, req.link_name, req.set_static)){
+      ROS_ERROR_STREAM("Could not change is_static property.");
+      res.ok = false;
+    }
+    else{
+      ROS_INFO_STREAM("Model property is_static changed to " << std::boolalpha << req.set_static);
+      res.ok = true;
+    }
+    return true;
 
   }
 
