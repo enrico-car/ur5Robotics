@@ -11,4 +11,6 @@ public class X1_Y1_Z2 extends Block {
         this.color = Color.rgb(7, 210, 190);
     }
 
+
+
 }

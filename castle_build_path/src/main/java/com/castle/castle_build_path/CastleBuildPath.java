@@ -1,6 +1,7 @@
 package com.castle.castle_build_path;
 
 import com.castle.castle_build_path.block.*;
+import com.castle.castle_build_path.view.ButtonColumn;
 import com.castle.castle_build_path.view.GridBlock;
 import javafx.application.Application;
 import javafx.event.EventHandler;
@@ -17,39 +18,21 @@ import java.io.IOException;
 
 public class CastleBuildPath extends Application {
 
-    private GridBlock gridBlock = new GridBlock(10, 10);
-    private Block block = new X1_Y4_Z2();
-    private Block block2 = new X1_Y4_Z2();
+    public static GridBlock gridBlock = new GridBlock(10, 10);
+    public static Block block;
+    //private Block block2 = new X1_Y4_Z2();
+
 
     @Override
     public void start(Stage stage) throws IOException {
+        ButtonColumn button_cl=new ButtonColumn();
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(10));
-        Button button = new Button("Blocco");
-        Button button2 = new Button("Blocco2");
-        root.setLeft(button);
-        root.setTop(button2);
-
-
+        root.setLeft(button_cl.button_col);
 
         root.setCenter(gridBlock);
 
-
-        button.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent mouseEvent) {
-                gridBlock.addBlock(block);
-            }
-        });
-        button2.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent mouseEvent) {
-                gridBlock.addBlock(block2);
-            }
-        });
-
-
-        Scene scene = new Scene(root, 600, 600);
+        Scene scene = new Scene(root, 800, 600);
         scene.setOnKeyPressed(keyHandler);
         stage.setTitle("Hello!");
         stage.setScene(scene);
@@ -57,7 +40,7 @@ public class CastleBuildPath extends Application {
     }
 
 
-    private EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
+    public EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
         @Override
         public void handle(KeyEvent keyEvent) {
             if (keyEvent.getCode() == KeyCode.D && block.getPx()+ block.getX() < gridBlock.getC()) {
