@@ -24,18 +24,17 @@ import cv2
 from gazebo_msgs.msg import *
 from gazebo_msgs.srv import SetModelState
 
-# X1-Yx-Z2: -0.935
-# X1-Yx-Z1: -0.945
-# X2-Y2-Z2x: -0.92
+
 class2name = {0: 'X1-Y1-Z2', 1: 'X1-Y2-Z1', 2:'X1-Y2-Z2', 3: 'X1-Y2-Z2-CHAMFER', 4: 'X1-Y2-Z2-TWINFILLET', 5: 'X1-Y3-Z2',
               6: 'X1-Y3-Z2-FILLET', 7: 'X1-Y4-Z1', 8: 'X1-Y4-Z2', 9: 'X1-Y2-Z2',
               10: 'X1-Y2-Z2-FILLET'}
-class2Zheight = {0: -0.935, 1: -0.945, 2: -0.935, 3: -0.935, 4: -0.935, 5: -0.935, 6: -0.935, 7: -0.945,
+class2Zheight = {0: -0.935, 1: -0.94, 2: -0.935, 3: -0.935, 4: -0.935, 5: -0.935, 6: -0.935, 7: -0.94,
                 8: -0.935, 9: -0.915, 10: -0.915}
 class2blockheight = {0: 0.0375, 1: 0.0185, 2: 0.0375, 3: 0.0375, 4: 0.0375, 5: 0.0375, 6: 0.0375, 7: 0.0185,
                 8: 0.0375, 9: 0.0375, 10: 0.0375}
-class2gripsize = {0: 31.5, 1: 31.5, 2: 31.5, 3: 31.5, 4: 31.5, 5: 31.5, 6: 31.5, 7: 31.5,
-                8: 31.5, 9: 64, 10: 64}
+class2gripsize = {0: [60, 31.5], 1: [60, 31.5], 2: [60, 31.5], 3: [60, 31.5], 4: [60, 31.5], 5: [60, 31.5],
+                  6: [60, 31.5], 7: [60, 31.5], 8: [60, 31.5], 9: [100, 68], 10: [100, 68]}
+
 
 class JointStatePublisher:
 
@@ -364,7 +363,7 @@ class JointStatePublisher:
                     pass
 
                 if attach_to_table:
-                    time.sleep(0.8)
+                    time.sleep(0.5)
                     # Attach block to table
                     req = AttachRequest()
                     req.model_name_1 = self.grasped_block_name
@@ -373,7 +372,7 @@ class JointStatePublisher:
                     req.link_name_2 = "link"
                     res = self.attach_srv.call(req)
                     if res.ok:
-                        print('attaching ', req.model_name_1, ' to ', req.model_name_2)
+                        print('attached ', req.model_name_1, ' to ', req.model_name_2)
 
                     # # Set model static
                     # req = SetStaticRequest()
@@ -390,6 +389,27 @@ class JointStatePublisher:
 
         return True
 
+    def regripping(self, gripper_opened, gripper_closed, current_jstate, block_pos):
+        # se il blocco non è stato grippato, apri e riprova il gripping girando di 180°
+        self.grip(current_jstate, 0.1, gripper_opened, False, False)
+        gripped = self.grip(current_jstate, 0.1, gripper_closed, True, False)
+        time.sleep(0.3)
+        if gripped:
+            return True, current_jstate
+        self.grip(current_jstate, 0.1, gripper_opened, False, False)
+        current_pose = direct_kin(self.q)
+        current_rotm = current_pose[0:3, 0:3]
+        block_rotm2 = current_rotm @ mat([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos + np.array([0, 0, 0.1]), block_rotm2,
+                                                   gripper_opened, curve_type='line')
+        while np.linalg.norm(current_jstate - self.q) > 0.005:
+            pass
+        current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm2, gripper_opened,
+                                                   curve_type='line')
+        while np.linalg.norm(current_jstate - self.q) > 0.005:
+            pass
+
+        return False, current_jstate
 
     def moveTo(self, jstate, final_pos, final_rotm, gripper_pos, old_time=0.01, curve_type='bezier'):
         poss, vels, times = differential_kin(jstate, final_pos, final_rotm, curve_type=curve_type, vel=1)
@@ -411,17 +431,16 @@ class JointStatePublisher:
         return final_jstate, final_time
 
     def pickUpBlock(self, block_pos, block_orient, final_pos, block_class, initial_jstate=None, initial_time=0):
-        # block_pos   : coordinate x,y del centro del blocco
+        # block_pos   : coordinate x,y del centro del blocco e z come altezza a cui gripparlo
         # block_orient: rotazione del blocco
-        # final_pos   : posizione x,y finale dove deve venire posizionato il blocco
+        # final_pos   : posizione x,y,z finale dove deve venire posizionato il blocco
+        #               (z può variare in base a che altezza della torre viene posizionato)
         print('moving robot to desired position: ', block_pos)
 
-        # range gripper: 130-22
-        gripper_opened = 100
-        gripper_closed = class2gripsize[block_class]
+        gripper_opened, gripper_closed = class2gripsize[block_class]
 
         print('------ moving frontal position -------')
-        frontal_p = np.array([0, 0.4, -0.5])
+        frontal_p = np.array([0, 0.4, -0.6])
         frontal_phi = np.array([-pi, 0, 0])
         frontal_rotm = eul2rotm(frontal_phi)
 
@@ -436,7 +455,8 @@ class JointStatePublisher:
         current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm, gripper_opened)
 
         print('waiting to reach position')
-        while np.linalg.norm(current_jstate - self.q) > 0.008:
+
+        while np.linalg.norm(current_jstate - self.q) > 0.005:
             pass
         #input("Press Enter to continue...")
 
@@ -444,25 +464,18 @@ class JointStatePublisher:
         if self.gripper:
             gripped = False
             while not gripped:
-                # se il blocco non è stato grippato, apri e riprova il gripping girando di 180°
-                self.grip(current_jstate, 0.1, gripper_opened, False, False)
-                gripped = self.grip(current_jstate, 0.1, gripper_closed, True, False)
-                time.sleep(0.3)
-                if gripped:
-                    break
-                self.grip(current_jstate, 0.1, gripper_opened, False, False)
-                current_pose = direct_kin(current_jstate)
-                current_rotm = current_pose[0:3, 0:3]
-                block_rotm2 = current_rotm @ mat([[-1, 0, 0],[0, -1, 0],[0, 0, 1]])
-                current_jstate, current_time = self.moveTo(current_jstate, block_pos + np.array([0, 0, 0.1]), block_rotm2, gripper_opened, curve_type='line')
-                while np.linalg.norm(current_jstate - self.q) > 0.005:
-                    pass
-                current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm2, gripper_opened, curve_type='line')
-                while np.linalg.norm(current_jstate - self.q) > 0.005:
-                    pass
+                gripped, current_jstate = self.regripping(gripper_opened, gripper_closed, current_jstate, block_pos)
+
+        print('------- moving upwards --------')
+        actual_pose = direct_kin(current_jstate)
+        upwards_pos = np.array(actual_pose[0:3, 3].flat) + np.array([0, 0, 0.3])
+        upwards_rotm = actual_pose[0:3, 0:3]
+
+        current_jstate, current_time = self.moveTo(current_jstate, upwards_pos, upwards_rotm, gripper_closed,
+                                                   curve_type='line')
 
         print('------ moving frontal position -------')
-        frontal_p = np.array([0, 0.4, -0.5])
+        frontal_p = np.array([0, 0.4, -0.6])
         frontal_phi = np.array([-pi, 0, 0])
         frontal_rotm = eul2rotm(frontal_phi)
 
@@ -483,6 +496,13 @@ class JointStatePublisher:
         if self.gripper:
             self.grip(current_jstate, 0.1, gripper_opened, False, True)
 
+        print('------- moving upwards --------')
+        current_pose = direct_kin(self.q)
+        upwards_pos = np.array(current_pose[0:3, 3].flat) + np.array([0, 0, 0.15])
+        upwards_rotm = current_pose[0:3, 0:3]
+
+        current_jstate, current_time = self.moveTo(current_jstate, upwards_pos, upwards_rotm, gripper_opened, curve_type='line')
+
         return current_jstate, current_time
 
     def multipleBlocks(self):
@@ -496,9 +516,10 @@ class JointStatePublisher:
             res.xcentre = [0.05, 0.05, 0.05, 0.5, 0.8, 0.8, 0.8]
             res.ycentre = [0.25, 0.5, 0.75, 0.75, 0.75, 0.5, 0.25]
             res.angle = [0, 0, 0, 0, 0, 0, 0]
-            res.class_ = [1, 2, 3, 4, 5, 7, 9]
-            I = [0, 1, 2, 3, 4, 5, 6]
-            random.shuffle(I)
+            res.class_ = [9, 2, 3, 4, 5, 7, 1]
+            # I = [0, 1, 2, 3, 4, 5, 6]
+            I = [6, 5, 4, 3, 2, 1, 0]
+            # random.shuffle(I)
 
         final_block_pos = np.array([0.2, 0.4, 0])
         first = True
