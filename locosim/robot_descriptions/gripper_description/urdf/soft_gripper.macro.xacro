@@ -20,7 +20,7 @@
 		</geometry>
 	    </visual>
 	    <collision>
-	        <origin rpy="0 0 0" xyz="0 0 -0.0095" />
+	        <origin rpy="0 0 0" xyz="0 0 0" />
 	    <geometry>
 		    <mesh filename="package://gripper_description/meshes/soft_gripper_base_down.stl"/>
 		</geometry>
@@ -74,8 +74,8 @@
 			   <gripper_link> hand_1_link </gripper_link>
 			   <gripper_link> hand_2_link </gripper_link>
 			</arm>
-		       <forces_angle_tolerance>100</forces_angle_tolerance>
-		       <update_rate>500</update_rate>
+		       <forces_angle_tolerance>91</forces_angle_tolerance>
+		       <update_rate>1000</update_rate>
 		       <grip_count_threshold>3</grip_count_threshold>
 		       <max_grip_count>10</max_grip_count>
 		       <release_tolerance>0.005</release_tolerance>
