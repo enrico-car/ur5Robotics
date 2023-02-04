@@ -22,7 +22,7 @@
 	    <child link="${name}_link"/>
 	    <axis xyz="1 0 0"/>
 	    <xacro:insert_block name="origin"/>
-	    <limit effort="50" velocity="10.0" lower="-0.5" upper="0.3" />
+	    <limit effort="50" velocity="10.0" lower="-1" upper="1" />
 	  </joint>
 	  
 	  

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import random
 
 import rospy as ros
 import numpy as np
@@ -23,6 +24,18 @@ import cv2
 from gazebo_msgs.msg import *
 from gazebo_msgs.srv import SetModelState
 
+# X1-Yx-Z2: -0.935
+# X1-Yx-Z1: -0.945
+# X2-Y2-Z2x: -0.92
+class2name = {0: 'X1-Y1-Z2', 1: 'X1-Y2-Z1', 2:'X1-Y2-Z2', 3: 'X1-Y2-Z2-CHAMFER', 4: 'X1-Y2-Z2-TWINFILLET', 5: 'X1-Y3-Z2',
+              6: 'X1-Y3-Z2-FILLET', 7: 'X1-Y4-Z1', 8: 'X1-Y4-Z2', 9: 'X1-Y2-Z2',
+              10: 'X1-Y2-Z2-FILLET'}
+class2Zheight = {0: -0.935, 1: -0.945, 2: -0.935, 3: -0.935, 4: -0.935, 5: -0.935, 6: -0.935, 7: -0.945,
+                8: -0.935, 9: -0.915, 10: -0.915}
+class2blockheight = {0: 0.0375, 1: 0.0185, 2: 0.0375, 3: 0.0375, 4: 0.0375, 5: 0.0375, 6: 0.0375, 7: 0.0185,
+                8: 0.0375, 9: 0.0375, 10: 0.0375}
+class2gripsize = {0: 31.5, 1: 31.5, 2: 31.5, 3: 31.5, 4: 31.5, 5: 31.5, 6: 31.5, 7: 31.5,
+                8: 31.5, 9: 64, 10: 64}
 
 class JointStatePublisher:
 
@@ -79,6 +92,7 @@ class JointStatePublisher:
 
         self.block_grasped = False
         self.grasped_block_name = None
+        self.last_block = "tavolo"
 
         self.vision = conf.robot_params[self.robot_name]['vision']
         if self.vision:
@@ -290,26 +304,35 @@ class JointStatePublisher:
         ros.sleep(0.1)
 
     def grasp_manager(self, data):
+        print(data)
         if data.attached:
             print('******* block grasped ********')
-            self.block_grasped = data.attached
+            self.block_grasped = True
             self.grasped_block_name = data.object.split("::")[0]
             print('block name: ', self.grasped_block_name)
-        # else:
+            time.sleep(0.2)
+        else:
+            time.sleep(0.2)
+            self.block_grasped = False
         #     print('******* block un-grasped ********')
-        #     self.block_grasped = False
         #     self.grasped_block_name = None
 
-
-    def grip(self, jstate, actual_time, gripper_pos, grip):
+    def grip(self, jstate, actual_time, gripper_pos, grip, attach_to_table):
         if grip:
             if not self.real_robot:
                 q_gripper = self.mapGripperJointState(gripper_pos)
                 final_q = np.append(jstate, q_gripper)
                 self.send_des_trajectory([final_q], None, [actual_time + 0.1])
                 time.sleep(1.)
-                print('waiting to reach gripper position')
-                while np.linalg.norm(self.q_gripper - q_gripper) > 0.1:
+                # print('waiting to reach gripper position')
+                # while np.linalg.norm(self.q_gripper - q_gripper) > 0.1:
+                #     pass
+                start = time.time()
+                print('waiting to grasp object')
+                while not self.block_grasped:
+                    end = time.time()
+                    if end - start > 2.:
+                        return False
                     pass
             else:
                 self.moveRealGripper(gripper_pos)
@@ -329,7 +352,6 @@ class JointStatePublisher:
         #     rospy.loginfo("Detaching block")
         #     self.detach_srv.call(req)
 
-        time.sleep(1.)
         if not grip:
             if not self.real_robot:
                 q_gripper = self.mapGripperJointState(gripper_pos)
@@ -338,28 +360,36 @@ class JointStatePublisher:
                 self.send_des_trajectory([final_q], None, [actual_time + 0.1])
 
                 print('waiting to reach gripper position')
-                while np.linalg.norm(self.q_gripper - q_gripper) > 0.5:
+                while np.linalg.norm(self.q_gripper - q_gripper) > 0.05:
                     pass
 
-                # Attach block to table
-                req = AttachRequest()
-                req.model_name_1 = self.grasped_block_name
-                req.link_name_1 = "link"
-                req.model_name_2 = "tavolo"
-                req.link_name_2 = "link"
-                self.attach_srv.call(req)
-                time.sleep(0.5)
+                if attach_to_table:
+                    time.sleep(0.8)
+                    # Attach block to table
+                    req = AttachRequest()
+                    req.model_name_1 = self.grasped_block_name
+                    req.link_name_1 = "link"
+                    req.model_name_2 = "tavolo"
+                    req.link_name_2 = "link"
+                    res = self.attach_srv.call(req)
+                    if res.ok:
+                        print('attaching ', req.model_name_1, ' to ', req.model_name_2)
 
-                # Set model static
-                req = SetStaticRequest()
-                req.model_name = self.grasped_block_name
-                req.link_name = "link"
-                req.set_static = True
-                self.setstatic_srv.call(req)
-                time.sleep(0.5)
+                    # # Set model static
+                    # req = SetStaticRequest()
+                    # req.model_name = self.grasped_block_name
+                    # req.link_name = "link"
+                    # req.set_static = True
+                    # self.setstatic_srv.call(req)
+                    # time.sleep(0.5)
+                    #
+                    # self.last_block = self.grasped_block_name
             else:
                 self.moveRealGripper(gripper_pos)
                 time.sleep(3.)
+
+        return True
+
 
     def moveTo(self, jstate, final_pos, final_rotm, gripper_pos, old_time=0.01, curve_type='bezier'):
         poss, vels, times = differential_kin(jstate, final_pos, final_rotm, curve_type=curve_type, vel=1)
@@ -380,15 +410,15 @@ class JointStatePublisher:
 
         return final_jstate, final_time
 
-    def pickUpBlock(self, block_pos, block_orient, final_pos, initial_jstate=None, initial_time=0):
+    def pickUpBlock(self, block_pos, block_orient, final_pos, block_class, initial_jstate=None, initial_time=0):
         # block_pos   : coordinate x,y del centro del blocco
         # block_orient: rotazione del blocco
         # final_pos   : posizione x,y finale dove deve venire posizionato il blocco
         print('moving robot to desired position: ', block_pos)
 
         # range gripper: 130-22
-        gripper_opened = 80
-        gripper_closed = 31
+        gripper_opened = 100
+        gripper_closed = class2gripsize[block_class]
 
         print('------ moving frontal position -------')
         frontal_p = np.array([0, 0.4, -0.5])
@@ -401,35 +431,49 @@ class JointStatePublisher:
             current_jstate, current_time = self.moveTo(self.homing_position, frontal_p, frontal_rotm, gripper_opened)
 
         print('------- moving to block --------')
-        block_pos = np.array([block_pos[0]+0.01, block_pos[1], -0.92])
         block_rotm = eul2rotm([-pi, 0, -block_orient])
 
         current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm, gripper_opened)
 
         print('waiting to reach position')
-        while np.linalg.norm(current_jstate - self.q) > 0.005:
+        while np.linalg.norm(current_jstate - self.q) > 0.008:
             pass
         #input("Press Enter to continue...")
 
         print('-------- gripping ---------')
         if self.gripper:
-            self.grip(current_jstate, 0.1, gripper_closed, True)
-
-        time.sleep(1.)
+            gripped = False
+            while not gripped:
+                # se il blocco non è stato grippato, apri e riprova il gripping girando di 180°
+                self.grip(current_jstate, 0.1, gripper_opened, False, False)
+                gripped = self.grip(current_jstate, 0.1, gripper_closed, True, False)
+                time.sleep(0.3)
+                if gripped:
+                    break
+                self.grip(current_jstate, 0.1, gripper_opened, False, False)
+                current_pose = direct_kin(current_jstate)
+                current_rotm = current_pose[0:3, 0:3]
+                block_rotm2 = current_rotm @ mat([[-1, 0, 0],[0, -1, 0],[0, 0, 1]])
+                current_jstate, current_time = self.moveTo(current_jstate, block_pos + np.array([0, 0, 0.1]), block_rotm2, gripper_opened, curve_type='line')
+                while np.linalg.norm(current_jstate - self.q) > 0.005:
+                    pass
+                current_jstate, current_time = self.moveTo(current_jstate, block_pos, block_rotm2, gripper_opened, curve_type='line')
+                while np.linalg.norm(current_jstate - self.q) > 0.005:
+                    pass
 
         print('------ moving frontal position -------')
         frontal_p = np.array([0, 0.4, -0.5])
         frontal_phi = np.array([-pi, 0, 0])
         frontal_rotm = eul2rotm(frontal_phi)
 
-        current_jstate, current_time = self.moveTo(current_jstate, frontal_p, frontal_rotm, gripper_closed)
+        # current_jstate, current_time = self.moveTo(current_jstate, frontal_p, frontal_rotm, gripper_closed)
+        current_jstate, current_time = self.moveTo(self.q, frontal_p, frontal_rotm, gripper_closed)
 
-        print('------ moving to final position -------')
-        final_p = np.array([final_pos[0], final_pos[1], final_pos[2]])
+        print('------ moving to final position: ', final_pos, ' -------')
         final_phi = np.array([-pi, 0, pi / 2])
         final_rotm = eul2rotm(final_phi)
 
-        current_jstate, current_time = self.moveTo(current_jstate, final_p, final_rotm, gripper_closed)
+        current_jstate, current_time = self.moveTo(current_jstate, final_pos, final_rotm, gripper_closed)
 
         print('waiting to reach position')
         while np.linalg.norm(current_jstate - self.q) > 0.005:
@@ -437,7 +481,7 @@ class JointStatePublisher:
 
         print('------- un-gripping --------')
         if self.gripper:
-            self.grip(current_jstate, 0.1, gripper_opened, False)
+            self.grip(current_jstate, 0.1, gripper_opened, False, True)
 
         return current_jstate, current_time
 
@@ -452,18 +496,29 @@ class JointStatePublisher:
             res.xcentre = [0.05, 0.05, 0.05, 0.5, 0.8, 0.8, 0.8]
             res.ycentre = [0.25, 0.5, 0.75, 0.75, 0.75, 0.5, 0.25]
             res.angle = [0, 0, 0, 0, 0, 0, 0]
-            res.class_ = [0, 0, 0, 0, 0, 0, 0]
+            res.class_ = [1, 2, 3, 4, 5, 7, 9]
+            I = [0, 1, 2, 3, 4, 5, 6]
+            random.shuffle(I)
 
-        final_block_pos = np.array([0.2, 0.4, -0.92])
-        for i in range(0, res.n_res):
-            block_pos = [res.xcentre[res.n_res-1-i]-0.51, res.ycentre[res.n_res-1-i]-0.35]
+        final_block_pos = np.array([0.2, 0.4, 0])
+        first = True
+        height = 0
+        for i in I:
+            # block_pos = [res.xcentre[res.n_res-1-i]-0.51, res.ycentre[res.n_res-1-i]-0.345]
+            block_class = res.class_[i]
+            block_pos = [res.xcentre[i]-0.5, res.ycentre[i]-0.35, class2Zheight[block_class]]
             if abs(block_pos[0]) < 1. and abs(block_pos[1]) < 0.8:
                 angle = pi/2 - res.angle[i]
-                if i == 0:
-                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos)
+                if first:
+                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos + np.array([0, 0, class2Zheight[block_class]]), block_class)
+                    height = class2blockheight[block_class]
+                    print('!!!!!! height of castle: ', height, '!!!!!!')
+                    first = False
                 else:
-                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos + np.array([0, 0, i * 0.038]), current_jstate)
-            input('Press enter to continue ....')
+                    current_jstate, current_time = mypub.pickUpBlock(block_pos, angle, final_block_pos + np.array([0, 0, class2Zheight[block_class]+height]), block_class, current_jstate)
+                    height = height + class2blockheight[block_class]
+                    print('!!!!!! height of castle: ', height, '!!!!!!')
+            # input('Press enter to continue ....')
 
         print('------ Moving to frontal position ------')
         frontal_p = np.array([0, 0.4, -0.5])
