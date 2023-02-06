@@ -7,8 +7,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class X2_Y2_Z2 extends Block {
-    public X2_Y2_Z2() {
-        super();
+    public X2_Y2_Z2(int Cgrid,int Rgrid) {
+        super(Cgrid,Rgrid);
         this.x = 2;
         this.y = 2;
         this.z = 2;

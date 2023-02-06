@@ -13,23 +13,50 @@ public class Square extends StackPane {
     private static final int dim = 50;
     Rectangle rectangle;
     Circle circle;
+    Paint color;
     Boolean hasCircle;
 
     public Square(Paint color, Boolean hasCircle) {
         super();
-        this.rectangle = new Rectangle(dim,dim,color);
+        this.color = color;
+        this.rectangle = new Rectangle(dim, dim, color);
         this.hasCircle = hasCircle;
         this.getChildren().add(rectangle);
         this.setAlignment(Pos.CENTER);
-        if(hasCircle)
-        {
+        if (hasCircle) {
             circle = new Circle(15);
             circle.setStroke(Color.BLACK);
             circle.setStrokeWidth(2.0);
             circle.setFill(color);
             this.getChildren().add(circle);
         }
+    }
 
+    public Square(Square square) {      // Copy constructor
+        super();
+        this.rectangle = new Rectangle(dim, dim, square.rectangle.getFill());
+        this.hasCircle = square.hasCircle;
+        this.circle = square.circle;
+        this.getChildren().add(rectangle);
+        this.setAlignment(Pos.CENTER);
+        if (hasCircle) {
+            circle = new Circle(15);
+            circle.setStroke(Color.BLACK);
+            circle.setStrokeWidth(2.0);
+            circle.setFill(square.rectangle.getFill());
+            this.getChildren().add(circle);
+        }
+    }
 
+    public Rectangle getRectangle() {
+        return rectangle;
+    }
+
+    public Boolean getHasCircle() {
+        return hasCircle;
+    }
+
+    public Paint getColor() {
+        return color;
     }
 }

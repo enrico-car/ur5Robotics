@@ -3,6 +3,7 @@ package com.castle.castle_build_path.view;
 import com.castle.castle_build_path.block.Block;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Pair;
 
@@ -10,7 +11,7 @@ public class GridBlock extends GridPane {
 
     private int c, r;
     private Square gridRec[][];
-    private static final Color backColor = Color.rgb(61, 61, 84);
+    private static final Paint backColor = Color.rgb(61, 61, 84);
 
     public GridBlock(int c, int r) {
         super();
@@ -32,23 +33,32 @@ public class GridBlock extends GridPane {
     public void addBlock(Block block) {
         for (var x : block.getPosition()) {
             this.add(x.getSquare(), x.getPx(), x.getPy());
-            gridRec[x.getPx()][x.getPy()] = x.getSquare();
         }
     }
 
     public void removeBlock(Block block) {
         for (var x : block.getPosition()) {
-            Square square = new Square(backColor, false);
+            Square square = new Square(gridRec[x.getPx()][x.getPy()]);
             this.add(square, x.getPx(), x.getPy());
-            gridRec[x.getPx()][x.getPy()] = square;
         }
     }
 
-    public int getC() {
-        return c;
+    public void savePosition(Block block) {
+        if (isGoodPosition(block)) {
+            for (var x : block.getPosition()) {
+                gridRec[x.getPx()][x.getPy()] = x.getSquare();
+                this.add(x.getSquare(), x.getPx(), x.getPy());
+            }
+        }
     }
 
-    public int getR() {
-        return r;
+    private boolean isGoodPosition(Block block) {
+        for (var x : block.getPosition()) {
+            if (!gridRec[x.getPx()][x.getPy()].getColor().equals(backColor)) {
+                return false;
+            }
+        }
+        return true;
     }
+
 }

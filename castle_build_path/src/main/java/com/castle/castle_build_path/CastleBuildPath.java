@@ -2,6 +2,7 @@ package com.castle.castle_build_path;
 
 import com.castle.castle_build_path.block.*;
 import com.castle.castle_build_path.view.ButtonColumn;
+import com.castle.castle_build_path.view.CubeBlock;
 import com.castle.castle_build_path.view.GridBlock;
 import javafx.application.Application;
 import javafx.event.EventHandler;
@@ -15,22 +16,28 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 
 public class CastleBuildPath extends Application {
 
-    public static GridBlock gridBlock = new GridBlock(10, 10);
-    public static Block block;
-    //private Block block2 = new X1_Y4_Z2();
-
+    static final int Cgrid = 10;
+    static final int Rgrid = 10;
+    static final int Hgrid = 5;
+    CubeBlock cubeBlock = new CubeBlock(Cgrid, Rgrid, Hgrid);
+    ButtonColumn buttonColumn = new ButtonColumn(cubeBlock);
 
     @Override
     public void start(Stage stage) throws IOException {
-        ButtonColumn button_cl=new ButtonColumn();
+
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(10));
-        root.setLeft(button_cl.button_col);
+        root.setCenter(cubeBlock.getGrid());
+        root.setLeft(buttonColumn);
 
-        root.setCenter(gridBlock);
+
+
 
         Scene scene = new Scene(root, 800, 600);
         scene.setOnKeyPressed(keyHandler);
@@ -40,34 +47,37 @@ public class CastleBuildPath extends Application {
     }
 
 
-    public EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
+    private EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
         @Override
         public void handle(KeyEvent keyEvent) {
-            if (keyEvent.getCode() == KeyCode.D && block.getPx()+ block.getX() < gridBlock.getC()) {
-                gridBlock.removeBlock(block);
+            Block block = buttonColumn.getBlock();
+            if (keyEvent.getCode() == KeyCode.D && block.getPx() + block.getX() < Cgrid) {
+                cubeBlock.removeBlock(block);
                 block.right();
-                gridBlock.addBlock(block);
+                cubeBlock.addBlock(block);
             }
             if (keyEvent.getCode() == KeyCode.A && block.getPx() > 0) {
-                gridBlock.removeBlock(block);
+                cubeBlock.removeBlock(block);
                 block.left();
-                gridBlock.addBlock(block);
+                cubeBlock.addBlock(block);
             }
             if (keyEvent.getCode() == KeyCode.W && block.getPy() > 0) {
-                gridBlock.removeBlock(block);
+                cubeBlock.removeBlock(block);
                 block.up();
-                gridBlock.addBlock(block);
+                cubeBlock.addBlock(block);
             }
-            if (keyEvent.getCode() == KeyCode.S && block.getPy()+block.getY() < gridBlock.getR()) {
-                gridBlock.removeBlock(block);
+            if (keyEvent.getCode() == KeyCode.S && block.getPy() + block.getY() < Rgrid) {
+                cubeBlock.removeBlock(block);
                 block.down();
-                gridBlock.addBlock(block);
+                cubeBlock.addBlock(block);
             }
             if (keyEvent.getCode() == KeyCode.R) {
-                // TODO add control to fix rotation problem
-                gridBlock.removeBlock(block);
+                cubeBlock.removeBlock(block);
                 block.rotate();
-                gridBlock.addBlock(block);
+                cubeBlock.addBlock(block);
+            }
+            if (keyEvent.getCode() == KeyCode.Q) {
+                cubeBlock.savePosition(block);
             }
         }
     };

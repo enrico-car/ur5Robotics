@@ -3,28 +3,51 @@ package com.castle.castle_build_path.block;
 import com.castle.castle_build_path.view.Square;
 import com.castle.castle_build_path.view.SquarePos;
 import javafx.scene.paint.Color;
-import javafx.util.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
 
+enum RotationState {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+}
+
 public abstract class Block {
-    int x,y,z;
-    int px,py,pz;
+    int x, y, z;
+    int px, py, pz;
+    int Cgrid, Rgrid;
+
+    RotationState rotationState;
 
     Color color;
 
-    public Block() {
-        px=0;
-        py=0;
-        pz=0;
+    public Block(int Cgrid, int Rgrid) {
+        px = 0;
+        py = 0;
+        pz = 0;
+        this.Cgrid = Cgrid;
+        this.Rgrid = Rgrid;
+        rotationState = RotationState.UP;
     }
 
-    public void rotate()
-    {
-        int temp = x;
-        x = y;
-        y = temp;
+    public void rotate() {
+        if (px + y <= Cgrid && py + x <= Rgrid)  // check boundary of grid
+        {
+            int temp = x;
+            x = y;
+            y = temp;
+            if (rotationState == RotationState.UP) {
+                rotationState = RotationState.RIGHT;
+            } else if (rotationState == RotationState.RIGHT) {
+                rotationState = RotationState.DOWN;
+            } else if (rotationState == RotationState.DOWN) {
+                rotationState = RotationState.LEFT;
+            } else {
+                rotationState = RotationState.UP;
+            }
+        }
     }
 
     public List<SquarePos> getPosition() {
@@ -32,7 +55,7 @@ public abstract class Block {
 
         for (int i = 0; i < x; i++) {
             for (int j = 0; j < y; j++) {
-                list.add(new SquarePos(px+i,py+j,new Square(color,true)));
+                list.add(new SquarePos(px + i, py + j, new Square(color, true)));
             }
         }
 
@@ -91,13 +114,19 @@ public abstract class Block {
         return color;
     }
 
-    public void right(){
+    public void right() {
         px++;
-    }public void left(){
+    }
+
+    public void left() {
         px--;
-    }public void up(){
+    }
+
+    public void up() {
         py--;
-    }public void down(){
+    }
+
+    public void down() {
         py++;
     }
 }
