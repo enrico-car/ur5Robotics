@@ -21,14 +21,9 @@
 #include <gazebo/common/Events.hh>
 #include "gazebo/msgs/msgs.hh"
 #include "gazebo/transport/transport.hh"
-
 #include "gazebo_ros_link_attacher/Attach.h"
 #include "gazebo_ros_link_attacher/AttachRequest.h"
 #include "gazebo_ros_link_attacher/AttachResponse.h"
-
-#include "gazebo_ros_link_attacher/SetStatic.h"
-#include "gazebo_ros_link_attacher/SetStaticRequest.h"
-#include "gazebo_ros_link_attacher/SetStaticResponse.h"
 
 namespace gazebo
 {
@@ -44,9 +39,6 @@ namespace gazebo
 
         /// \brief Load the controller
         void Load( physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/ );
-
-        /// \brief Modify model is_static attribute
-        bool setStatic(std::string model, std::string link, bool set_static);
 
         /// \brief Attach with a revolute joint
         bool attach(std::string model1, std::string link1,
@@ -73,13 +65,9 @@ namespace gazebo
 
    private:
         ros::NodeHandle nh_;
-        ros::ServiceServer setstatic_service_;
         ros::ServiceServer attach_service_;
         ros::ServiceServer detach_service_;
 
-
-        bool setstatic_callback(gazebo_ros_link_attacher::SetStatic::Request &req,
-                              gazebo_ros_link_attacher::SetStatic::Response &res);
         bool attach_callback(gazebo_ros_link_attacher::Attach::Request &req,
                               gazebo_ros_link_attacher::Attach::Response &res);
         bool detach_callback(gazebo_ros_link_attacher::Attach::Request &req,
@@ -87,9 +75,10 @@ namespace gazebo
 
         std::vector<fixedJoint> joints;
 
+        boost::recursive_mutex* physics_mutex;
+
         /// \brief The physics engine.
         physics::PhysicsEnginePtr physics;
-        boost::recursive_mutex* physics_mutex;
 
         /// \brief Pointer to the world.
         physics::WorldPtr world;

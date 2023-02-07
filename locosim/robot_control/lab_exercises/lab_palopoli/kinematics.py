@@ -11,7 +11,6 @@ from math import sqrt as sqrt
 import cmath
 from pprint import pprint
 import copy
-from scipy.optimize import fsolve
 import time
 import params as conf
 
@@ -24,7 +23,7 @@ zero_array = np.array([0, 0, 0, 0, 0, 0])
 # ****** Coefficients ******
 global d1, a2, a3, d4, d5, d6, gripper_lenght
 if conf.robot_params['ur5']['soft_gripper']:
-    gripper_lenght = 0.16
+    gripper_lenght = 0.1475
 else:
     gripper_lenght = 0.17
 # d1 = 0.089159
@@ -436,6 +435,57 @@ def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array)
             best_angles = dir_kin_angles[i]
 
     return best_angles
+
+
+def jquintic(self, T, qi, qf, vi, vf, ai, af):
+    # traiettoria nello spazio dei joint
+    h = qf - qi
+    a0 = np.ndarray.copy(qi)
+    a1 = np.ndarray.copy(vi)
+    a2 = np.ndarray.copy(ai) / 2
+    Tinv = np.linalg.inv(
+        mat([[T ** 3, T ** 4, T ** 5], [3 * T ** 2, 4 * T ** 3, 5 * T ** 4], [6 * T, 12 * T ** 2, 20 * T ** 3]]))
+    a3 = Tinv[0, 0] * (h - vf * T) + Tinv[0, 1] * (vf - vi - ai * T) + Tinv[0, 2] * (af - ai)
+    a4 = Tinv[1, 0] * (h - vf * T) + Tinv[1, 1] * (vf - vi - ai * T) + Tinv[1, 2] * (af - ai)
+    a5 = Tinv[2, 0] * (h - vf * T) + Tinv[2, 1] * (vf - vi - ai * T) + Tinv[2, 2] * (af - ai)
+
+    times = np.linspace(0, T, 50)
+
+    points = []
+    velocities = []
+    # calcolo i punti della traiettoria e relative velocità attraverso la quintica
+    for t in times:
+        points.append(a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5)
+        velocities.append(a1 + 2 * a2 * t + 3 * a3 * t ** 2 + 4 * a4 * t ** 3 + 5 * a5 * t ** 4)
+
+    self.des_jstates = points
+    self.des_jvels = velocities
+    self.times = times
+
+def jcubic(self, T, qi, qf, vi, vf):
+    h = qf - qi  # vettore - displacement sui 6 theta tra pos iniziale e finale
+    # calcolo i parametri della cubica, per ogni joint
+    a0 = np.ndarray.copy(qi)  # vettore [qi1, qi2, qi3, qi4, qi5, qi6]
+    a1 = np.ndarray.copy(vi)  # vettore [qf1, qf2, qf3, qf4, qf5, qf6]
+    Tinv = np.linalg.inv(mat([[T * T, T * T * T], [2 * T, 3 * T * T]]))
+    a2 = Tinv[0, 0] * (h - vi * T) + Tinv[0, 1] * (vf - vi)
+    a3 = Tinv[1, 0] * (h - vi * T) + Tinv[1, 1] * (vf - vi)
+
+    times = np.linspace(0, T, 50)
+
+    points = []
+    velocities = []
+    # calcolo i punti della traiettoria e relative velocità attraverso la cubica
+    for t in times:
+        points.append(a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3)
+        velocities.append(a1 + 2 * a2 * t + 3 * a3 * t ** 2)
+
+    self.des_jstates = points
+    self.des_jvels = velocities
+    self.times = times
+
+def quinticMovement(self, t, a0, a1, a2, a3, a4, a5):
+        return a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
 
 
 def Jacobian(th):
@@ -925,7 +975,7 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     actual_jstate = np.ndarray.copy(initial_jstate)
     positions = [actual_jstate]
 
-    intermediate_precision = 0.05
+    intermediate_precision = 0.005
     final_precision = 0.001
 
     for i in range(1, len(path)):
@@ -968,11 +1018,13 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     # times = np.round(np.linspace(0, np.round(len(positions)/10, 5), len(positions)), 5)
     
     times = [0.]
+    velocities = [np.array([vel, vel, vel, vel, vel, vel])]
     for i in range(1, len(positions)):
         dtheta = positions[i] - positions[i-1]
         times.append(times[i-1] + np.amax(abs(dtheta)) / vel)
+        velocities.append(np.array([vel, vel, vel, vel, vel, vel]))
     
-    return positions, None, times
+    return positions, velocities, times
 
 
 # initial pose
@@ -983,5 +1035,5 @@ final_p = np.array([-0.2, 0.4, -0.6])
 final_phi = np.array([-pi, 0, 0])
 final_rotm = eul2rotm(final_phi)
 
-#poss, vels, times = differential_kin(initial_jstate, final_p, final_rotm, curve_type='line')
-#pprint(poss)
+# poss, vels, times = differential_kin(initial_jstate, final_p, final_rotm, curve_type='line')
+# pprint(poss)

@@ -20,10 +20,10 @@
       <kinematic>0</kinematic>
       <enable_wind>0</enable_wind>
       <visual name='visual'>
-        <pose>0 0 0 0 -0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y3-Z2-FILLET/X1-Y3-Z2-FILLET.stl</uri>
+            <uri>X1-Y3-Z2-FILLET.stl</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
