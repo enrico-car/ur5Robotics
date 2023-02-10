@@ -1,6 +1,7 @@
 module com.castle.castle_build_path {
     requires javafx.controls;
     requires javafx.fxml;
+    requires json.simple;
 
 
     opens com.castle.castle_build_path to javafx.fxml;

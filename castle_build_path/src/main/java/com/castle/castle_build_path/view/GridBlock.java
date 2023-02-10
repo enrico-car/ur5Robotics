@@ -4,13 +4,12 @@ import com.castle.castle_build_path.block.Block;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import javafx.scene.shape.Rectangle;
-import javafx.util.Pair;
 
 public class GridBlock extends GridPane {
 
     private int c, r;
     private Square gridRec[][];
+    private Boolean blockPlaced[][];
     private static final Paint backColor = Color.rgb(61, 61, 84);
 
     public GridBlock(int c, int r) {
@@ -19,6 +18,8 @@ public class GridBlock extends GridPane {
         this.r = r;
         this.setHgap(1);
         this.setVgap(1);
+        blockPlaced = new Boolean[c][r];
+
 //        gridPane = new GridPane();
         gridRec = new Square[c][r];
         for (int i = 0; i < c; i++) {
@@ -26,12 +27,19 @@ public class GridBlock extends GridPane {
                 Square square = new Square(backColor, false);
                 gridRec[i][j] = square;
                 this.add(square, i, j);
+                blockPlaced[i][j] = false;
             }
         }
     }
 
     public void addBlock(Block block) {
         for (var x : block.getPosition()) {
+            this.add(x.getSquare(), x.getPx(), x.getPy());
+        }
+    }
+
+    public void addBlockBack(Block block) {
+        for (var x : block.getPositionBack()) {
             this.add(x.getSquare(), x.getPx(), x.getPy());
         }
     }
@@ -52,9 +60,19 @@ public class GridBlock extends GridPane {
         }
     }
 
+    public void savePositionBack(Block block) {
+        if (isGoodPosition(block)) {
+            for (var x : block.getPositionBack()) {
+                gridRec[x.getPx()][x.getPy()] = x.getSquare();
+                this.add(x.getSquare(), x.getPx(), x.getPy());
+                blockPlaced[x.getPx()][x.getPy()] = true;
+            }
+        }
+    }
+
     private boolean isGoodPosition(Block block) {
         for (var x : block.getPosition()) {
-            if (!gridRec[x.getPx()][x.getPy()].getColor().equals(backColor)) {
+            if (blockPlaced[x.getPx()][x.getPy()]) {
                 return false;
             }
         }

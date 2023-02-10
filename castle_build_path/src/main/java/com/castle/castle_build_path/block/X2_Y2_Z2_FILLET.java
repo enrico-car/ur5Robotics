@@ -15,6 +15,7 @@ public class X2_Y2_Z2_FILLET extends Block {
         this.y = 2;
         this.z = 2;
         this.color = Color.rgb(255, 207, 2);
+        this.underColor = Color.rgb(255, 207, 2,0.4);
     }
 
     @Override

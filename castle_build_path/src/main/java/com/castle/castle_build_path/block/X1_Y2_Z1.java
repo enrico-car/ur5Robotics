@@ -10,6 +10,8 @@ public class X1_Y2_Z1 extends Block {
         this.y = 2;
         this.z = 1;
         this.color = Color.rgb(255, 0, 0);
+        this.underColor= Color.rgb(255, 0, 0,0.4);
+
     }
 
 

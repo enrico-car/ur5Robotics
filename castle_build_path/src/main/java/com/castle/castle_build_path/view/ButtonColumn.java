@@ -20,6 +20,8 @@ public class ButtonColumn extends GridPane {
     Block[] blocks;
     CubeBlock cubeBlock;
 
+    Button oldButton = null;
+
     int currentBlock;
 
 
@@ -28,15 +30,27 @@ public class ButtonColumn extends GridPane {
         blocks = new Block[dim];
         for (int i = 0; i < dim; i++) {
             Button button = new Button("ciao" + (i + 1));
-            blocks[i] = new X2_Y2_Z2_FILLET(cubeBlock.getC(), cubeBlock.getR());
+            if (i == 0) {
+                blocks[i] = new X1_Y2_Z1(cubeBlock.getC(), cubeBlock.getR());
+            } else {
+                blocks[i] = new X2_Y2_Z2(cubeBlock.getC(), cubeBlock.getR());
+            }
+
             final int x = i;
             button.setOnMouseClicked(new EventHandler<MouseEvent>() {
                 @Override
                 public void handle(MouseEvent mouseEvent) {
+                    if(oldButton != null)
+                    {
+                        oldButton.setDisable(true);
+                        cubeBlock.savePosition(blocks[currentBlock]);
+                    }
                     currentBlock = x;
                     cubeBlock.addBlock(blocks[x]);
+                    oldButton = button;
                 }
             });
+
             this.add(button, 0, i);
         }
     }

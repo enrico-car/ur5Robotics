@@ -15,6 +15,7 @@ public class X1_Y2_Z2_CHAMPER extends Block {
         this.y = 2;
         this.z = 2;
         this.color = Color.rgb(255, 90, 90);
+        this.underColor = Color.rgb(255, 90, 90,0.4);
     }
 
     @Override

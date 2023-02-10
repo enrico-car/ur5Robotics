@@ -45,6 +45,7 @@ public class CubeBlock {
     public void addBlock(Block block) {
         if (block.getZ() == 1) {
             gridBlocks[gridSel].addBlock(block);
+            gridBlocks[gridSel + 1].addBlockBack(block);
         }
         if (block.getZ() == 2) {
             gridBlocks[gridSel].addBlock(block);
@@ -55,6 +56,7 @@ public class CubeBlock {
     public void removeBlock(Block block) {
         if (block.getZ() == 1) {
             gridBlocks[gridSel].removeBlock(block);
+            gridBlocks[gridSel + 1].removeBlock(block);
         }
         if (block.getZ() == 2) {
             gridBlocks[gridSel].removeBlock(block);
@@ -62,14 +64,21 @@ public class CubeBlock {
         }
     }
 
-    public void savePosition(Block block)
-    {
+    public void savePosition(Block block) {
         if (block.getZ() == 1) {
             gridBlocks[gridSel].savePosition(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].savePositionBack(block);
+            }
         }
         if (block.getZ() == 2) {
             gridBlocks[gridSel].savePosition(block);
-            gridBlocks[gridSel + 1].savePosition(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].savePosition(block);
+            }
+            if (gridSel < h - 2) {
+                gridBlocks[gridSel + 2].savePositionBack(block);
+            }
         }
     }
 

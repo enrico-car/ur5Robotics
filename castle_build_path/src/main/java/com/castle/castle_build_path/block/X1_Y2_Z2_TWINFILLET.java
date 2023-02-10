@@ -15,6 +15,7 @@ public class X1_Y2_Z2_TWINFILLET extends Block {
         this.y = 2;
         this.z = 2;
         this.color = Color.rgb(14, 180, 90);
+        this.underColor = Color.rgb(14, 180, 90,0.4);
     }
 
     @Override

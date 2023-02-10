@@ -23,6 +23,8 @@ public abstract class Block {
 
     Color color;
 
+    Color underColor;
+
     public Block(int Cgrid, int Rgrid) {
         px = 0;
         py = 0;
@@ -56,6 +58,18 @@ public abstract class Block {
         for (int i = 0; i < x; i++) {
             for (int j = 0; j < y; j++) {
                 list.add(new SquarePos(px + i, py + j, new Square(color, true)));
+            }
+        }
+
+        return list;
+    }
+
+    public List<SquarePos> getPositionBack() {
+        List<SquarePos> list = new LinkedList<>();
+
+        for (int i = 0; i < x; i++) {
+            for (int j = 0; j < y; j++) {
+                list.add(new SquarePos(px + i, py + j, new Square(underColor, true)));
             }
         }
 

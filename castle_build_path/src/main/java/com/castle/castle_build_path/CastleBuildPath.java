@@ -13,6 +13,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -36,7 +37,29 @@ public class CastleBuildPath extends Application {
         root.setCenter(cubeBlock.getGrid());
         root.setLeft(buttonColumn);
 
+        GridPane buttons = new GridPane();
+        buttons.setPadding(new Insets(10));
+        buttons.setHgap(5);
+        Button button1 = new Button("up");
+        Button button2 = new Button("down");
 
+        button1.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                root.setCenter(cubeBlock.getUpperGrid());
+
+            }
+        });
+        button2.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                root.setCenter(cubeBlock.getLowerGrid());
+            }
+        });
+        buttons.add(button1,0,0);
+        buttons.add(button2,1,0);
+
+        root.setTop(buttons);
 
 
         Scene scene = new Scene(root, 800, 600);
@@ -76,9 +99,9 @@ public class CastleBuildPath extends Application {
                 block.rotate();
                 cubeBlock.addBlock(block);
             }
-            if (keyEvent.getCode() == KeyCode.Q) {
-                cubeBlock.savePosition(block);
-            }
+//            if (keyEvent.getCode() == KeyCode.Q) {
+//                cubeBlock.savePosition(block);
+//            }
         }
     };
 
