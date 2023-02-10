@@ -84,8 +84,9 @@ class Ur5Generic(BaseControllerFixed):
         self.q = np.zeros(6)
         self.q_des_q0 = conf.robot_params[self.robot_name]['q_0']
 
+        self.world_name = conf.robot_params[self.robot_name]['world_name']
         # self.world_name = None # only the workbench
-        self.world_name = 'tavolo_brick.world'
+        # self.world_name = 'tavolo_brick.world'
         # self.world_name = 'empty.world'
         # self.world_name = 'palopoli.world'
 

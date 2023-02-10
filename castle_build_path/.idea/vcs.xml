@@ -2,7 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/robot_control/gazebo-pkgs" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/robot_control/gazebo_ros_link_attacher" vcs="Git" />
   </component>
 </project>
