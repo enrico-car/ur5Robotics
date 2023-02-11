@@ -30,5 +30,18 @@ public class X1_Y2_Z2_TWINFILLET extends Block {
 
         return list;
     }
+    @Override
+    public List<SquarePos> getPositionBack() {
+        List<SquarePos> list = new LinkedList<>();
+
+        for (int i = 0; i < x; i++) {
+            for (int j = 0; j < y; j++) {
+                list.add(new SquarePos(px + i, py + j, new Square(underColor, false)));
+            }
+        }
+
+        return list;
+    }
+
 
 }

@@ -42,4 +42,28 @@ public class X1_Y2_Z2_CHAMPER extends Block {
         return list;
     }
 
+    @Override
+    public List<SquarePos> getPositionBack() {
+        List<SquarePos> list = new LinkedList<>();
+
+        if (rotationState == RotationState.UP) {
+            list.add(new SquarePos(px, py, new Square(underColor, true)));
+            list.add(new SquarePos(px, py+1, new Square(underColor, false)));
+        }
+        else if (rotationState == RotationState.RIGHT){
+            list.add(new SquarePos(px, py, new Square(underColor, false)));
+            list.add(new SquarePos(px+1, py, new Square(underColor, true)));
+        }
+        else if (rotationState == RotationState.DOWN){
+            list.add(new SquarePos(px, py, new Square(underColor, false)));
+            list.add(new SquarePos(px, py+1, new Square(underColor, true)));
+        }
+        else if (rotationState == RotationState.LEFT){
+            list.add(new SquarePos(px, py, new Square(underColor, true)));
+            list.add(new SquarePos(px+1, py, new Square(underColor, false)));
+        }
+
+        return list;
+    }
+
 }

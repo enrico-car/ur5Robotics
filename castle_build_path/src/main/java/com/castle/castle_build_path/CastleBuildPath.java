@@ -1,9 +1,8 @@
 package com.castle.castle_build_path;
 
-import com.castle.castle_build_path.block.*;
+import com.castle.castle_build_path.block.Block;
 import com.castle.castle_build_path.view.ButtonColumn;
 import com.castle.castle_build_path.view.CubeBlock;
-import com.castle.castle_build_path.view.GridBlock;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -14,11 +13,10 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 
 public class CastleBuildPath extends Application {
@@ -38,26 +36,37 @@ public class CastleBuildPath extends Application {
         root.setLeft(buttonColumn);
 
         GridPane buttons = new GridPane();
-        buttons.setPadding(new Insets(10));
+        buttons.setPadding(new Insets(20));
         buttons.setHgap(5);
         Button button1 = new Button("up");
         Button button2 = new Button("down");
+        Text level = new Text("level 0");
 
         button1.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
+                if (buttonColumn.getCurrentBlockIndex() != -1) {
+                    cubeBlock.savePosition(buttonColumn.getCurrentBlock());
+                    buttonColumn.resetCurrentBlockIndex();
+                }
                 root.setCenter(cubeBlock.getUpperGrid());
-
+                level.setText("level " + cubeBlock.getGridSel());
             }
         });
         button2.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
+                if (buttonColumn.getCurrentBlockIndex() != -1) {
+                    cubeBlock.savePosition(buttonColumn.getCurrentBlock());
+                    buttonColumn.resetCurrentBlockIndex();
+                }
                 root.setCenter(cubeBlock.getLowerGrid());
+                level.setText("level " + cubeBlock.getGridSel());
             }
         });
-        buttons.add(button1,0,0);
-        buttons.add(button2,1,0);
+        buttons.add(button1, 0, 0);
+        buttons.add(button2, 1, 0);
+        buttons.add(level, 2, 0);
 
         root.setTop(buttons);
 
@@ -73,35 +82,34 @@ public class CastleBuildPath extends Application {
     private EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
         @Override
         public void handle(KeyEvent keyEvent) {
-            Block block = buttonColumn.getBlock();
-            if (keyEvent.getCode() == KeyCode.D && block.getPx() + block.getX() < Cgrid) {
-                cubeBlock.removeBlock(block);
-                block.right();
-                cubeBlock.addBlock(block);
+            if (buttonColumn.getCurrentBlockIndex() != -1) {
+                Block block = buttonColumn.getCurrentBlock();
+                if (keyEvent.getCode() == KeyCode.D && block.getPx() + block.getX() < Cgrid) {
+                    cubeBlock.removeBlock(block);
+                    block.right();
+                    cubeBlock.addBlock(block);
+                }
+                if (keyEvent.getCode() == KeyCode.A && block.getPx() > 0) {
+                    cubeBlock.removeBlock(block);
+                    block.left();
+                    cubeBlock.addBlock(block);
+                }
+                if (keyEvent.getCode() == KeyCode.W && block.getPy() > 0) {
+                    cubeBlock.removeBlock(block);
+                    block.up();
+                    cubeBlock.addBlock(block);
+                }
+                if (keyEvent.getCode() == KeyCode.S && block.getPy() + block.getY() < Rgrid) {
+                    cubeBlock.removeBlock(block);
+                    block.down();
+                    cubeBlock.addBlock(block);
+                }
+                if (keyEvent.getCode() == KeyCode.R) {
+                    cubeBlock.removeBlock(block);
+                    block.rotate();
+                    cubeBlock.addBlock(block);
+                }
             }
-            if (keyEvent.getCode() == KeyCode.A && block.getPx() > 0) {
-                cubeBlock.removeBlock(block);
-                block.left();
-                cubeBlock.addBlock(block);
-            }
-            if (keyEvent.getCode() == KeyCode.W && block.getPy() > 0) {
-                cubeBlock.removeBlock(block);
-                block.up();
-                cubeBlock.addBlock(block);
-            }
-            if (keyEvent.getCode() == KeyCode.S && block.getPy() + block.getY() < Rgrid) {
-                cubeBlock.removeBlock(block);
-                block.down();
-                cubeBlock.addBlock(block);
-            }
-            if (keyEvent.getCode() == KeyCode.R) {
-                cubeBlock.removeBlock(block);
-                block.rotate();
-                cubeBlock.addBlock(block);
-            }
-//            if (keyEvent.getCode() == KeyCode.Q) {
-//                cubeBlock.savePosition(block);
-//            }
         }
     };
 

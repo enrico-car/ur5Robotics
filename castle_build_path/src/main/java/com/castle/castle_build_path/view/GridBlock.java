@@ -1,6 +1,7 @@
 package com.castle.castle_build_path.view;
 
 import com.castle.castle_build_path.block.Block;
+import javafx.geometry.Insets;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -18,6 +19,7 @@ public class GridBlock extends GridPane {
         this.r = r;
         this.setHgap(1);
         this.setVgap(1);
+        this.setPadding(new Insets(0,0,0,20));
         blockPlaced = new Boolean[c][r];
 
 //        gridPane = new GridPane();

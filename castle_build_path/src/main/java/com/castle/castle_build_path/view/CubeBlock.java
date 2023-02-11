@@ -24,7 +24,7 @@ public class CubeBlock {
         if (gridSel < h - 1) {
             gridSel++;
         }
-        System.out.printf("sono a livello " + gridSel + "\n");
+//        System.out.printf("sono a livello " + gridSel + "\n");
         return gridBlocks[gridSel];
 
     }
@@ -33,7 +33,7 @@ public class CubeBlock {
         if (gridSel > 0) {
             gridSel--;
         }
-        System.out.printf("sono a livello " + gridSel + "\n");
+//        System.out.printf("sono a livello " + gridSel + "\n");
         return gridBlocks[gridSel];
     }
 
@@ -45,22 +45,37 @@ public class CubeBlock {
     public void addBlock(Block block) {
         if (block.getZ() == 1) {
             gridBlocks[gridSel].addBlock(block);
-            gridBlocks[gridSel + 1].addBlockBack(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].addBlockBack(block);
+            }
         }
         if (block.getZ() == 2) {
             gridBlocks[gridSel].addBlock(block);
-            gridBlocks[gridSel + 1].addBlock(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].addBlock(block);
+            }
+            if (gridSel < h - 2) {
+                gridBlocks[gridSel + 2].addBlockBack(block);
+            }
+
         }
     }
 
     public void removeBlock(Block block) {
         if (block.getZ() == 1) {
             gridBlocks[gridSel].removeBlock(block);
-            gridBlocks[gridSel + 1].removeBlock(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].removeBlock(block);
+            }
         }
         if (block.getZ() == 2) {
             gridBlocks[gridSel].removeBlock(block);
-            gridBlocks[gridSel + 1].removeBlock(block);
+            if (gridSel < h - 1) {
+                gridBlocks[gridSel + 1].removeBlock(block);
+            }
+            if (gridSel < h - 2) {
+                gridBlocks[gridSel + 2].removeBlock(block);
+            }
         }
     }
 
@@ -92,5 +107,9 @@ public class CubeBlock {
 
     public int getH() {
         return h;
+    }
+
+    public int getGridSel() {
+        return gridSel;
     }
 }
