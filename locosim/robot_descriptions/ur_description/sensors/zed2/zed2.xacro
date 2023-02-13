@@ -123,8 +123,8 @@
         <camera name="zed2_left_raw">
           <horizontal_fov>1.7633</horizontal_fov>
           <image>
-            <width>1280</width>
-            <height>720</height>
+            <width>1920</width>
+            <height>1080</height>
             <format>R8G8B8</format>
           </image>
           <clip>
@@ -172,8 +172,8 @@
         <camera name="zed2_left">
           <horizontal_fov>1.7633</horizontal_fov>
           <image>
-            <width>1280</width>
-            <height>720</height>
+            <width>1920</width>
+            <height>1080</height>
             <format>R8G8B8</format>
           </image>
           <clip>
@@ -220,8 +220,8 @@
         <camera name="zed2_right_raw">
           <horizontal_fov>1.7633</horizontal_fov>
           <image>
-            <width>1280</width>
-            <height>720</height>
+            <width>1920</width>
+            <height>1080</height>
             <format>R8G8B8</format>
           </image>
           <clip>
@@ -268,8 +268,8 @@
         <camera name="zed2_right">
           <horizontal_fov>1.7633</horizontal_fov>
           <image>
-            <width>1280</width>
-            <height>720</height>
+            <width>1920</width>
+            <height>1080</height>
             <format>R8G8B8</format>
           </image>
           <clip>
