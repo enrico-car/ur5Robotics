@@ -1,6 +1,6 @@
 package com.castle.castle_build_path.view;
 
-import com.castle.castle_build_path.tolls.JsonParser;
+import com.castle.castle_build_path.tolls.ReadJson;
 import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.input.MouseEvent;
@@ -21,7 +21,7 @@ public class ButtonColumn extends GridPane {
     int currentBlockIndex;
 
     Long[] counter;
-    JsonParser jsonParser = new JsonParser();
+    ReadJson jsonParser = new ReadJson();
     int dim = jsonParser.getDim();
 
     public ButtonColumn(CubeBlock cubeBlock) {
@@ -114,7 +114,7 @@ public class ButtonColumn extends GridPane {
         if (counter[3] != 0) {
             Button b3 = new Button("X1-Y2-Z2-CHAMFER");
             for (int i = 0; i < counter[3]; i++) {
-                blocks[ind] = new X1_Y2_Z2_CHAMPER(cubeBlock.getC(), cubeBlock.getR());
+                blocks[ind] = new X1_Y2_Z2_CHAMFER(cubeBlock.getC(), cubeBlock.getR());
                 ind++;
             }
             PrettyButton pb3 = new PrettyButton(b3, counter[3], ind, 3);

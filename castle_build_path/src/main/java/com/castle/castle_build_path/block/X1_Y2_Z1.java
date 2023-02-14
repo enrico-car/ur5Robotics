@@ -1,6 +1,7 @@
 package com.castle.castle_build_path.block;
 
 import javafx.scene.paint.Color;
+import javafx.util.Pair;
 
 
 public class X1_Y2_Z1 extends Block {
@@ -14,7 +15,17 @@ public class X1_Y2_Z1 extends Block {
 
     }
 
-
+    @Override
+    public Pair<Integer, Integer> getRealPosition() {
+        if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
+        {
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py);
+        }
+        else
+        {
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1),unitLength*py+unitLength/2);
+        }
+    }
 
 
 }

@@ -1,6 +1,7 @@
 package com.castle.castle_build_path;
 
 import com.castle.castle_build_path.block.Block;
+import com.castle.castle_build_path.tolls.WriteJson;
 import com.castle.castle_build_path.view.ButtonColumn;
 import com.castle.castle_build_path.view.CubeBlock;
 import javafx.application.Application;
@@ -40,6 +41,7 @@ public class CastleBuildPath extends Application {
         buttons.setHgap(5);
         Button button1 = new Button("up");
         Button button2 = new Button("down");
+        Button button3 = new Button("End");
         Text level = new Text("level 0");
 
         button1.setOnMouseClicked(new EventHandler<MouseEvent>() {
@@ -64,11 +66,21 @@ public class CastleBuildPath extends Application {
                 level.setText("level " + cubeBlock.getGridSel());
             }
         });
+        button3.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                if (buttonColumn.getCurrentBlockIndex() != -1) {
+                    cubeBlock.savePosition(buttonColumn.getCurrentBlock());
+                }
+                WriteJson.writeJson(cubeBlock);
+            }
+        });
         buttons.add(button1, 0, 0);
         buttons.add(button2, 1, 0);
         buttons.add(level, 2, 0);
 
         root.setTop(buttons);
+        root.setBottom(button3);
 
 
         Scene scene = new Scene(root, 800, 600);

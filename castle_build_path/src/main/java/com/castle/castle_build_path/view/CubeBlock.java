@@ -5,7 +5,7 @@ import com.castle.castle_build_path.block.Block;
 public class CubeBlock {
 
     private int c, r, h;
-    GridBlock[] gridBlocks;
+    private GridBlock[] gridBlocks;
     int gridSel;
 
 
@@ -80,6 +80,7 @@ public class CubeBlock {
     }
 
     public void savePosition(Block block) {
+        block.setPz(gridSel);
         if (block.getZ() == 1) {
             gridBlocks[gridSel].savePosition(block);
             if (gridSel < h - 1) {
@@ -89,7 +90,7 @@ public class CubeBlock {
         if (block.getZ() == 2) {
             gridBlocks[gridSel].savePosition(block);
             if (gridSel < h - 1) {
-                gridBlocks[gridSel + 1].savePosition(block);
+                gridBlocks[gridSel + 1].saveUpPosition(block);
             }
             if (gridSel < h - 2) {
                 gridBlocks[gridSel + 2].savePositionBack(block);
@@ -111,5 +112,9 @@ public class CubeBlock {
 
     public int getGridSel() {
         return gridSel;
+    }
+
+    public GridBlock[] getGridBlocks() {
+        return gridBlocks;
     }
 }

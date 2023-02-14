@@ -16,5 +16,9 @@ public class X2_Y2_Z2 extends Block {
         this.underColor = Color.rgb(255, 162, 9,0.4);
     }
 
+    @Override
+    public Pair<Integer, Integer> getRealPosition() {
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1),unitLength*py);
+    }
 
 }

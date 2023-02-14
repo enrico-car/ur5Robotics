@@ -6,20 +6,25 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 
+import java.util.ArrayList;
+
 public class GridBlock extends GridPane {
 
     private int c, r;
     private Square gridRec[][];
     private Boolean blockPlaced[][];
+
+    private ArrayList<Block> savedBlocks;
     private static final Paint backColor = Color.rgb(61, 61, 84);
 
     public GridBlock(int c, int r) {
         super();
         this.c = c;
         this.r = r;
+        savedBlocks = new ArrayList<>();
         this.setHgap(1);
         this.setVgap(1);
-        this.setPadding(new Insets(0,0,0,20));
+        this.setPadding(new Insets(0, 0, 0, 20));
         blockPlaced = new Boolean[c][r];
 
 //        gridPane = new GridPane();
@@ -54,31 +59,28 @@ public class GridBlock extends GridPane {
     }
 
     public void savePosition(Block block) {
-        if (isGoodPosition(block)) {
-            for (var x : block.getPosition()) {
-                gridRec[x.getPx()][x.getPy()] = x.getSquare();
-                this.add(x.getSquare(), x.getPx(), x.getPy());
-            }
+        for (var x : block.getPosition()) {
+            gridRec[x.getPx()][x.getPy()] = x.getSquare();
+            this.add(x.getSquare(), x.getPx(), x.getPy());
+        }
+        savedBlocks.add(block);
+    }
+    public void saveUpPosition(Block block) {
+        for (var x : block.getPosition()) {
+            gridRec[x.getPx()][x.getPy()] = x.getSquare();
+            this.add(x.getSquare(), x.getPx(), x.getPy());
         }
     }
 
     public void savePositionBack(Block block) {
-        if (isGoodPosition(block)) {
-            for (var x : block.getPositionBack()) {
-                gridRec[x.getPx()][x.getPy()] = x.getSquare();
-                this.add(x.getSquare(), x.getPx(), x.getPy());
-                blockPlaced[x.getPx()][x.getPy()] = true;
-            }
+        for (var x : block.getPositionBack()) {
+            gridRec[x.getPx()][x.getPy()] = x.getSquare();
+            this.add(x.getSquare(), x.getPx(), x.getPy());
+            blockPlaced[x.getPx()][x.getPy()] = true;
         }
     }
 
-    private boolean isGoodPosition(Block block) {
-        for (var x : block.getPosition()) {
-            if (blockPlaced[x.getPx()][x.getPy()]) {
-                return false;
-            }
-        }
-        return true;
+    public ArrayList<Block> getSavedBlocks() {
+        return savedBlocks;
     }
-
 }

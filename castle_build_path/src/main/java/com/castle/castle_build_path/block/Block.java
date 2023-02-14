@@ -3,18 +3,22 @@ package com.castle.castle_build_path.block;
 import com.castle.castle_build_path.view.Square;
 import com.castle.castle_build_path.view.SquarePos;
 import javafx.scene.paint.Color;
+import javafx.util.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
 
 enum RotationState {
     UP,
-    DOWN,
     LEFT,
+    DOWN,
     RIGHT
 }
 
 public abstract class Block {
+    final static int unitLength = 3175;
+    final static int unitHeight = 1875;
+
     int x, y, z;
     int px, py, pz;
     int Cgrid, Rgrid;
@@ -41,11 +45,11 @@ public abstract class Block {
             x = y;
             y = temp;
             if (rotationState == RotationState.UP) {
-                rotationState = RotationState.RIGHT;
-            } else if (rotationState == RotationState.RIGHT) {
+                rotationState = RotationState.LEFT;
+            } else if (rotationState == RotationState.LEFT) {
                 rotationState = RotationState.DOWN;
             } else if (rotationState == RotationState.DOWN) {
-                rotationState = RotationState.LEFT;
+                rotationState = RotationState.RIGHT;
             } else {
                 rotationState = RotationState.UP;
             }
@@ -74,6 +78,12 @@ public abstract class Block {
         }
 
         return list;
+    }
+
+    public abstract Pair<Integer, Integer> getRealPosition();
+
+    public int getRealHeight() {
+        return unitHeight * pz;
     }
 
     public int getX() {
@@ -142,5 +152,9 @@ public abstract class Block {
 
     public void down() {
         py++;
+    }
+
+    public int getRotation() {
+        return rotationState.ordinal();
     }
 }

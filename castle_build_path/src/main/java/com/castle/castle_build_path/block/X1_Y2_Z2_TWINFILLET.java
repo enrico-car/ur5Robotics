@@ -3,6 +3,7 @@ package com.castle.castle_build_path.block;
 import com.castle.castle_build_path.view.Square;
 import com.castle.castle_build_path.view.SquarePos;
 import javafx.scene.paint.Color;
+import javafx.util.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -43,5 +44,16 @@ public class X1_Y2_Z2_TWINFILLET extends Block {
         return list;
     }
 
+    @Override
+    public Pair<Integer, Integer> getRealPosition() {
+        if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
+        {
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py);
+        }
+        else
+        {
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1),unitLength*py+unitLength/2);
+        }
+    }
 
 }
