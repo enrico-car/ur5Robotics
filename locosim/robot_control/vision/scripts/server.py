@@ -30,10 +30,12 @@ class Listener:
         self.x_tavolo = []
         self.y_tavolo = []
         self.x_tavolo_def = []
-        self.angle = []
+        self.angle_roll = []
+        self.angle_pitch = []
+        self.angle_yaw = []
         self.pointCloud = 0
 
-    def call(self, cxmin, cxmax, cymin, cymax):
+    def call(self, cxmin, cxmax, cymin, cymax, classe):
         print("-----------------------------getting distances----------------------------")
         self.pointCloud=rospy.wait_for_message("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, timeout=None)
         data_out = pc2.read_points(self.pointCloud, field_names=("x", "y", "z"), skip_nans=False, uvs=[[int((cxmax+cxmin)/2), int(((cymax+cymin)/2))]])
@@ -65,7 +67,8 @@ class Listener:
         # else:
         #     template = os.path.join(path_template, "h", "*jpg")
             
-        template = os.path.join(path_template, "*jpg")   
+        template = os.path.join(path_template, "all", "*jpg")
+        print("path: ", template)
         val_name = {}
         max_corr_index = ""
         max_val_rel = -1
@@ -95,17 +98,21 @@ class Listener:
                     max_val_rel = val_name[t]
                 #bottom_right = (location[0] + w, location[1] + h)
 
-
-        # print("index:",max_corr_index)
-        # print("val_rel:",max_val_rel)
+        print("*****************************************\n")
+        print("index:",max_corr_index)
+        print("val_rel:",max_val_rel)
         info = max_corr_index.split("/")
         print(info)
-        info = info[10]
+        info = info[11]
         info = info.split("_")
+        print(info)
         self.cl.append(int(info[0]))
-        self.angle.append(float(info[3]))
+        self.angle_roll.append(float(info[3]))
+        self.angle_pitch.append(float(info[4]))
+        info[5]=info[5][:len(info[5])-4]
+        self.angle_yaw.append(float(info[5]))
 
-        print("---------------------correzione posizione-----------------------------")
+        '''print("---------------------correzione posizione-----------------------------")
         if self.x_tavolo[len(self.x_tavolo) - 1] < 0.06:
             self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1])
         else:
@@ -135,7 +142,7 @@ class Listener:
                 elif (ang > 1.5708):
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + (lc * math.cos(3.1416 - ang)))
                 else:
-                    self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)
+                    self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)'''
 
 
 
@@ -160,18 +167,18 @@ def dataProcessing():
         xc_ = ((xmax + xmin) / 2)
         yc_ = ((ymin+ymax) / 2)
         l = Listener()
-        l.call(xmin,xmax,ymin,ymax)
+        l.call(xmin,xmax,ymin,ymax, int(c))
         to_ret.append([c, xc_, yc_])
         for xmin, ymin, xmax, ymax, prob, cl in det_res:
             if (not presenceControl(blocks_info, xmin, ymin)):
                 blocks_info.append([xmin, ymin, xmax, ymax, prob, cl])
                 xc_ = ((xmax + xmin) / 2)
                 yc_ = ((ymax + ymin) / 2)
-                l.call(xmin, xmax, ymin, ymax)
+                l.call(xmin, xmax, ymin, ymax,int(c))
                 to_ret.append([int(cl), xc_, yc_])
 
-        print("results in data: ", l.cl, l.x_tavolo_def, l.y_tavolo)
-        return visionResponse(len(l.cl), l.cl, l.x_tavolo_def, l.y_tavolo, l.angle)
+        print("results in data: ", l.cl, l.x_tavolo_def, l.y_tavolo, l.angle_roll, l.angle_pitch,l.angle_yaw)
+        return visionResponse(len(l.cl), l.cl, l.x_tavolo_def, l.y_tavolo, l.angle_roll, l.angle_pitch,l.angle_yaw)
 
 
 def detection():
