@@ -41,12 +41,14 @@ public class GridBlock extends GridPane {
 
     public void addBlock(Block block) {
         for (var x : block.getPosition()) {
+            this.add(new Square(backColor,false), x.getPx(), x.getPy()); // For fade color
             this.add(x.getSquare(), x.getPx(), x.getPy());
         }
     }
 
     public void addBlockBack(Block block) {
         for (var x : block.getPositionBack()) {
+            this.add(new Square(backColor,false), x.getPx(), x.getPy()); // For fade color
             this.add(x.getSquare(), x.getPx(), x.getPy());
         }
     }
@@ -54,6 +56,7 @@ public class GridBlock extends GridPane {
     public void removeBlock(Block block) {
         for (var x : block.getPosition()) {
             Square square = new Square(gridRec[x.getPx()][x.getPy()]);
+            this.add(new Square(backColor,false), x.getPx(), x.getPy()); // For fade color
             this.add(square, x.getPx(), x.getPy());
         }
     }
@@ -75,6 +78,7 @@ public class GridBlock extends GridPane {
     public void savePositionBack(Block block) {
         for (var x : block.getPositionBack()) {
             gridRec[x.getPx()][x.getPy()] = x.getSquare();
+            this.add(new Square(backColor,false), x.getPx(), x.getPy()); // For fade color
             this.add(x.getSquare(), x.getPx(), x.getPy());
             blockPlaced[x.getPx()][x.getPy()] = true;
         }

@@ -9,7 +9,6 @@ import javafx.scene.shape.Rectangle;
 
 public class Square extends StackPane {
 
-    // TODO twinfillet problem
     private static final int dim = 50;
     Rectangle rectangle;
     Circle circle;
