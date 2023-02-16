@@ -865,14 +865,14 @@ def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     points = []
 
     mid_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])/2,
-                       ((abs(start_pos[1]) + abs(end_pos[1]))/2)*5,
+                       max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1,
                         start_pos[2]+(end_pos[2]-start_pos[2])/2])
 
     mid2_pos = np.array([end_pos[0], end_pos[1]-0.1,
-                        end_pos[2]+((abs(end_pos[2]-start_pos[2])+0.025)*1.5)])
+                        end_pos[2]+0.3])
 
     mid3_pos = np.array([start_pos[0], start_pos[1],
-                        start_pos[2]+abs((0.2-(abs(end_pos[2]-start_pos[2]))))])
+                        start_pos[2]+0.25])
 
     p = np.array([start_pos, mid3_pos, mid_pos, mid2_pos, end_pos])
 
