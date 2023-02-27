@@ -15,7 +15,7 @@ import time
 import os
 
 np.set_printoptions(precision=5, suppress=True)
-block_num=2
+block_num=10
 name=""
 
 
@@ -100,23 +100,57 @@ def getBlocksInfo():
 def createQuaternion(iter):
 
     #BLOCCO 1
-    if(iter<72):
+    # if(iter<72):
+    #     pitch= 0
+    #     yaw=int(iter/9)*(pi/8)
+    #     roll= 0
+    # elif(iter<144):
+    #     pitch=pi
+    #     yaw=int((iter%72)/9)*(pi/8)
+    #     roll= 0
+    # elif(iter<288):
+    #     pitch=pi/2
+    #     roll= 0
+    #     yaw=int((iter%144)/9)*(pi/8)
+    # else:
+    #     pitch=0
+    #     roll= pi/2
+    #     yaw=int((iter%288)/9)*(pi/8)
+
+    #BLOCCO 9
+    # if(iter<36):
+    #     pitch= 0
+    #     yaw=int(iter/9)*(pi/8)
+    #     roll= 0
+    # elif(iter<72):
+    #     pitch=pi
+    #     yaw=int((iter%36)/9)*(pi/8)
+    #     roll= 0
+    # else:
+    # pitch=pi/2
+    # roll= 0
+    # yaw=int((iter)/9)*(pi/8)+pi
+
+    #BLOCCO CHAMFER/FILLET
+    if(iter<144): #in piedi
         pitch= 0
         yaw=int(iter/9)*(pi/8)
         roll= 0
-    elif(iter<144):
+    elif(iter<288): #pi, storto
         pitch=pi
-        yaw=int((iter%72)/9)*(pi/8)
+        yaw=int((iter%144)/9)*(pi/8)
         roll= 0
-    elif(iter<288):
+    elif(iter<432):   #sul lato lungo
         pitch=pi/2
         roll= 0
-        yaw=int((iter%144)/9)*(pi/8)
-    else:
-        pitch=0
-        roll= pi/2
         yaw=int((iter%288)/9)*(pi/8)
-    
+    else:       #sul lato corto
+        pitch=0
+        roll= 3*(pi/2)
+        yaw=int((iter%432)/9)*(pi/8)
+
+
+
     
 
     angles = [roll, pitch, yaw]
@@ -181,10 +215,13 @@ def talker():
         pprint(blocks)
         moveBlock(blocks, i)
         i=i+1
-        if(i==433):
+        print("i:"+str(i))
+        #if(i==433):
+        #if(i==217):
+        if(i==577):
             exit(0)
         else:
-            time.sleep(5.)
+            time.sleep(3.)
             os.system("python3 take_photo_temp.py "+ name)
 
         time.sleep(2.)
