@@ -51,6 +51,7 @@
             <arg name="kinematics_params"         value="$(arg kinematics_params)"/>
             <arg name="physical_params"           value="$(arg physical_params)"/>
             <arg name="visual_params"             value="$(arg visual_params)"/>
+            <!--arg name="transmission_hw_interface" value="hardware_interface/PositionJointInterface"/-->
             <arg name="transmission_hw_interface" value="hardware_interface/PositionJointInterface"/>
             <arg name="gripper"                   value="$(arg gripper)"/>
             <arg name="soft_gripper"              value="$(arg soft_gripper)"/>

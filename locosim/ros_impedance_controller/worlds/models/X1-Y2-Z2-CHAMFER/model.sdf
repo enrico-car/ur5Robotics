@@ -12,7 +12,7 @@
           <iyz>0</iyz>
           <izz>0.0166667</izz>
         </inertia>
-        <pose>0 0 0.02 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
       </inertial>
       <pose>0 0 0 0 0 0</pose>
       <gravity>1</gravity>
@@ -20,10 +20,10 @@
       <kinematic>0</kinematic>
       <enable_wind>0</enable_wind>
       <visual name='visual'>
-        <pose>0 0 0 0 -0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>X1-Y2-Z2-CHAMFER.stl</uri>
+            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z2-CHAMFER/X1-Y2-Z2-CHAMFER_centered.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -47,11 +47,16 @@
       <collision name='collision'>
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
-        <pose>0 0 0.01875 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <box>
+        <mesh>
+            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z2-CHAMFER/chamfer.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+          <!--box>
+            <size>0.031 0.063 0.057</size>
             <size>0.031 0.063 0.0375</size>
-          </box>
+          </box-->
         </geometry>
         <surface>
           <friction>
@@ -104,3 +109,4 @@
     <allow_auto_disable>1</allow_auto_disable>
   </model>
 </sdf>
+

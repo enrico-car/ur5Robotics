@@ -69,10 +69,11 @@ class Ur5Generic(BaseControllerFixed):
 
         if conf.robot_params[self.robot_name]['gripper_sim']:
             self.gripper = True
-            self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
         else:
             self.gripper = False
-            self.soft_gripper  = self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
+        
+        self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
+        self.use_grasp_plugin = conf.robot_params[self.robot_name]['use_grasp_plugin']
 
         self.joint_names = conf.robot_params[self.robot_name]['joint_names']
 
@@ -147,7 +148,6 @@ class Ur5Generic(BaseControllerFixed):
             self.available_controllers = ["joint_group_pos_controller", "pos_joint_traj_controller"]
 
         self.active_controller = self.available_controllers[0]
-        #self.switch_controller(self.active_controller)
 
         self.broadcaster = tf.TransformBroadcaster()
         # store in the param server to be used from other planners
@@ -198,7 +198,7 @@ class Ur5Generic(BaseControllerFixed):
     def startupProcedure(self):
         if self.use_torque_control:
             # set joint pdi gains
-            self.pid.setPDjoints( conf.robot_params[self.robot_name]['kp'], conf.robot_params[self.robot_name]['kd'], np.zeros(self.robot.na))
+            self.pid.setPDjoints( conf.robot_params[self.robot_name]['kp'], conf.robot_params[self.robot_name]['kd'], conf.robot_params[self.robot_name]['ki'])
 
         if self.real_robot:
             self.zero_sensor()
@@ -263,8 +263,9 @@ def talker(p):
     if p.real_robot:
         p.startRealRobot()
     else:
-        additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision),
+        additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 'use_grasp_plugin:='+str(p.use_grasp_plugin),
                            'gui:=true', 'rviz:=false']
+        print(additional_args)
         p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 
     # specify xacro location
@@ -294,6 +295,7 @@ def talker(p):
     gripper_on = 0
 
     while not ros.is_shutdown():
+
         # p.updateKinematicsDynamics()
 
         # test gripper

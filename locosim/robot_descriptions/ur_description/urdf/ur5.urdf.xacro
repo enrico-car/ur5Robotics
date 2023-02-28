@@ -7,9 +7,10 @@
 <xacro:arg name="gazebo"        default="true"/>
 <xacro:arg name="gripper"       default="true"/>
 <xacro:arg name="soft_gripper"  default="false" />
+<xacro:arg name="use_grasp_plugin" default="false" />
 
 <xacro:arg name="prefix" default=""/>
-<xacro:arg name="transmission_hw_interface" default="hardware_interface/EffortJointInterface"/>
+<xacro:arg name="transmission_hw_interface" default="hardware_interface/VelocityJointInterface"/>
 
 <xacro:arg name="joint_limit_params" default="$(find ur_description)/config/ur5e/joint_limits.yaml"/>
 <xacro:arg name="kinematics_params"  default="$(find ur_description)/config/ur5e/default_kinematics.yaml"/>
@@ -40,7 +41,7 @@ safety_k_position="$(arg safety_k_position)"/>
 	<xacro:include filename="$(find gripper_description)/urdf/soft_gripper.macro.xacro" />
 	<xacro:soft_gripper 
 	transmission_hw_interface="$(arg transmission_hw_interface)"			
-	grasp_plugin=  "$(arg gripper)"			
+	grasp_plugin=  "$(arg use_grasp_plugin)"			
 	gripper_active="$(arg gripper)"/>
 </xacro:if>
 
@@ -48,7 +49,7 @@ safety_k_position="$(arg safety_k_position)"/>
 	<xacro:include filename="$(find gripper_description)/urdf/gripper.macro.xacro" />
 	<xacro:gripper 
 		transmission_hw_interface="$(arg transmission_hw_interface)"			
-		grasp_plugin=  "$(arg gripper)"			
+		grasp_plugin=  "$(arg use_grasp_plugin)"			
 		gripper_active="$(arg gripper)"/>
 </xacro:unless>
 
@@ -169,40 +170,9 @@ safety_k_position="$(arg safety_k_position)"/>
     <gazebo reference="$(arg prefix)ee_link">
       <selfCollide>true</selfCollide>
     </gazebo>
-	
+    
 
-
-	<!-- fix me https://answers.gazebosim.org//question/15095/gazebo-contact-sensor-added-to-a-robot-link-in-urdf-file-is-not-working-as-expected/-->
-
-
-	<!--gazebo reference="$(arg prefix)wrist_3_link">
-		<kp>1000000.0</kp>
-		<kd>100.0</kd>
-		<mu1>1.0</mu1>
-		<mu2>1.0</mu2>
-		<maxVel>1.0</maxVel>
-		<maxContacts>1</maxContacts>
-		<sensor name="ee_contact_sensor" type="contact">
-			<always_on>true</always_on>
-			<update_rate>250.0</update_rate>
-			<contact>
-				<collision>$(arg prefix)wrist_3_link_collision_collision</collision>
-			</contact>
-		        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
-				<bumperTopicName>/ur5/wrench</bumperTopicName>	
-				<frameName>$(arg prefix)wrist_3_link</frameName>		
-		        	<robotNamespace>ur5</robotNamespace>
-			</plugin>
-		</sensor>
-	</gazebo-->
-
-	
-
-
-    <!--
-      Inject Gazebo ROS Control plugin, which allows us to use ros_control
-      controllers to control the virtual robot hw.
-    -->
+    <!-- Inject Gazebo ROS Control plugin, which allows us to use ros_control controllers to control the virtual robot hw. -->
     <gazebo>
       <plugin name="gazebo_ros_controller_manager" filename="libgazebo_ros_control.so">
 			

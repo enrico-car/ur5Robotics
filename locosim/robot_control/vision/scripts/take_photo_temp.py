@@ -42,11 +42,11 @@ def retImageCallback(img, arg):
     print(t)
     cv_image=cv_image[400:1000, 560:1350]
     h, w= cv_image.shape
-    for i in range(0, h):
-        for j in range (0,w):
-            r= cv_image[i][j]
-            if (r==179 or r<=96):
-                cv_image[i][j]=137
+    # for i in range(0, h):
+    #     for j in range (0,w):
+    #         r= cv_image[i][j]
+    #         if (r==153):
+    #             cv_image[i][j]=255
     cv2.imwrite(os.path.join(os.path.expanduser("~"), "yolo5_images",nb, t), cv_image) #DA CAMBIARE
     #sub.unregister()
 

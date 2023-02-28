@@ -15,7 +15,7 @@ import time
 import os
 
 np.set_printoptions(precision=5, suppress=True)
-block_num=10
+block_num=6
 name=""
 
 
@@ -24,7 +24,7 @@ block_names = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2
 blocks_info = {block_names[0]: (0.03, 0.03), block_names[1]: (0.03, 0.03), block_names[2]: (3, 6), block_names[3]: (0.03, 0.06),
                block_names[4]: (0.03, 0.06), block_names[5]: (0.03, 0.09), block_names[6]: (3, 9), block_names[7]: (0.03, 0.12),
                block_names[8]: (0.03, 0.12), block_names[9]: (0.06, 0.06), block_names[10]: (0.06, 0.06)}
-blocks_to_spawn = {'brick1': block_names[block_num]}
+blocks_to_spawn = {'brick0_'+block_names[block_num]: block_names[block_num]}
 ''', 'block2': block_names[block_num], 'block3': block_names[block_num], 'block4': block_names[block_num],
                    'block5': block_names[block_num], 'block6': block_names[block_num], 'block7': block_names[block_num], 'block8': block_names[block_num],
                    'block9': block_names[block_num]}#, block10': block_names[9], 'block11': block_names[10]}'''
@@ -63,11 +63,18 @@ def spawnBlocks():
 
     for block in blocks_to_spawn:
         model_name = block
+        angles = [0, pi/2, 0]
+        w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+        x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+        y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
+        z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
+        orientation = Quaternion(x, y, z, w)
+        
         spawn_model_client(
             model_name=model_name,
-            model_xml=open('/home/annachiara/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+            model_xml=open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
             robot_namespace='',
-            initial_pose=Pose(position=Point(0.5, 0.35, 0.925), orientation=Quaternion(0, 0, 0, 0)),
+            initial_pose=Pose(position=Point(0.6, 0.7, 0.9), orientation=orientation),
             reference_frame='world'
         )
 
@@ -208,26 +215,26 @@ def talker():
     rate = rospy.Rate(500)
 
     spawnBlocks()
-    i=0
-    while not rospy.is_shutdown():
-        #input("Press Enter to continue...")
-        blocks = getBlocksInfo()
-        pprint(blocks)
-        moveBlock(blocks, i)
-        i=i+1
-        print("i:"+str(i))
-        #if(i==433):
-        #if(i==217):
-        if(i==577):
-            exit(0)
-        else:
-            time.sleep(3.)
-            os.system("python3 take_photo_temp.py "+ name)
+    # i=0
+    # while not rospy.is_shutdown():
+    #     #input("Press Enter to continue...")
+    #     blocks = getBlocksInfo()
+    #     pprint(blocks)
+    #     moveBlock(blocks, i)
+    #     i=i+1
+    #     print("i:"+str(i))
+    #     #if(i==433):
+    #     #if(i==217):
+    #     if(i==577):
+    #         exit(0)
+    #     else:
+    #         time.sleep(3.)
+    #         os.system("python3 robot_control/vision/scripts/take_photo_temp.py "+ name)
 
-        time.sleep(2.)
+    #     time.sleep(2.)
 
 
-        rate.sleep()
+    #     rate.sleep()
 
 
 if __name__ == '__main__':

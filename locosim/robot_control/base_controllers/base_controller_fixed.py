@@ -159,8 +159,6 @@ class BaseControllerFixed(threading.Thread):
         # instantiating objects
         self.ros_pub = RosPub(self.robot_name, only_visual=True)
 
-
-
         self.pub_des_jstate = ros.Publisher("/command", JointState, queue_size=1, tcp_nodelay=True)
         # freeze base  and pause simulation service
         self.reset_world = ros.ServiceProxy('/gazebo/set_model_state', SetModelState)
@@ -172,9 +170,7 @@ class BaseControllerFixed(threading.Thread):
 
         self.u.putIntoGlobalParamServer("verbose", self.verbose)
 
-        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState,
-                                         callback=self._receive_jstate, queue_size=1,buff_size = 2 ** 24, tcp_nodelay=True)
-
+        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState, callback=self._receive_jstate, queue_size=1,buff_size = 2 ** 24, tcp_nodelay=True)
 
         self.apply_body_wrench = ros.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
 
@@ -189,7 +185,6 @@ class BaseControllerFixed(threading.Thread):
                      self.qd[joint_idx] = msg.velocity[msg_idx]
                      self.tau[joint_idx] = msg.effort[msg_idx]
 
-
     def send_des_jstate(self, q_des, qd_des, tau_ffwd):
          # No need to change the convention because in the HW interface we use our conventtion (see ros_impedance_contoller_xx.yaml)
          msg = JointState()
@@ -201,7 +196,6 @@ class BaseControllerFixed(threading.Thread):
     def deregister_node(self):
         print( "deregistering nodes"     )
         self.ros_pub.deregister_node()
-
 
     def startupProcedure(self):
         if (self.use_torque_control):
@@ -246,7 +240,6 @@ class BaseControllerFixed(threading.Thread):
 
         self.ikin = robotKinematics(self.robot, conf.robot_params[self.robot_name]['ee_frame'])
 
-
     def logData(self):
         if (self.log_counter<conf.robot_params[self.robot_name]['buffer_size'] ):
             self.q_des_log[:, self.log_counter] = self.q_des
@@ -260,21 +253,6 @@ class BaseControllerFixed(threading.Thread):
             self.contactForceW_log[:,self.log_counter] =  self.contactForceW
             self.time_log[self.log_counter] = self.time
             self.log_counter+=1
-  # if self.log_counter > 0 and (self.log_counter % conf.robot_params[self.robot_name]['buffer_size']) == 0:
-  #       self.q_des_log = self.log_policy(self.q_des_log)
-  #       self.q_log = self.log_policy(self.q_log)
-  #       self.qd_des_log = self.log_policy(self.qd_des_log)
-  #       self.qd_log = self.log_policy(self.qd_log)
-  #       self.tau_ffwd_log = self.log_policy(self.tau_ffwd_log)
-  #       self.tau_log = self.log_policy(self.tau_log)
-  #       self.x_ee_log = self.log_policy(self.x_ee_log)
-  #       self.x_ee_des_log = self.log_policy(self.x_ee_des_log)
-  #       self.contactForceW_log = self.log_policy(self.contactForceW_log)
-  #       self.time_log = self.log_policy(self.time_log)
-  #   def log_policy(self, var):
-  #       tmp = np.empty((var.shape[0], var.shape[1] + conf.robot_params[self.robot_name]['buffer_size'])) * np.nan
-  #       tmp[:var.shape[0], :var.shape[1]] = var
-  #       return tmp
 
     def reset_joints(self, q0, joint_names = None):
         # create the message

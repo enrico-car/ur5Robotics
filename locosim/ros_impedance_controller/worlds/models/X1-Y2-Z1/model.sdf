@@ -12,7 +12,7 @@
           <iyz>0</iyz>
           <izz>0.0166667</izz>
         </inertia>
-        <pose>0 0 0.01 0 0 0</pose>
+        <pose>0 0 -0.005 0 0 0</pose>
       </inertial>
       <pose>0 0 0.01 0 0 0</pose>
       <gravity>1</gravity>
@@ -24,7 +24,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>X1-Y2-Z1.stl</uri>
+            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z1/X1-Y2-Z1_centered.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -49,11 +49,12 @@
       <collision name='collision'>
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
-        <pose>0 0 0.00925 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <box>
-            <size>0.031 0.063 0.0185</size>
-          </box>
+          <mesh>
+            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z1/X1-Y2-Z1_full.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
         </geometry>
         <surface>
           <friction>

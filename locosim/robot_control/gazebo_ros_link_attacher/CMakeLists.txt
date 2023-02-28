@@ -16,20 +16,25 @@ else()
 endif()
 #####################################
 
+# Load boost for mutex
+include(FindBoost)
+#find_package(Boost REQUIRED system COMPONENTS thread)
+
+# Depend on system install of Gazebo
+find_package(gazebo REQUIRED)
+
 # Load catkin and all dependencies required for this package
-find_package(catkin REQUIRED COMPONENTS 
-  roscpp 
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
   gazebo_ros
   std_msgs
   message_generation
 )
 
-# Depend on system install of Gazebo
-find_package(gazebo REQUIRED)
-
 add_service_files(
   FILES
   Attach.srv
+  SetStatic.srv
 )
 
 
@@ -47,16 +52,13 @@ catkin_package(CATKIN_DEPENDS message_runtime)
 ###########
 ## Build ##
 ###########
-
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include)
+include_directories(include ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
-include_directories(${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
 
 ## Declare a cpp library
 add_library(${PROJECT_NAME} src/gazebo_ros_link_attacher.cpp)
-
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
@@ -69,9 +71,6 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 install(PROGRAMS
   scripts/demo.py
-  scripts/attach.py
-  scripts/detach.py
-  scripts/spawn_models.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

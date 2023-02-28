@@ -12,7 +12,7 @@ import cmath
 from pprint import pprint
 import copy
 import time
-import params as conf
+import lab_exercises.lab_palopoli.params as conf
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -26,17 +26,11 @@ if conf.robot_params['ur5']['soft_gripper']:
     gripper_lenght = 0.1475
 else:
     gripper_lenght = 0.17
-# d1 = 0.089159
-# a2 = -0.425
-# a3 = -0.39225
-# d4 = 0.10915
-# d5 = 0.09465
-# d6 = np.round(0.0823 + gripper_lenght, 5)
 
 d1 = 0.163
 a2 = -0.42500
 a3 = -0.39225
-d4 = 0.134         # wrist1_length = d4 - elbow_offset - shoulder_offset
+d4 = 0.134
 d5 = 0.100
 d6 = 0.100 + gripper_lenght
 
@@ -46,9 +40,10 @@ d = mat([d1, 0, 0, d4, d5, d6])
 a = mat([0, 0, a2, a3, 0, 0])
 alph = mat([pi, pi / 2, 0, 0, pi / 2, -pi / 2])
 
+def rotY(theta):
+    return mat([[cos(theta), 0, sin(theta)], [0, 1, 0], [-sin(theta), 0, cos(theta)]])
 
 # ----------- DIRECT KINEMATICS ------------------------
-# DK del robot di laboratorio ("a testa in giù")
 def T01mtrans(theta1):
     # ---------------------  0->1   ------------------------------------
     # matrice di rotazione iniziale di pi attorno all'asse x0 e displacement di d1 sull'asse z
@@ -69,7 +64,6 @@ def T01mtrans(theta1):
     # trasformazione finale dal frame 0 al frame 1
     return rot_inizialeX * trasl_Z * rotZ1
 
-
 def T12mtrans(theta2):
     # ---------------------  1->2   ------------------------------------
     # rotazione attorno all'asse x1 per configurare il frame 2
@@ -84,7 +78,6 @@ def T12mtrans(theta2):
     # trasformazione finale dal frame 1 al frame 2
     return rotX1 * rotZ2
 
-
 def T23mtrans(theta3):
     # ---------------------  2->3   ------------------------------------
     trasl_x3 = mat([[1, 0, 0, a[0, 2]],
@@ -98,7 +91,6 @@ def T23mtrans(theta3):
     # trasformazione finale dal frame 2 al frame 3
     return trasl_x3 * rotZ3
 
-
 def T34mtrans(theta4):
     # ---------------------  3->4   ------------------------------------
     trasl_x_z = mat([[1, 0, 0, a[0, 3]],
@@ -111,7 +103,6 @@ def T34mtrans(theta4):
                  [0, 0, 0, 1]])
     # trasformazione finale dal frame 3 al frame 4
     return trasl_x_z * rotZ4
-
 
 def T45mtrans(theta5):
     # ---------------------  4->5   ------------------------------------
@@ -131,7 +122,6 @@ def T45mtrans(theta5):
     # trasformazione finale dal frame 4 al frame 5
     return rotX4 * trasl_z4 * rotZ5
 
-
 def T56mtrans(theta6):
     # ---------------------  5->6   ------------------------------------
     # rotazione attorno all'asse x4 per configurare il frame 5
@@ -150,14 +140,12 @@ def T56mtrans(theta6):
     # trasformazione finale dal frame 5 al frame 6
     return rotX5 * trasl_z5 * rotZ6
 
-
 def T03mtrans(jstate):
     T01 = T01mtrans(jstate[0])
     T02 = T01 * T12mtrans(jstate[1])
     T03 = T02 * T23mtrans(jstate[2])
 
     return T03
-
 
 def T04mtrans(jstate):
     T06 = direct_kin(jstate)
@@ -166,7 +154,6 @@ def T04mtrans(jstate):
 
     return T46
 
-
 def direct_kin(jstate):
     T06 = T01mtrans(jstate[0]) * T12mtrans(jstate[1]) * T23mtrans(jstate[2]) * T34mtrans(jstate[3]) * T45mtrans(
         jstate[4]) * T56mtrans(jstate[5])
@@ -174,13 +161,11 @@ def direct_kin(jstate):
 
 
 # ----------- INVERSE KINEMATICS ------------------------
-# IK dell'ur5 in posizione normale con la base a terra
 def T01trans(th1):
     return mat([[cos(th1), -sin(th1), 0, 0],
                 [sin(th1), cos(th1), 0, 0],
                 [0, 0, 1, d[0, 0]],
                 [0, 0, 0, 1]])
-
 
 def T12trans(th2):
     return mat([[cos(th2), -sin(th2), 0, 0],
@@ -188,13 +173,11 @@ def T12trans(th2):
                 [sin(th2), cos(th2), 0, 0],
                 [0, 0, 0, 1]])
 
-
 def T23trans(th3):
     return mat([[cos(th3), -sin(th3), 0, a[0, 2]],
                 [sin(th3), cos(th3), 0, 0],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]])
-
 
 def T34trans(th4):
     return mat([[cos(th4), -sin(th4), 0, a[0, 3]],
@@ -202,20 +185,17 @@ def T34trans(th4):
                 [0, 0, 1, d[0, 3]],
                 [0, 0, 0, 1]])
 
-
 def T45trans(th5):
     return mat([[cos(th5), -sin(th5), 0, 0],
                 [0, 0, -1, -d[0, 4]],
                 [sin(th5), cos(th5), 0, 0],
                 [0, 0, 0, 1]])
 
-
 def T56trans(th6):
     return mat([[cos(th6), -sin(th6), 0, 0],
                 [0, 0, 1, d[0, 5]],
                 [-sin(th6), -cos(th6), 0, 0],
                 [0, 0, 0, 1]])
-
 
 def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array):
     # ricevuta la posizione "des_pos_upsidedown", cioè la posizione desiderata nella configurazione con il braccio "a testa in giù",
@@ -436,7 +416,7 @@ def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array)
 
     return best_angles
 
-
+# ----------- INVERSE DIFFERENTIAL KINEMATICS ------------------------
 def jquintic(self, T, qi, qf, vi, vf, ai, af):
     # traiettoria nello spazio dei joint
     h = qf - qi
@@ -486,7 +466,6 @@ def jcubic(self, T, qi, qf, vi, vf):
 
 def quinticMovement(self, t, a0, a1, a2, a3, a4, a5):
         return a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
-
 
 def Jacobian(th):
     # Jacobiana dell'ur5 in posizione "a testa in giù", derivata dalla DK customizzata
@@ -551,7 +530,6 @@ def Jacobian(th):
 
     return J
 
-
 def cubicCoeff(T, start_pos, end_pos, start_vel=np.array([0, 0, 0]), end_vel=np.array([0, 0, 0])):
     h = end_pos - start_pos  # vettore - displacement su x,y,z
     # calcolo i parametri della cubica, per x,y,z
@@ -562,7 +540,6 @@ def cubicCoeff(T, start_pos, end_pos, start_vel=np.array([0, 0, 0]), end_vel=np.
     a3 = Tinv[1, 0] * (h - start_vel * T) + Tinv[1, 1] * (end_vel - start_vel)
 
     return a0, a1, a2, a3
-
 
 def quinticCoeff(T, start_pos, end_pos, start_vel=np.array([0, 0, 0]), end_vel=np.array([0, 0, 0]),
                  start_acc=np.array([0, 0, 0]), end_acc=np.array([0, 0, 0])):
@@ -583,14 +560,11 @@ def quinticCoeff(T, start_pos, end_pos, start_vel=np.array([0, 0, 0]), end_vel=n
 
     return a0, a1, a2, a3, a4, a5
 
-
 def velocityCubic(t, a1, a2, a3):
     return a1 + 2 * a2 * t + 3 * a3 * t ** 2
 
-
 def velocityQuintic(t, a1, a2, a3, a4, a5):
     return a1 + 2 * a2 * t + 3 * a3 * t ** 2 + 4 * a4 * t ** 3 + 5 * a5 * t ** 4
-
 
 def eul2rotm(euler_angles):
     # euler angles definiti come [rot_x, rot_y, rot_z]
@@ -609,6 +583,22 @@ def eul2rotm(euler_angles):
 
     return rotz * roty * rotx
 
+def rpy2rotm(rpy_angles):
+    # rpy angles definiti come [roll, pitch, yaw]
+
+    rotx = mat([[1, 0, 0],
+                [0, cos(rpy_angles[0]), -sin(rpy_angles[0])],
+                [0, sin(rpy_angles[0]), cos(rpy_angles[0])]])
+
+    roty = mat([[cos(rpy_angles[1]), 0, sin(rpy_angles[1])],
+                [0, 1, 0],
+                [-sin(rpy_angles[1]), 0, cos(rpy_angles[1])]])
+
+    rotz = mat([[cos(rpy_angles[2]), -sin(rpy_angles[2]), 0],
+                [sin(rpy_angles[2]), cos(rpy_angles[2]), 0],
+                [0, 0, 1]])
+
+    return rotx * roty * rotz
 
 def rotm2eul(R):
     if R[2, 0] != 1 and R[2, 0] != -1:
@@ -631,7 +621,6 @@ def rotm2eul(R):
 
     return np.array([csi1, theta1, phi1])
 
-
 def quat2rotm(q):
     return mat([[q[0] ** 2 + q[1] ** 2 - q[2] ** 2 - q[3] ** 2, 2 * (q[1] * q[2] - q[0] * q[3]),
                  2 * (q[1] * q[3] + q[0] * q[2])],
@@ -640,6 +629,16 @@ def quat2rotm(q):
                 [2 * (q[1] * q[3] - q[0] * q[2]), 2 * (q[2] * q[3] + q[0] * q[1]),
                  q[0] ** 2 - q[1] ** 2 - q[2] ** 2 + q[3] ** 2]])
 
+def quat2rpy(x, y, z, w):
+    roll = np.round(math.atan2(2*(w*x+y*z), w**2 - x**2 - y**2 + z**2), 4)
+    pitch = np.round(np.real(cmath.asin(2*(w*y-x*z))), 4)
+    if pi/2-0.001 < pitch < pi/2+0.001 or -pi/2-0.001 < pitch < -pi/2+0.001:
+        roll = 0
+        yaw = np.round(-2*np.sign(pitch)*math.atan2(x, w), 4)
+    else:
+        yaw = np.round(math.atan2(2*(w*z+x*y), w**2 + x**2 - y**2 - z**2), 4)
+    
+    return np.array([roll, pitch, yaw])
 
 def controlledQdot(jstate, actual_pos, des_pos, des_vel, Kp):
     J = Jacobian(jstate)
@@ -648,7 +647,6 @@ def controlledQdot(jstate, actual_pos, des_pos, des_vel, Kp):
     # print('pdes   - apos: ', des_pos, actual_pos)
 
     return np.dot(piJ, (des_vel + np.dot(Kp * np.eye(3), (des_pos - actual_pos))))
-
 
 def dw_dq(jstate):
     qM = np.array([6.14, 0, pi])
@@ -662,7 +660,6 @@ def dw_dq(jstate):
 
     return dwdq
 
-
 def controlledQdotRedundant(jstate, actual_pos, des_pos, des_vel, K0):
     J = Jacobian(jstate)
     J = J[0:3, 0:6]
@@ -672,7 +669,6 @@ def controlledQdotRedundant(jstate, actual_pos, des_pos, des_vel, K0):
 
     return np.dot(piJ, (des_vel + np.dot(K0 * np.eye(3), (des_pos - actual_pos)))) + np.dot(np.eye(6) - np.dot(piJ, J),
                                                                                             qdot0)
-
 
 def controlledQdotComplete(jstate, actual_pos, des_pos, des_vel, actual_phi, des_phi, des_phidot, Kp, Kphi):
     J = Jacobian(jstate)
@@ -733,7 +729,6 @@ def controlledQdotComplete(jstate, actual_pos, des_pos, des_vel, actual_phi, des
 
     return qdot
 
-
 def lenghtOfParabola(a, b, c, xi, xf):
     nf = math.sqrt((2 * a * xf + b) ** 2 + 1) * (2 * a * xf + b) + np.arcsinh(2 * a * xf + b)
     lf = nf / (4 * a)
@@ -741,14 +736,12 @@ def lenghtOfParabola(a, b, c, xi, xf):
     li = ni / (4 * a)
     return lf - li
 
-
 def sistemOfEquations(vars, *data):
     l, xi, yi, a, b, c = data
     xf, yf = vars
     eq1 = (xf - xi) ** 2 + (yf - yi) ** 2 - l ** 2
     eq2 = a * xf ** 2 + b * xf + c - yf
     return [eq1, eq2]
-
 
 def parabolaPath(pi, pf, rotm_i, rotm_f, ds):
     # dati due punti pi e pf (punto iniziale e punto finale nello spazio xyz) riferiti al base frame
@@ -831,7 +824,6 @@ def parabolaPath(pi, pf, rotm_i, rotm_f, ds):
 
     return pathBF, rotms
 
-
 def matrixLinspace(rotm_i, rotm_f, n):
     x_dir = np.linspace(np.array(rotm_i[0:3, 0].flat), np.array(rotm_f[0:3, 0].flat), n)
     y_dir = np.linspace(np.array(rotm_i[0:3, 1].flat), np.array(rotm_f[0:3, 1].flat), n)
@@ -850,7 +842,6 @@ def matrixLinspace(rotm_i, rotm_f, n):
 def binomialCoeff(n, k):
     return math.factorial(n)/(math.factorial(k)*math.factorial(n-k))
 
-
 def bezierEquation(n, t, p):
     b = np.zeros(3)
     for k in range(n+1):
@@ -858,7 +849,6 @@ def bezierEquation(n, t, p):
         b += bin * ((1-t)**(n-k))*(t**k)*p[k]
 
     return b
-
 
 def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     T = np.linspace(0, 1, n)
@@ -884,20 +874,16 @@ def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
 
     return points, rotms
 
-
 def linePath(start_pos, end_pos, rotm_i, rotm_f, n):
     return np.linspace(start_pos, end_pos, n), matrixLinspace(rotm_i, rotm_f, n)
-
 
 def skewOperator(w):
     return mat([[    0, -w[2],  w[1]],
                 [ w[2],     0, -w[0]],
                 [-w[1],  w[0],    0]])
 
-
 def veeOperator(R):
     return np.array([R[2, 1], R[0, 2], R[1, 0]])
-
 
 def getDirectionStep(actual_pose, desired_pose):
     T = desired_pose @ np.linalg.inv(actual_pose)
@@ -913,7 +899,6 @@ def getDirectionStep(actual_pose, desired_pose):
     v = np.array(desired_pose[0:3, 3].flat) - np.array(actual_pose[0:3, 3].flat)
 
     return np.array([v[0], v[1], v[2], w[0], w[1], w[2]])
-
 
 def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, time_scale=1):
     next_jstate = jstate
@@ -933,7 +918,7 @@ def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, t
         svd = np.linalg.svd(J, compute_uv=False)
         min_sing_val = np.amin(svd)
 
-        if min_sing_val < 0.0001:
+        if min_sing_val < 0.001:
             dtheta = np.transpose(J) @ np.linalg.inv(J @ np.transpose(J) + np.dot(damping**2, np.eye(6))) @ step
             print('correzione singolarità')
         else:
@@ -954,7 +939,6 @@ def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, t
     positions = positions[0:-1]
 
     return positions
-
 
 def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', vel=2):
     initial_pose = direct_kin(initial_jstate)
@@ -1022,18 +1006,7 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     for i in range(1, len(positions)):
         dtheta = positions[i] - positions[i-1]
         times.append(times[i-1] + np.amax(abs(dtheta)) / vel)
+        #print(dtheta, ' - ', times[i])
         velocities.append(np.array([vel, vel, vel, vel, vel, vel]))
     
     return positions, velocities, times
-
-
-# initial pose
-initial_jstate = np.array([-0.32, -0.78, -2.56, -1.63, -1.57, -1.0])
-
-# final pose
-final_p = np.array([-0.2, 0.4, -0.6])
-final_phi = np.array([-pi, 0, 0])
-final_rotm = eul2rotm(final_phi)
-
-# poss, vels, times = differential_kin(initial_jstate, final_p, final_rotm, curve_type='line')
-# pprint(poss)

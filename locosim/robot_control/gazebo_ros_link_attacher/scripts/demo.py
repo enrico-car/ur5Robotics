@@ -1,4 +1,4 @@
-#!/usr/bin python3.8
+#!/usr/bin/env python
 
 import rospy
 from gazebo_ros_link_attacher.msg import Attach
