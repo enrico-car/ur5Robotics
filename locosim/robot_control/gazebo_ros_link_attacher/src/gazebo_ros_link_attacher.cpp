@@ -94,6 +94,7 @@ namespace gazebo
       ROS_ERROR_STREAM(m2 << " model was not found");
       return false;
     }
+    
 
     ROS_DEBUG_STREAM("Getting link: '" << link1 << "' from model: '" << model1 << "'");
     physics::LinkPtr l1 = m1->GetLink(link1);
@@ -121,30 +122,23 @@ namespace gazebo
     j.l2 = l2;
 
     ROS_DEBUG_STREAM("Links are: "  << l1->GetName() << " and " << l2->GetName());
-    
-    ignition::math::Pose3d diff = l2->WorldPose() - l1->WorldPose();
-    //l1->AttachStaticModel(m2, diff);
 
     ROS_DEBUG_STREAM("Creating revolute joint on model: '" << model1 << "'");
-    j.joint = this->physics->CreateJoint("revolute");
+    j.joint = this->physics->CreateJoint("revolute", m2);
     
-    this->joints.push_back(j);
+    if (model1 == "ur5")
+      this->joints.push_back(j);
 
-    //ROS_DEBUG_STREAM("Attach");
-    //j.joint->Attach(l1, l2);
     ROS_DEBUG_STREAM("Loading links");
+    ignition::math::Pose3d diff = l2->WorldPose() - l1->WorldPose();
     j.joint->Load(l1, l2, diff);
-    ROS_DEBUG_STREAM("Init");
-    j.joint->Init();
-    
-    //ROS_DEBUG_STREAM("SetModel");
-    //j.joint->SetModel(m2);
 
     ROS_DEBUG_STREAM("SetHightstop");
     j.joint->SetUpperLimit(0, 0);
     ROS_DEBUG_STREAM("SetLowStop");
     j.joint->SetLowerLimit(0, 0);
-    
+    ROS_DEBUG_STREAM("Init");
+    j.joint->Init();
     ROS_INFO_STREAM("Attach finished.");
     
     l2->SetCollideMode("none");
@@ -170,6 +164,8 @@ namespace gazebo
     }
 
     ROS_DEBUG_STREAM("Setting is_static for link " << link << " of model " << model << " to " << std::boolalpha << set_static);
+    m->SetStatic(true);
+    l->SetCollideMode("none");
     m->SetCollideMode("none");
     //m->SetGravityMode(false);
     //m->ResetPhysicsStates();
@@ -197,14 +193,12 @@ namespace gazebo
 
   bool GazeboRosLinkAttacher::getJoint(std::string model1, std::string link1,
                                        std::string model2, std::string link2,
-                                       fixedJoint &joint)
-  {                                   
+                                       fixedJoint &joint){
     
-    std::vector<fixedJoint>::iterator it = this->joints.end();
-    --it;
+    std::vector<fixedJoint>::iterator it = --(this->joints.end());
     joint = *it;
-    
     return true;
+    
     /*
     fixedJoint j;
     for(std::vector<fixedJoint>::iterator it = this->joints.begin(); it != this->joints.end(); ++it){
