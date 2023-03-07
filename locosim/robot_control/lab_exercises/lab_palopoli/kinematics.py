@@ -853,23 +853,39 @@ def bezierEquation(n, t, p):
 def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     T = np.linspace(0, 1, n)
     points = []
+    alpha = 0
+    done=False
 
-    mid_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])/2,
-                       max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1,
-                        start_pos[2]+(end_pos[2]-start_pos[2])/2])
+    while (not done):
+        done=True
+        mid_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])/10,
+                        max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1 +alpha,
+                            start_pos[2]+(end_pos[2]-start_pos[2])/2])
+        
+        mid4_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])*9/10,
+                        max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1 +alpha,
+                            start_pos[2]+(end_pos[2]-start_pos[2])/2])
 
-    mid2_pos = np.array([end_pos[0], end_pos[1]-0.1,
-                        end_pos[2]+0.3])
+        mid2_pos = np.array([end_pos[0], end_pos[1]-0.1,
+                            end_pos[2]+0.3])
 
-    mid3_pos = np.array([start_pos[0], start_pos[1],
-                        start_pos[2]+0.25])
+        mid3_pos = np.array([start_pos[0], start_pos[1],
+                            start_pos[2]+0.25])
 
-    p = np.array([start_pos, mid3_pos, mid_pos, mid2_pos, end_pos])
+        p = np.array([start_pos, mid3_pos, mid_pos, mid4_pos, mid2_pos, end_pos])
 
-    for t in T:
-        b = bezierEquation(4, t, p)
-        points.append(b)
+        for t in T:
+            b = bezierEquation(5, t, p)
+            rb=math.sqrt(b[0]**2+b[1]**2)
+            if (rb<0.10):
+                alpha+0.05
+                points.clear()
+                print("new correction")
+                done=False
+                break
 
+            points.append(b)
+            
     rotms = matrixLinspace(rotm_i, rotm_f, n)
 
     return points, rotms

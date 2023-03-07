@@ -31,6 +31,7 @@ from ros_impedance_controller.srv import set_pids
 from ros_impedance_controller.srv import set_pidsRequest
 from ros_impedance_controller.msg import pid
 from gazebo_ros.gazebo_interface import GetModelProperties, GetJointProperties, GetLinkProperties, GetPhysicsProperties
+import json
 np.set_printoptions(precision=4, suppress=True)
 
 
@@ -42,6 +43,16 @@ class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.03
                     8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
 configurations = ['in_piedi', 'sul_lato', 'sottosopra', 'normale']
 
+
+def get_yaw(rot): #è corretto?
+    if(rot==0):
+        return 0
+    elif (rot==2):
+        return pi
+    elif (rot==1):
+        return pi/2
+    else:
+        return -pi/2
 
 class Block:
     def __init__(self, name=None, class_=None, position=None, rpy=None, orientation=None):
@@ -89,8 +100,8 @@ class Block:
             s2 = abs(self.L*cos(self.rpy[2])) + abs(self.l*sin(self.rpy[2]))
             # blocco sottosopra
             if pi-0.01 < self.rpy[1] < pi+0.01:
-                self.center = np.array([self.position[0], self.position[1], altezza_tavolo+self.h/2+0.0195])
-                self.height = self.h + 0.0195
+                self.center = np.array([self.position[0], self.position[1], altezza_tavolo+self.h/2])
+                self.height = self.h
                 self.configuration = configurations[2]
 
             # blocco in posizione normale
@@ -130,7 +141,7 @@ class Block:
         print('!!! blocco aggiornato !!!')
         print(self)
 
-    def computeApproachAndLandPose(self, xy_land_pos, final_rpy, y_approach_angle=90):
+    def computeApproachAndLandPose(self, xy_land_pos, final_rpy, z_offset=0, y_approach_angle=90):
         approach_rpy = np.array([pi, 0, (pi/2+self.rpy[2]-pi)%(2*pi)])
         land_rpy = np.array([pi, 0, (pi/2+final_rpy[2]-pi)%(2*pi)])
 
@@ -148,8 +159,8 @@ class Block:
             approach_pos = approach_pos
 
             final_rotm = eul2rotm(land_rpy)
-            final_pos = np.array([xy_land_pos[0], xy_land_pos[1], approach_pos[2]])
-
+            final_pos = np.array([xy_land_pos[0], xy_land_pos[1], approach_pos[2]+z_offset])
+            print("-----------final pose: ",final_pos)
         # se l'angolo di approccio è 45° -> si vuole girare il blocco
         elif y_approach_angle == 45:
             approach_rotm90 = eul2rotm(approach_rpy)
@@ -162,7 +173,7 @@ class Block:
             if self.configuration == configurations[0]:
                 # si lascia un po di spazio in piu atrimenti il gripper tocca il pezzo
                 correction_approach45 = np.array([sin(self.rpy[2])*0.01, -cos(self.rpy[2])*0.01, 0])
-                correction_land45 = np.array([0, 0, 0.01])
+                correction_land45 = np.array([0, 0, 0])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.class_][2]/2
             
             # blocco sul fianco
@@ -171,7 +182,11 @@ class Block:
                 correction_land45 = np.array([0, 0, 0.01])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.class_][1]/2
             
-            # TODO: blocco sottosopra
+            # blocco sottosopra #TODO
+            else:
+                correction_approach45 = np.array([0, 0, 0.01])
+                correction_land45 = np.array([0, 0, 0])
+                land_Z_pos = altezza_tavolo + class2dimensions[self.class_][1]/2
             
             approach_pos = self.center + correction_approach45
 
@@ -317,6 +332,7 @@ class JointStatePublisher:
 
     def getModelStates(self):
         models = ros.wait_for_message("/gazebo/model_states", ModelStates, timeout=None)
+        #print(models)
         res = Res()
         for i in range(len(models.name)):
             if 'brick' in models.name[i]:
@@ -339,6 +355,13 @@ class JointStatePublisher:
                     roll = pi/2
                     yaw = yaw + pi
 
+                if -pi-0.01<roll<-pi+0.01 or pi-0.01<roll<pi+0.01:
+                    roll=0
+                    pitch=+pi
+                
+                yaw = yaw%(2*pi)
+                
+
                 res.class_.append(block_class)
                 res.xcentre.append(np.round(models.pose[i].position.x, 4))
                 res.ycentre.append(np.round(models.pose[i].position.y, 4))
@@ -350,20 +373,19 @@ class JointStatePublisher:
         return res
 
     def setModelFixed(self, attach_to_table):
-            if attach_to_table:
-                # Attach block to table
-                req = AttachRequest()
-                req.model_name_1 = self.grasped_block_name
-                req.link_name_1 = "link"
-                req.model_name_2 = "ground_plane"
-                req.link_name_2 = "link"
-                res = self.attach_srv.call(req)
-            time.sleep(1.)
-            req = SetStaticRequest()
-            req.model_name = self.grasped_block_name
-            req.link_name = "link"
-            req.set_static = True
-            self.setstatic_srv.call(req)
+        time.sleep(1.)
+        if attach_to_table:
+            print('attaching to table')
+            # Attach block to table
+            req = AttachRequest()
+            req.model_name_1 = self.block.name
+            req.link_name_1 = "link"
+            req.model_name_2 = "ground_plane"
+            req.link_name_2 = "link"
+            res = self.attach_srv.call(req)
+            print('attach to table: ', res)
+            
+            
 
     def addMarker(self, pos, radius=0.1):
         marker = Marker()
@@ -504,55 +526,77 @@ class JointStatePublisher:
         req = AttachRequest()
         req.model_name_1 = "ur5"
         req.link_name_1 = "wrist_3_link"
-        req.model_name_2 = self.grasped_block_name
+        req.model_name_2 = self.block.name
         req.link_name_2 = "link"
         res = self.attach_srv.call(req)
         
         return res.ok
 
     def ungripping(self, gripper_pos, attach_to_table):
+        # print('detaching block')
+        # req = AttachRequest()
+        # req.model_name_1 = "ur5"
+        # req.link_name_1 = "wrist_3_link"
+        # req.model_name_2 = self.grasped_block_name
+        # req.link_name_2 = "link"
+        # res = self.detach_srv.call(req)
+        # time.sleep(0.5)
+        # q_gripper = self.mapGripperJointState(gripper_pos)
+        # final_q = np.append(self.jstate, q_gripper)
+        # self.sendDesTrajectory([final_q], None, [0.1])
+        # while np.linalg.norm(self.q_gripper - q_gripper) > 0.005:
+        #     pass
+        if attach_to_table:
+            self.setModelFixed(attach_to_table)
+        time.sleep(0.5)
+
         print('detaching block')
         req = AttachRequest()
         req.model_name_1 = "ur5"
         req.link_name_1 = "wrist_3_link"
-        req.model_name_2 = self.grasped_block_name
+        req.model_name_2 = self.block.name
         req.link_name_2 = "link"
         res = self.detach_srv.call(req)
         time.sleep(1.)
-        
-        if attach_to_table:
-            self.setModelFixed(attach_to_table)
+        print(res)
 
+        if attach_to_table:
+            req = SetStaticRequest()
+            req.model_name = self.block.name
+            req.link_name = "link"
+            req.set_static = True
+            self.setstatic_srv.call(req)
+            time.sleep(0.5)
+        
         q_gripper = self.mapGripperJointState(gripper_pos)
         final_q = np.append(self.jstate, q_gripper)
         self.sendDesTrajectory([final_q], None, [0.1])
         while np.linalg.norm(self.q_gripper - q_gripper) > 0.005:
-            pass
+           pass
     
-    def gripSim(self, gripper_pos, attach_to_table=False):
+    
+    def gripSim(self, grip, gripper_pos, attach_to_table=False):
         # TODO: migliorare questi if (magari usando tutto sotto self.block invece di usare altre due variabili, self.block_grasped e self.grasped_block_name)
         # procedura di gripping
-        if not self.block_grasped:
-            res = self.get_world_properties.call()
-            for model in res.model_names:
-                if 'brick' in model:
-                    model_prop = self.get_model_state.call(model, 'link')
-                    model_pos = np.array([model_prop.pose.position.x, model_prop.pose.position.y])
+        if grip:
+            models = ros.wait_for_message("/gazebo/model_states", ModelStates, timeout=None)
+            for i in range(len(models.name)):
+                if 'brick' in models.name[i]:
+                    model_pos = np.array([models.pose[i].position.x, models.pose[i].position.y])
                     # controllo per trovare il giusto blocco da attaccare al gripper
-                    if np.linalg.norm(model_pos - self.block.position) < 0.015:
+                    if np.linalg.norm(model_pos - self.block.position) < 0.04:
                         print('#### model found ####')
-                        self.grasped_block_name = model
-                        self.block_grasped = True
-                        # TODO: aggiungere controllo su res.ok e gestire se va male 
-                        ok = self.gripping(gripper_pos)
-                        if ok:
-                            print('block gripped')
+                        self.block.name = models.name[i]
+            
+            # TODO: aggiungere controllo su res.ok e gestire se va male 
+            ok = self.gripping(gripper_pos)
+            if ok:
+                print('block gripped')
+
         # procedura di un-gripping
         else:
             self.ungripping(gripper_pos, attach_to_table)
-            # reset grasped block variables
-            self.grasped_block_name = None
-            self.block_grasped = False
+
 
     def moveTo(self, final_pos, final_rotm, gripper_pos, wait_for_end=False, curve_type='bezier', vel=1):
         poss, vels, times = differential_kin(self.jstate, final_pos-np.array([0.5, 0.35, 0]), final_rotm, curve_type=curve_type, vel=vel)
@@ -591,7 +635,7 @@ class JointStatePublisher:
             pass
         self.jstate = self.q
 
-    def pickAndPlaceBlock(self, final_pos, final_rpy = np.array([0, 0, pi / 2]), attach_to_table=True):
+    def pickAndPlaceBlock(self, final_pos, final_rpy = np.array([0, 0, pi / 2]), z_offset=0 ,attach_to_table=True):
         # block_pos: coordinate x,y del centro del blocco e z come altezza a cui gripparlo
         # block_phi: euler angles che descrivono l'orientazione del blocco
         # final_pos: posizione x,y,z finale dove deve venire posizionato il blocco (z può variare in base a che altezza della torre viene posizionato)
@@ -603,7 +647,7 @@ class JointStatePublisher:
 
         gripper_opened, gripper_closed = self.getGripPositions()
         
-        self.block.computeApproachAndLandPose(final_pos, final_rpy)
+        self.block.computeApproachAndLandPose(final_pos, final_rpy, z_offset)
 
         print('------- moving to block --------')
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.15]), self.block.approach_rotm, gripper_opened, curve_type='line')
@@ -611,7 +655,7 @@ class JointStatePublisher:
 
         print('-------- gripping ', gripper_closed, ' ---------')
         if self.gripper:    
-            self.gripSim(gripper_closed)
+            self.gripSim(True, gripper_closed)
         
         print('------- moving upwards --------')
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.15]), self.block.approach_rotm, gripper_closed, curve_type='line')
@@ -624,7 +668,7 @@ class JointStatePublisher:
         
         print('------- un-gripping --------')
         if self.gripper:
-            self.gripSim(gripper_opened, attach_to_table)
+            self.gripSim(False, gripper_opened, attach_to_table)
         
         self.block.position = np.array([self.block.land_pos[0], self.block.land_pos[1]])
         self.block.rpy[2] = final_rpy[2]
@@ -645,7 +689,7 @@ class JointStatePublisher:
         
         print('-------- gripping ', gripper_closed, ' ---------')
         if self.gripper:    
-            self.gripSim(gripper_closed)
+            self.gripSim(True, gripper_closed)
 
         print('----- rotating block -----')
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.05]), self.block.approach_rotm, gripper_closed, curve_type='line', vel=0.5)
@@ -654,7 +698,7 @@ class JointStatePublisher:
         
         print('------- un-gripping --------')
         if self.gripper:
-            self.gripSim(gripper_opened)
+            self.gripSim(False, gripper_opened)
         
         self.block.rpy[2] = new_block_rpy[2]
         self.block.update()
@@ -684,6 +728,13 @@ class JointStatePublisher:
                     new_block_rpy = np.array([0, pi/2, pi])
                     self.ruotaBlocco(new_block_rpy)
 
+                # se il blocco è sottosopra (pitch=pi) #TODO
+                else:
+                    new_block_rpy = np.array([0, pi, pi])
+                    self.ruotaBlocco(new_block_rpy)
+        
+
+
         elif self.block.quadrant == 2:
             # controllo se come è posizionato da problemi
             if pi/4 <= self.block.rpy[2] <= 5/4*pi:
@@ -698,6 +749,12 @@ class JointStatePublisher:
                 elif self.block.configuration == configurations[1]:
                     new_block_rpy = np.array([0, pi/2, 0])
                     self.ruotaBlocco(new_block_rpy)
+
+                # se il blocco è sottosopra (pitch=pi) #TODO
+                else:
+                    new_block_rpy = np.array([0, pi, 0])
+                    self.ruotaBlocco(new_block_rpy)
+
                 
         elif self.block.quadrant == 3:
                 
@@ -714,6 +771,12 @@ class JointStatePublisher:
                 elif self.block.configuration == configurations[1]:
                     new_block_rpy = np.array([0, pi/2, 0])
                     self.ruotaBlocco(new_block_rpy)
+
+                # se il blocco è sottosopra (pitch=pi) #TODO
+                else:
+                    new_block_rpy = np.array([0, pi, 0])
+                    self.ruotaBlocco(new_block_rpy)
+                
         else:
             # controllo se come è posizionato da problemi
             if not pi/2 < self.block.rpy[2] < 5/4*pi:
@@ -728,6 +791,11 @@ class JointStatePublisher:
                 elif self.block.configuration == configurations[1]:
                     new_block_rpy = np.array([0, pi/2, pi])
                     self.ruotaBlocco(new_block_rpy)
+
+                # se il blocco è sottosopra (pitch=pi) #TODO
+                else:
+                    new_block_rpy = np.array([0, pi, pi])
+                    self.ruotaBlocco(new_block_rpy)
         
     def ruotaBloccoInPosizioneNormale(self, landing_pos, landing_rpy):
         gripper_opened, gripper_closed = self.getGripPositions()
@@ -741,28 +809,30 @@ class JointStatePublisher:
 
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.15]), self.block.approach_rotm, gripper_opened, curve_type='line')
         self.moveTo(self.block.approach_pos, self.block.approach_rotm, gripper_opened, wait_for_end=True, curve_type='line', vel=0.3)
+
         
         print('-------- gripping ', gripper_closed, ' ---------')
         if self.gripper:
-            self.gripSim(gripper_closed)
+            self.gripSim(True, gripper_closed)
         
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.15]), self.block.approach_rotm, gripper_closed, curve_type='line', vel=0.5)
 
         print('----- moving block to landing position -----')
         # TODO: controllare che in destinazione non ci siano blocchi e in caso cercare una nuova posizione
-        self.moveTo(self.block.land_pos+np.array([0, 0, 0.1]), self.block.land_rotm, gripper_closed, wait_for_end=True, vel=0.5)
+        self.moveTo(self.block.land_pos+np.array([0, 0, 0.1]), self.block.land_rotm, gripper_closed, wait_for_end=True, curve_type='line', vel=0.5)
         self.moveTo(self.block.land_pos, self.block.land_rotm, gripper_closed, wait_for_end=True, curve_type='line', vel=0.3)
 
         print('------- un-gripping --------')
         if self.gripper:
-            self.gripSim(gripper_opened)
+            self.gripSim(False, gripper_opened)
         
         self.block.position = np.array([self.block.land_pos[0], self.block.land_pos[1]])
         self.block.rpy = landing_rpy.copy()
         self.block.update()
 
         print('----- moving up -----')
-        self.moveTo(self.block.land_pos+np.array([0, 0, 0.1]), eul2rotm([pi, 0, 0]), gripper_opened, curve_type='line', vel=0.5)
+        #self.moveTo(self.block.land_pos+np.array([0, 0, 0.3]), eul2rotm([pi, 0, 0]), gripper_opened, curve_type='line', vel=0.5)
+        self.moveTo(self.block.land_pos+np.array([0, 0, 0.2]),self.block.land_rotm, gripper_opened, wait_for_end=True, curve_type='line', vel=0.5)
         self.zeroWrist()
 
     def freeCastelSpace(self):
@@ -855,6 +925,8 @@ class JointStatePublisher:
             #                 block_approx_pos += np.array([0.03, 0, 0])
 
     def multipleBlocks(self):
+
+        
         # if self.vision:
         #     print("vision server called")
         #     res = self.vision_service.call()
@@ -883,24 +955,63 @@ class JointStatePublisher:
             # controllo se il blocchetto non è il posizione naturale (con la base sul tavolo)
             if not -0.01 < self.block.rpy[1] < 0.01:
                 print('mettendo il blocco in piedi...')
-                landing_pos = np.array([self.block.position[0], self.block.position[1]])
-                landing_rpy = np.array([-pi/2, 0, 0])
+                landing_pos = np.array([0.5, 0.6])
+                landing_rpy = np.array([pi/2, 0, pi/2])
                 self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
             if not -0.01 < self.block.rpy[0] < 0.01:
                 print('mettendo il blocco in posizione normale...')
-                landing_pos = np.array([0.5, 0.75])
+                landing_pos = np.array([0.5, 0.7])
                 landing_rpy = np.array([0, 0, pi/2])
                 self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
 
-            print('spostando il blocco in posizione finale...')
-            final_block_pos = final_tower_pos + np.array([0, 0, self.block.zpos+height])
-            self.pickAndPlaceBlock(final_block_pos, final_tower_rpy, attach_to_table=True)
-            height = height + class2dimensions[self.block.class_][2]
+            # print('spostando il blocco in posizione finale...')
+            # final_block_pos = final_tower_pos + np.array([0, 0, self.block.zpos+height])
+            # self.pickAndPlaceBlock(final_block_pos, final_tower_rpy, attach_to_table=True)
+            # height = height + class2dimensions[self.block.class_][2]
             #input('Press enter to continue ....')
         
         print('***** TASK COMPLETED *****')
 
-    
+    def castle(self):
+        #apri json e deserializza
+        castle_pos_max=(0.8, 0.7) #angolo in basso a sx del qualdrato
+        x_max, y_max=castle_pos_max
+        json_fd=open(os.path.join(os.path.expanduser("~"), "Desktop", "ur5Robotics" , "castle_build_path", "src", "main", "java", "com", "castle", "castle_build_path","tolls", "output.json"))
+        json_file=json_fd.read()
+        json_fd.close()
+        json_file=json.loads(json_file)
+        n_blocks=json_file["size"]
+        iter=1
+        res = Res()
+        res = self.getModelStates()
+        print(res)
+        #posiziona ogni blocco in base alle direttive del json
+        while (iter<=n_blocks):
+            block_class = list(class2name.keys())[list(class2name.values()).index(json_file[str(iter)]["class"])]
+            index=res.find(block_class)
+            self.block = Block('block'+str(iter), res.class_[index], Point(x=res.xcentre[index], y=res.ycentre[index]), res.angle[index])
+            print("index: ", index)
+            yaw=get_yaw(json_file[str(iter)]["r"])
+            x_des=json_file[str(iter)]["x"]/100000
+            y_des=json_file[str(iter)]["y"]/100000
+            z_des=json_file[str(iter)]["z"]/100000
+            
+            if not -0.01 < self.block.rpy[1] < 0.01:
+                print('mettendo il blocco in piedi...')
+                landing_pos = np.array([0.5, 0.6])
+                landing_rpy = np.array([pi/2, 0, pi/2])
+                self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
+            if not -0.01 < self.block.rpy[0] < 0.01:
+                print('mettendo il blocco in posizione normale...')
+                landing_pos = np.array([0.5, 0.7])
+                landing_rpy = np.array([0, 0, pi/2])
+                self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy) 
+                
+            self.pickAndPlaceBlock((x_max-x_des, y_max-y_des) , final_rpy = np.array([0, 0, yaw]), z_offset=z_des, attach_to_table=True)
+            res.remove(index)
+            iter=iter+1
+
+
 class Res:
     def __init__(self):
         self.n_res = 0
@@ -918,6 +1029,21 @@ class Res:
     
     def __repr__(self):
         return str(self)
+    
+    def find(self, class_):
+        for i in range(0,self.n_res):
+            if (self.class_[i]==class_):
+                return i
+        print("block not found")
+        return -1
+    
+    def remove(self, index):
+        self.n_res=self.n_res-1
+        self.class_.pop(index)
+        self.xcentre.pop(index)
+        self.ycentre.pop(index)
+        self.zcentre.pop(index)
+        self.angle.pop(index)
 
 
 def talker(p):
@@ -927,22 +1053,29 @@ def talker(p):
     loop_rate = ros.Rate(loop_frequency)
     p.jstate = p.q
 
-    # theta_block = 5*pi/4
+    #theta_block = 5*pi/4
     gripper_rpy = [pi, 0, 3*pi/2]
     gripper_rotm = eul2rotm(gripper_rpy)
     theta = pi/4
     rotm45 = gripper_rotm @ rotY(theta)
-    #p.moveTo(np.array([0.5, 0.7, -0.7]), eul2rotm([pi, 0, 0]), 40, curve_type='line')
+    p.moveTo(np.array([0.5, 0.7, -0.7]), eul2rotm([pi, 0, 0]), 40, curve_type='line')
     #p.moveTo(p.q, np.array([0, 0.4, altezza_tavolo]), eul2rotm([pi, 0, 0,]), 40, curve_type='line')
     
-    # res = Res()
-    # res = p.getModelStates()
-    # p.block = Block(res.class_[0], Point(x=res.xcentre[0], y=res.ycentre[0]), res.angle[0])
-    # p.pickAndPlaceBlock(np.array([0.5, 0.7, 0]), attach_to_table=False)
-
+    #res = Res()
+    #res = p.getModelStates()
+    #p.block = Block("ciao",res.class_[0], Point(x=res.xcentre[0], y=res.ycentre[0]), res.angle[0])
+    #p.pickAndPlaceBlock(np.array([0.5, 0.7, 0]), attach_to_table=False)
+    #p.ruotaBlocco(np.array([0,0,0]))
+    #p.preparaBloccoPerRotazione()
     
     input('press enter...')
     p.multipleBlocks()
+    #p.castle()
+    #res=p.getModelStates()
+    # p.pickAndPlaceBlock(np.array([0.5, 0.7, -0.7]), final_rpy = np.array([0, 0, pi / 2]), attach_to_table=True)
+    # landing_pos = np.array([p.block.position[0], p.block.position[1]])
+    # landing_rpy = np.array([0, pi/2, pi])
+    # p.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
 
     ros.spin()
     loop_rate.sleep()
