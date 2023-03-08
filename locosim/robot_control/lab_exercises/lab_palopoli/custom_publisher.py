@@ -141,10 +141,10 @@ class Block:
         print(self)
 
     def computeApproachAndLandPose(self, xy_land_pos, final_rpy, z_offset=0, y_approach_angle=90):
-        approach_rpy = np.array([pi, 0, (self.rpy[2]-pi/2)%(2*pi)])
-        print('approach rpy: ', approach_rpy)
-        land_rpy = np.array([pi, 0, (final_rpy[2]-pi/2)%(2*pi)])
-        print('land rpy: ', land_rpy)
+        approach_rpy = np.array([pi, 0, (self.rpy[2]+pi/2)%(2*pi)])
+        print('approach rpy: ', approach_rpy, 'yaw: ', self.rpy[2]+pi/2)
+        land_rpy = np.array([pi, 0, (final_rpy[2]+pi/2)%(2*pi)])
+        print('land rpy: ', land_rpy, 'yaw: ', final_rpy[2]+pi/2)
 
         # se il blocco è in posizione naturale o lo si vuole prendere con gripper perpendicolare al tavolo
         if self.configuration == configurations[3] or y_approach_angle == 90:
@@ -166,21 +166,25 @@ class Block:
         elif y_approach_angle == 45:
             approach_rotm90 = eul2rotm(approach_rpy)
 
-            theta = -pi/4
+            theta = pi/4
 
             approach_rotm = approach_rotm90 @ rotY(theta)
 
             # blocco in piedi
             if self.configuration == configurations[0]:
                 # si lascia un po di spazio in piu atrimenti il gripper tocca il pezzo
-                correction_approach45 = np.array([sin(self.rpy[2])*0.01, -cos(self.rpy[2])*0.01, 0])
-                correction_land45 = np.array([0, 0, 0.01])
+                land_rpy += np.array([0, 0, -pi])
+                d = 0.01
+                correction_approach45 = np.array([sin(self.rpy[2])*d, -cos(self.rpy[2])*d, 0])
+                correction_land45 = np.array([0, 0, d])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.class_][2]/2
             
             # blocco sul fianco
             elif self.configuration == configurations[1]:
-                correction_approach45 = np.array([0, 0, 0.01])
-                correction_land45 = np.array([0, 0, 0])
+                land_rpy += np.array([0, 0, -pi/2])
+                d = 0.01
+                correction_approach45 = np.array([0, 0, d])
+                correction_land45 = np.array([cos(final_rpy[2])*d, sin(final_rpy[2])*d, 0.002])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.class_][1]/2
             
             # blocco sottosopra
@@ -525,7 +529,6 @@ class JointStatePublisher:
             pass
 
     def gripping(self, gripper_pos):
-        time.sleep(1.)
         print('attaching block')
         self.attach_srv(
             model_name_1 = "ur5",
@@ -595,15 +598,16 @@ class JointStatePublisher:
                 pass
 
     def zeroWrist(self):
-        zeroWrist = np.zeros(8)
-        zeroWrist[0:5] = self.jstate[0:5]
-        jstate = np.append(self.jstate, np.array([0, 0]))
-        traj = np.linspace(jstate, zeroWrist, 20)
-        t = np.linspace(0, 2, 20)
-        self.sendDesTrajectory(traj, None, t)
-        while(np.linalg.norm(self.q-zeroWrist[0:6])>0.005):
-            pass
-        self.jstate = self.q
+        if self.jstate[5] > pi:
+            zeroWrist = np.zeros(8)
+            zeroWrist[0:5] = self.jstate[0:5]
+            jstate = np.append(self.jstate, self.q_gripper)
+            traj = np.linspace(jstate, zeroWrist, 20)
+            t = np.linspace(0, 2, 20)
+            self.sendDesTrajectory(traj, None, t)
+            while np.linalg.norm(self.q-zeroWrist[0:6]) > 0.005:
+                pass
+            self.jstate = self.q
 
     def pickAndPlaceBlock(self, final_pos, final_rpy, z_offset=0, attach_to_table=True):
         # block_pos: coordinate x,y del centro del blocco e z come altezza a cui gripparlo
@@ -783,8 +787,6 @@ class JointStatePublisher:
 
         self.moveTo(self.block.approach_pos+np.array([0, 0, 0.15]), self.block.approach_rotm, gripper_opened, curve_type='line')
         self.moveTo(self.block.approach_pos, self.block.approach_rotm, gripper_opened, wait_for_end=True, curve_type='line', vel=0.3)
-        
-        input('...')
 
         print('-------- gripping ', gripper_closed, ' ---------')
         if self.gripper:
@@ -796,14 +798,14 @@ class JointStatePublisher:
         # TODO: controllare che in destinazione non ci siano blocchi e in caso cercare una nuova posizione
         self.moveTo(self.block.land_pos+np.array([0, 0, 0.1]), self.block.land_rotm, gripper_closed, wait_for_end=True, vel=0.5)
         self.moveTo(self.block.land_pos, self.block.land_rotm, gripper_closed, wait_for_end=True, curve_type='line', vel=0.3)
-        input('...')
+        
         print('------- un-gripping --------')
         if self.gripper:
             self.gripSim(False, gripper_opened)
         
+        input('...')
         
-        
-        self.block.position = np.array([self.block.land_pos[0], self.block.land_pos[1]])
+        self.block.position = np.array([landing_pos[0], landing_pos[1]])
         self.block.rpy = landing_rpy.copy()
         self.block.update()
 
@@ -930,12 +932,12 @@ class JointStatePublisher:
             if not -0.01 < self.block.rpy[1] < 0.01:
                 print('mettendo il blocco in piedi...')
                 landing_pos = np.array([0.5, 0.75])
-                landing_rpy = np.array([pi/2, 0, pi/2])
+                landing_rpy = np.array([pi/2, 0, 0])
                 self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
             if not -0.01 < self.block.rpy[0] < 0.01:
-                print('mettendo il blocco in posizione normale...')
+                print('mettendo il blocco da verticale in posizione normale...')
                 landing_pos = np.array([0.5, 0.75])
-                landing_rpy = np.array([0, 0, 0])
+                landing_rpy = np.array([0, 0, pi/2])
                 self.ruotaBloccoInPosizioneNormale(landing_pos, landing_rpy)
 
             print('spostando il blocco in posizione finale...')
