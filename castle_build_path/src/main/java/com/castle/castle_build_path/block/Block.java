@@ -16,8 +16,8 @@ enum RotationState {
 }
 
 public abstract class Block {
-    final static int unitLength = 3175 + 100; // +100 to leave space between block
-    final static int unitHeight = 1875 + 100; // +100 to leave space between block
+    final static int unitLength = 3150;
+    final static int unitHeight = 1875;
 
     int x, y, z;
     int px, py, pz;
