@@ -17,16 +17,35 @@ path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim"
 block_class = ''
 
 
-def checkTemplate(img_original, xmin, ymin, xmax, ymax):
+
+def changeBackground(img, height, width):
+    print('changing background')
+    for i in range(0, height):
+        for j in range (0, width):
+            if i in range(0, int(height/10)) or i in range(int(9*height/10), height) \
+                    or j in range(0, int(width/7)) or j in range(int(6*width/7), width):
+                pixel = img[i][j]
+                if pixel in [148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 235]:
+                    img[i][j] = 255
+    
+    return img
+
+def checkTemplate(img_original, name, xmin, ymin, xmax, ymax):
     print('controllo template')
     img = img_original[ymin:ymax, xmin:xmax].copy()
     height, width = img.shape
-    
-    # cv2.imshow('.', img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
-    # controllo che i bordi siano tutti bianchi (controllo che max 5 pixel di fila non siano bianchi)
+    parts = name.split('_')
+    pos_x, pos_y = parts[1], parts[2]
+
+    if pos_x == '0.75' or pos_y == '0.6375':
+        img = changeBackground(img, height, width)
+    
+    cv2.imshow('.', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # controllo che i bordi siano tutti bianchi (max 3 pixel di fila)
     soglia1 = 3
     soglia2 = 3
     print('sinistra - destra')
@@ -49,12 +68,12 @@ def checkTemplate(img_original, xmin, ymin, xmax, ymax):
         if soglia1 == 0:
             xmin -= 1
             print('--- correzione template ---')
-            return False, xmin, ymin, xmax, ymax
+            return False, xmin, ymin, xmax, ymax, None
 
         if soglia2 == 0:
             xmax += 1
             print('--- correzione template ---')
-            return False, xmin, ymin, xmax, ymax
+            return False, xmin, ymin, xmax, ymax, None
                       
     print('*** sinistra - destra OK **')
 
@@ -80,17 +99,17 @@ def checkTemplate(img_original, xmin, ymin, xmax, ymax):
         if soglia1 == 0:
             ymin -= 1
             print('--- correzione template ---')
-            return False, xmin, ymin, xmax, ymax
+            return False, xmin, ymin, xmax, ymax, None
 
         if soglia2 == 0:
             ymax += 1
             print('--- correzione template ---')
-            return False, xmin, ymin, xmax, ymax
+            return False, xmin, ymin, xmax, ymax, None
         
         # se il controllo riesce ad arrivare a questo punto (ha fatto entrambi i cicli for senza uscire e ricominciare) allora il template è ok
     print('*** sopra - sotto OK **')
 
-    return True, xmin, ymin, xmax, ymax
+    return True, xmin, ymin, xmax, ymax, img
 
 def detection(name):
     print("------------------------running yolo----------------------------")
@@ -112,26 +131,18 @@ def detection(name):
         # quando si ritaglia, si controlla che il bordo sia tutto dello stesso colore cosi si è sicuri che il blocco non viene tagliato
         ok = False
         while not ok:
-            ok, xmin, ymin, xmax, ymax = checkTemplate(img_original, xmin, ymin, xmax, ymax)
+            ok, xmin, ymin, xmax, ymax, img = checkTemplate(img_original, name, xmin, ymin, xmax, ymax)
         
-        img = img_original[ymin:ymax, xmin:xmax].copy()
+        # img = img_original[ymin:ymax, xmin:xmax].copy()
         cv2.imwrite(os.path.join(os.path.expanduser("~"), "template", block_class, name), img) #DA CAMBIARE
-
 
 def retImageCallback(img, name):
     bridge = CvBridge()
     cv_image = bridge.imgmsg_to_cv2(img, "mono8")
 
-    cv_image=cv_image[400:1000, 560:1350]
-    # h, w= cv_image.shape
-    # for i in range(0, h):
-    #     for j in range (0,w):
-    #         r= cv_image[i][j]
-    #         if (r==153):
-    #             cv_image[i][j]=255
+    cv_image = cv_image[400:1000, 560:1350]
     
     cv2.imwrite(os.path.join(os.path.expanduser("~"), "yolo5_images", block_class, name), cv_image) #DA CAMBIARE
-
 
 def talker(name):
     rospy.init_node('take_photo_node', anonymous=False)

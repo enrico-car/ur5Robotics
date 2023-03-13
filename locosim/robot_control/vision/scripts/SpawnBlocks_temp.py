@@ -13,21 +13,27 @@ from math import sin as sin
 from math import atan2 as atan2
 import time
 import os
-
+import cv2
+from gazebo_ros_link_attacher.srv import *
 np.set_printoptions(precision=5, suppress=True)
-block_num=6
-name=""
 
+block_class=0
 
+global name
+name = ""
+
+altezza_tavolo = 1.8-0.935
 block_names = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET',
-               'X1-Y4-Z2', 'X1-Y4-Z1', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
+               'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
 blocks_info = {block_names[0]: (0.03, 0.03), block_names[1]: (0.03, 0.03), block_names[2]: (3, 6), block_names[3]: (0.03, 0.06),
                block_names[4]: (0.03, 0.06), block_names[5]: (0.03, 0.09), block_names[6]: (3, 9), block_names[7]: (0.03, 0.12),
                block_names[8]: (0.03, 0.12), block_names[9]: (0.06, 0.06), block_names[10]: (0.06, 0.06)}
-blocks_to_spawn = {'brick0_'+block_names[block_num]: block_names[block_num]}
-''', 'block2': block_names[block_num], 'block3': block_names[block_num], 'block4': block_names[block_num],
-                   'block5': block_names[block_num], 'block6': block_names[block_num], 'block7': block_names[block_num], 'block8': block_names[block_num],
-                   'block9': block_names[block_num]}#, block10': block_names[9], 'block11': block_names[10]}'''
+class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.031, 0.063, 0.057], 3: [0.031, 0.063, 0.057],
+                    4: [0.031, 0.063, 0.057], 5: [0.031, 0.095, 0.057], 6: [0.031, 0.095, 0.057], 7: [0.031, 0.127, 0.039],
+                    8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
+blocks_to_spawn = {'brick1_'+block_names[block_class]: block_names[block_class]}
+
+class2niter = {0: 216, 1: 432, 2: 432, 3: 576, 4: 576, 5: 432, 6: 576, 7: 432, 8: 432, 9: 216, 10: 576}
 
 class Block:
     def __init__(self, name, position, orientation):
@@ -42,7 +48,6 @@ class Block:
         self.span_x = [(position.x - span_x/2), (position.x + span_x/2)]
         self.span_y = [(position.y - span_y/2), (position.y + span_y/2)]
 
-
     def __str__(self):
         return '---- Block info ----- \n' + str(self.name) + '\nposition:\n' + str(self.position) + '\n' + str(self.span_x) \
                + ' - ' + str(self.span_y) + '\norientation:\n' + str(self.orientation) + '\nrotation: ' + str(self.rotation) + '\n---------------------'
@@ -53,9 +58,9 @@ class Block:
 
 def namedef(cl, posx, posy, r, p, y):
     global name
-    name=""
-    name=str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(r)+"_"+str(p)+"_"+str(y)+".jpg"
-    print("name:" +name+ "\n")
+    name = ""
+    name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(np.round(r, 5))+"_"+str(np.round(p, 5))+"_"+str(np.round(y, 5))+".jpg"
+    print("name: " + name + "\n")
 
 
 def spawnBlocks():
@@ -63,7 +68,7 @@ def spawnBlocks():
 
     for block in blocks_to_spawn:
         model_name = block
-        angles = [0, pi/2, 0]
+        angles = [0, pi/2, pi]
         w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
         x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
         y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
@@ -74,7 +79,7 @@ def spawnBlocks():
             model_name=model_name,
             model_xml=open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
             robot_namespace='',
-            initial_pose=Pose(position=Point(0.6, 0.7, 0.9), orientation=orientation),
+            initial_pose=Pose(position=Point(0.8, 0.5, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
             reference_frame='world'
         )
 
@@ -87,8 +92,8 @@ def getBlocksInfo():
 
     present_blocks = []
     for model in res.model_names:
-        print(model)
         if model in blocks_to_spawn:
+            print(model)
             present_blocks.append(model)
 
     # gazebo service: /gazebo/get_model_properties nome_del_model
@@ -106,59 +111,58 @@ def getBlocksInfo():
 
 def createQuaternion(iter):
 
-    #BLOCCO 1
-    # if(iter<72):
-    #     pitch= 0
-    #     yaw=int(iter/9)*(pi/8)
-    #     roll= 0
-    # elif(iter<144):
-    #     pitch=pi
-    #     yaw=int((iter%72)/9)*(pi/8)
-    #     roll= 0
-    # elif(iter<288):
-    #     pitch=pi/2
-    #     roll= 0
-    #     yaw=int((iter%144)/9)*(pi/8)
-    # else:
-    #     pitch=0
-    #     roll= pi/2
-    #     yaw=int((iter%288)/9)*(pi/8)
+    #BLOCCHI RETTANGOLARI
+    if block_class in [1, 2, 5, 7, 8]:
+        if(iter<72):
+            pitch= 0
+            yaw=int(iter/9)*(pi/8)
+            roll= 0
+        elif(iter<144):
+            pitch=pi
+            yaw=int((iter%72)/9)*(pi/8)
+            roll= 0
+        elif(iter<288):
+            pitch=pi/2
+            roll= 0
+            yaw=int((iter%144)/9)*(pi/8)
+        else:
+            pitch=0
+            roll= pi/2
+            yaw=int((iter%288)/9)*(pi/8)
 
-    #BLOCCO 9
-    # if(iter<36):
-    #     pitch= 0
-    #     yaw=int(iter/9)*(pi/8)
-    #     roll= 0
-    # elif(iter<72):
-    #     pitch=pi
-    #     yaw=int((iter%36)/9)*(pi/8)
-    #     roll= 0
-    # else:
-    # pitch=pi/2
-    # roll= 0
-    # yaw=int((iter)/9)*(pi/8)+pi
+    #BLOCCHI QUADRATI
+    elif block_class in [0, 9]:
+        if(iter<36):
+            pitch= 0
+            yaw=int(iter/9)*(pi/8)
+            roll= 0
+        elif(iter<72):
+            pitch=pi
+            yaw=int((iter%36)/9)*(pi/8)
+            roll= 0
+        else:
+            pitch=pi/2
+            roll= 0
+            yaw=int((iter-72)/9)*(pi/8)+pi
 
     #BLOCCO CHAMFER/FILLET
-    if(iter<144): #in piedi
-        pitch= 0
-        yaw=int(iter/9)*(pi/8)
-        roll= 0
-    elif(iter<288): #pi, storto
-        pitch=pi
-        yaw=int((iter%144)/9)*(pi/8)
-        roll= 0
-    elif(iter<432):   #sul lato lungo
-        pitch=pi/2
-        roll= 0
-        yaw=int((iter%288)/9)*(pi/8)
-    else:       #sul lato corto
-        pitch=0
-        roll= 3*(pi/2)
-        yaw=int((iter%432)/9)*(pi/8)
-
-
-
-    
+    else:
+        if(iter<144): #in piedi
+            roll= 0
+            pitch= 0
+            yaw=int(iter/9)*(pi/8)%(2*pi)
+        elif(iter<288): #pi, storto
+            roll= 0
+            pitch=pi
+            yaw=int((iter%144)/9)*(pi/8)%(2*pi)
+        elif(iter<432):   #sul lato lungo
+            pitch=pi/2
+            roll= 0
+            yaw=int((iter%288)/9)*(pi/8)%(2*pi)
+        else:       #sul lato corto
+            pitch=0
+            roll= 3*(pi/2)
+            yaw=int((iter%432)/9)*(pi/8)%(2*pi)
 
     angles = [roll, pitch, yaw]
 
@@ -167,46 +171,101 @@ def createQuaternion(iter):
     y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
     z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
 
-    
     return x, y, z, w, roll, pitch, yaw
 
 
-def moveBlock(blocks, iter):
+def moveBlock(blocks, xc, yc, x, y, z, w):
     print('moving blocks')
 
     rospy.wait_for_service('/gazebo/set_model_state')
     set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
-    x_in=[0.25,0.5, 0.75]
-    y_in=[0.3125,0.475, 0.6375]
-    i=int(iter/3)%3
-    j=iter%3
-
     for block in blocks:
         ms = ModelState()
         ms.model_name = block.name
-
-        x, y, z, w, roll, pitch, yaw= createQuaternion(iter)
 
         ms.pose.orientation.x = x
         ms.pose.orientation.y = y
         ms.pose.orientation.z = z
         ms.pose.orientation.w = w
-
-
         
-        x = np.round(x_in[i], 5)
-        y = np.round(y_in[j], 5)
-        ms.pose.position.x = x
-        ms.pose.position.y = y
+        ms.pose.position.x = xc
+        ms.pose.position.y = yc
         
-
         ms.pose.position.z = 0.925
-        print(ms)
-        namedef(block_num, x, y, roll, pitch, yaw)
+
         print(set_state.call(ms))
 
     print('blocks moved')
+
+
+def checkTemplate():
+    global name
+    block_class = name.split('_')[0]
+
+    path = os.path.join(os.path.expanduser("~"), "template", block_class, name)
+
+    # controllo se esiste il template, se si controllo che sia a posto
+    if os.path.isfile(path):
+        print('template trovato')
+        # importo il template
+        templ = cv2.imread(os.path.join(os.path.expanduser("~"), "template", block_class, name), cv2.IMREAD_GRAYSCALE)
+        print(templ.shape)
+        height, width  = templ.shape
+
+        # controllo che i bordi siano tutti bianchi (controllo che max 5 pixel di fila non siano bianchi)
+        soglia1 = 3
+        soglia2 = 3
+        print('sinistra - destra')
+        for i in range(height):
+            # prima colonna a sx
+            if templ[i, 0] < 250:
+                soglia1 -= 1
+            else:
+                soglia1 = 3
+
+            # ultima colonna a dx
+            if templ[i, width-1] < 250:
+                soglia2 -= 1
+            else:
+                soglia2 = 3
+            
+            #print(templ[i, 0], '-', templ[i, width-1])
+            
+            if soglia1 == 0 or soglia2 == 0:
+                print('** template incorretto, creazione di un nuovo template in corso... **')
+                return False
+        print('*** sinistra - destra OK ***')
+
+        soglia1 = 3
+        soglia2 = 3
+        print('sopra - sotto')
+        for j in range(width):
+            # prima riga in alto
+            if templ[0, j] < 250:
+                soglia1 -= 1
+            else:
+                soglia1 = 3
+
+            #ultima riga in basso
+            if templ[height-1, j] < 250:
+                soglia2 -= 1
+            else:
+                soglia2 = 3
+            
+            #print(templ[0, j], '-', templ[height-1, j])
+            
+            if soglia1 == 0 or soglia2 == 0:
+                print('** template incorretto, creazione di un nuovo template in corso... **')
+                return False
+        print('*** sopra - sotto OK ***')
+
+        return True
+    
+    # se il template non esiste, lo devo fare
+    else:
+        print('** template non ancora creato, creazione in corso... **')
+        return False
 
 
 def talker():
@@ -215,26 +274,48 @@ def talker():
     rate = rospy.Rate(500)
 
     spawnBlocks()
-    # i=0
-    # while not rospy.is_shutdown():
-    #     #input("Press Enter to continue...")
-    #     blocks = getBlocksInfo()
-    #     pprint(blocks)
-    #     moveBlock(blocks, i)
-    #     i=i+1
-    #     print("i:"+str(i))
-    #     #if(i==433):
-    #     #if(i==217):
-    #     if(i==577):
-    #         exit(0)
-    #     else:
-    #         time.sleep(3.)
-    #         os.system("python3 robot_control/vision/scripts/take_photo_temp.py "+ name)
+    input('..')
 
-    #     time.sleep(2.)
+    x_in = [0.25,0.5, 0.75]
+    y_in = [0.3125,0.475, 0.6375]
 
+    iter = 0
+    end = class2niter[block_class]
+    print('numero di iterazioni: ', end)
 
-    #     rate.sleep()
+    while not rospy.is_shutdown():
+        blocks = getBlocksInfo()
+
+        i = int(iter/3)%3
+        j = iter%3
+
+        xc = np.round(x_in[i], 5)
+        yc = np.round(y_in[j], 5)
+        x, y, z, w, roll, pitch, yaw= createQuaternion(iter)
+
+        namedef(block_class, xc, yc, roll, pitch, yaw)
+        print('template: ', name)
+
+        if not checkTemplate():
+            print('--- (ri)facimento template ---')
+            # se il template non c'è o è fatto male -> da (ri)fare
+            moveBlock(blocks, xc, yc, x, y, z, w)
+            time.sleep(2.)
+            #os.system("python3 vision/scripts/yolov8/yolov8_test.py " + name)
+            os.system("python3 vision/scripts/take_photo_temp.py " + name)
+        
+        time.sleep(1.)
+        print('template ', name,' -> OK')
+
+        iter += 1
+        print("iter: ", iter)
+
+        if(iter==end):
+            exit(0)
+        
+        #  input('fine iterazione, premere invio per continuare...')
+
+        rate.sleep()
 
 
 if __name__ == '__main__':
