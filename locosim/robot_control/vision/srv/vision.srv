@@ -3,4 +3,6 @@ int64 n_res
 int64[] class_
 float64[] xcentre
 float64[] ycentre
-float64[] angle
+float64[] roll
+float64[] pitch
+float64[] yaw

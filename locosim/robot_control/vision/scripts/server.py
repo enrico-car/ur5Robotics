@@ -13,6 +13,7 @@ import sensor_msgs.point_cloud2 as pc2
 from roslib import message
 import open3d as o3d
 import math
+from math import pi as pi
 import time
 import glob
 
@@ -223,20 +224,23 @@ class Listener:
         self.cl.append(int(info[0]))
         self.angle_roll.append(float(info[3]))
         self.angle_pitch.append(float(info[4]))
-        info[5]=info[5][:len(info[5])-4] # per togliere il .jpg
+        info[5] = info[5][:len(info[5])-4] # per togliere il .jpg
         self.angle_yaw.append(float(info[5]))
 
-        '''print("---------------------correzione posizione-----------------------------")
+        print("---------------------correzione posizione-----------------------------")
+        # da controllare
         if self.x_tavolo[len(self.x_tavolo) - 1] < 0.06:
             self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1])
         else:
             # forma quadrata
             if int(info[0]) in [0, 9, 10]:
                 if (int(info[0]) == 0):
-                    lc = 0.01  # lato corto /2
+                    lc = 0.0315 / 2  # lato corto /2
                 else:
-                    lc = 0.02
-                ang = float(info[3]) % 1.5708
+                    lc = 0.063 / 2
+
+                yaw = float(info[5]) % 1.5708
+
                 if ang < 0.7854:
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + (lc / math.cos(ang)))
                 else:
@@ -244,7 +248,7 @@ class Listener:
             # forma rettangolare
             else:
                 lc = 0.01
-                ang = float(info[3]) % 3.1416
+                ang = float(info[3]) % pi
                 if (int(info[0]) == 1 or int(info[0]) == 2 or int(info[0]) == 3 or int(info[0]) == 4):
                     ll = 0.02  # lato lungo /2
                 elif (int(info[0]) == 5 or int(info[0]) == 6):
@@ -256,7 +260,7 @@ class Listener:
                 elif (ang > 1.5708):
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + (lc * math.cos(3.1416 - ang)))
                 else:
-                    self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)'''
+                    self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)
 
 
 def presenceControl(arr, xmin, ymin):
@@ -268,8 +272,7 @@ def presenceControl(arr, xmin, ymin):
 
 def dataProcessing():
     det_res = []
-    with open(os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                        "yolov5", "res_save.txt")) as file:
+    with open(os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "yolov5", "res_save.txt")) as file:
         det_res = [ast.literal_eval(line.rstrip("\n")) for line in file]
     print(det_res)
     blocks_info = []

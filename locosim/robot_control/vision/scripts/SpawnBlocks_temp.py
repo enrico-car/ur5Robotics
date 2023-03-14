@@ -32,8 +32,8 @@ class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.03
                     4: [0.031, 0.063, 0.057], 5: [0.031, 0.095, 0.057], 6: [0.031, 0.095, 0.057], 7: [0.031, 0.127, 0.039],
                     8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
 blocks_to_spawn = {'brick1_'+block_names[block_class]: block_names[block_class]}
-
 class2niter = {0: 216, 1: 432, 2: 432, 3: 576, 4: 576, 5: 432, 6: 576, 7: 432, 8: 432, 9: 216, 10: 576}
+
 
 class Block:
     def __init__(self, name, position, orientation):
@@ -62,27 +62,46 @@ def namedef(cl, posx, posy, r, p, y):
     name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(np.round(r, 5))+"_"+str(np.round(p, 5))+"_"+str(np.round(y, 5))+".jpg"
     print("name: " + name + "\n")
 
-
-def spawnBlocks():
+def spawnBlocks(random_blocks_to_spawn=0):
     spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 
-    for block in blocks_to_spawn:
-        model_name = block
-        angles = [0, pi/2, pi]
-        w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-        x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-        y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
-        z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
-        orientation = Quaternion(x, y, z, w)
-        
-        spawn_model_client(
-            model_name=model_name,
-            model_xml=open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
-            robot_namespace='',
-            initial_pose=Pose(position=Point(0.8, 0.5, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
-            reference_frame='world'
-        )
+    if random_blocks_to_spawn==0:
+        for block in blocks_to_spawn:
+            model_name = block
+            angles = [0, pi/2, pi]
+            w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+            x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+            y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
+            z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
+            orientation = Quaternion(x, y, z, w)
+            
+            spawn_model_client(
+                model_name = model_name,
+                model_xml = open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+                robot_namespace = '',
+                initial_pose = Pose(position=Point(0.5, 0.6, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
+                reference_frame = 'world'
+            )
+    else:
+        for i in range(0, random_blocks_to_spawn):
+            # seleziona una classe a caso
+            model_class = random.choice([0, 1, 2, 3, 4, 5, 6, 9, 10])
+            # crea il nome
+            model_name = 'brick_' + str(i) + block_names[model_class]
 
+            orientation = randomQuaternion()
+
+            x = random.uniform(0.07, 0.93)
+            y = random.uniform(0.22, 0.73)
+            position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2)
+            
+            spawn_model_client(
+                model_name = model_name,
+                model_xml = open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+                robot_namespace = '',
+                initial_pose = Pose(position=position, orientation=orientation),
+                reference_frame = 'world'
+            )
 
 def getBlocksInfo():
     # gazebo service: /gazebo/get_world_properties "{}"
@@ -108,6 +127,23 @@ def getBlocksInfo():
 
     return blocks
 
+def randomQuaternion():
+    roll = random.choise([0., -pi/2])
+    if roll == 0.:
+        pitch = random.choice([0., pi/2, pi])
+    else:
+        pitch = 0.
+    yaw = random.uniform(0., 2*pi)
+
+    angles = [roll, pitch, yaw]
+
+    w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+    x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+    y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
+    z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
+    orientation = Quaternion(x, y, z, w)
+
+    return orientation
 
 def createQuaternion(iter):
 
@@ -173,7 +209,6 @@ def createQuaternion(iter):
 
     return x, y, z, w, roll, pitch, yaw
 
-
 def moveBlock(blocks, xc, yc, x, y, z, w):
     print('moving blocks')
 
@@ -197,7 +232,6 @@ def moveBlock(blocks, xc, yc, x, y, z, w):
         print(set_state.call(ms))
 
     print('blocks moved')
-
 
 def checkTemplate():
     global name
@@ -267,55 +301,54 @@ def checkTemplate():
         print('** template non ancora creato, creazione in corso... **')
         return False
 
-
 def talker():
     rospy.init_node('block_spawner_node', anonymous=True)
 
     rate = rospy.Rate(500)
 
     spawnBlocks()
-    input('..')
+    # input('..')
 
-    x_in = [0.25,0.5, 0.75]
-    y_in = [0.3125,0.475, 0.6375]
+    # x_in = [0.25,0.5, 0.75]
+    # y_in = [0.3125,0.475, 0.6375]
 
-    iter = 0
-    end = class2niter[block_class]
-    print('numero di iterazioni: ', end)
+    # iter = 0
+    # end = class2niter[block_class]
+    # print('numero di iterazioni: ', end)
 
-    while not rospy.is_shutdown():
-        blocks = getBlocksInfo()
+    # while not rospy.is_shutdown():
+    #     blocks = getBlocksInfo()
 
-        i = int(iter/3)%3
-        j = iter%3
+    #     i = int(iter/3)%3
+    #     j = iter%3
 
-        xc = np.round(x_in[i], 5)
-        yc = np.round(y_in[j], 5)
-        x, y, z, w, roll, pitch, yaw= createQuaternion(iter)
+    #     xc = np.round(x_in[i], 5)
+    #     yc = np.round(y_in[j], 5)
+    #     x, y, z, w, roll, pitch, yaw= createQuaternion(iter)
 
-        namedef(block_class, xc, yc, roll, pitch, yaw)
-        print('template: ', name)
+    #     namedef(block_class, xc, yc, roll, pitch, yaw)
+    #     print('template: ', name)
 
-        if not checkTemplate():
-            print('--- (ri)facimento template ---')
-            # se il template non c'è o è fatto male -> da (ri)fare
-            moveBlock(blocks, xc, yc, x, y, z, w)
-            time.sleep(2.)
-            #os.system("python3 vision/scripts/yolov8/yolov8_test.py " + name)
-            os.system("python3 vision/scripts/take_photo_temp.py " + name)
+    #     if not checkTemplate():
+    #         print('--- (ri)facimento template ---')
+    #         # se il template non c'è o è fatto male -> da (ri)fare
+    #         moveBlock(blocks, xc, yc, x, y, z, w)
+    #         time.sleep(2.)
+    #         #os.system("python3 vision/scripts/yolov8/yolov8_test.py " + name)
+    #         os.system("python3 vision/scripts/take_photo_temp.py " + name)
         
-        time.sleep(1.)
-        print('template ', name,' -> OK')
+    #     time.sleep(1.)
+    #     print('template ', name,' -> OK')
 
-        iter += 1
-        print("iter: ", iter)
+    #     iter += 1
+    #     print("iter: ", iter)
 
-        if(iter==end):
-            exit(0)
+    #     if(iter==end):
+    #         exit(0)
         
-        #  input('fine iterazione, premere invio per continuare...')
+    #     #  input('fine iterazione, premere invio per continuare...')
 
-        rate.sleep()
+    #     rate.sleep()
 
 
 if __name__ == '__main__':
