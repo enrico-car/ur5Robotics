@@ -16,10 +16,9 @@ import math
 import time
 import glob
 
-path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                        "yolov5")
-path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts",
-                            "template")
+path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "yolov5")
+path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "template")
+path_template_home = os.path.join(os.path.expanduser("~"), "template")
 
 
 class Listener:
@@ -179,7 +178,8 @@ class Listener:
         
         temp_x, temp_y = self.getTemplatePosition(x_pos, y_pos)
 
-        template_path = os.path.join(path_template, str(classe), str(temp_x)+'_'+str(temp_y))
+        #template_path = os.path.join(path_template, str(classe), str(temp_x)+'_'+str(temp_y))
+        template_path = os.path.join(path_template_home, str(temp_x)+'_'+str(temp_y))
         print("path: ", template_path)
 
         val_name = {}
@@ -188,10 +188,12 @@ class Listener:
         
         for t in os.listdir(template_path):  # provo tutti i template a quella distanza
             temp = cv2.imread(os.path.join(template_path, t), 0)
+            
             h, w = temp.shape
-            if (h/w-0.2 <= ((ymax-ymin)/(xmax-xmin)) <= h/w+0.2):
+            if ((h/w)*0.8 <= ((ymax-ymin)/(xmax-xmin)) <= (h/w)*1.2):
                 #resize immagine
                 img2 = img.copy()
+
                 if(h > ymax-ymin):
                     temp = cv2.resize(temp, (int(xmax-xmin), int(ymax-ymin)-2))
                 else:
@@ -255,7 +257,6 @@ class Listener:
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + (lc * math.cos(3.1416 - ang)))
                 else:
                     self.x_tavolo_def.append(self.x_tavolo[len(self.x_tavolo) - 1] + ll)'''
-
 
 
 def presenceControl(arr, xmin, ymin):
