@@ -2,15 +2,15 @@ import os
 import glob
 
 path=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "10", "*jpg")
-path_q1=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q1")
-path_q2=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q2")
-path_q3=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template","q3")
-path_q4=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q4")
-path_q5=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q5")
-path_q6=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q6")
-path_q7=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q7")
-path_q8=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "q8")
-path_q9=os.path.join(os.path.expanduser("~"),"Desktop","ur5Robotics","template", "q9")
+path_q1=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.75_0.3125")
+path_q2=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.75_0.475")
+path_q3=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template","0.75_0.6375")
+path_q4=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.5_0.3125")
+path_q5=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.5_0.475")
+path_q6=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.5_0.6375")
+path_q7=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.25_0.3125")
+path_q8=os.path.join(os.path.expanduser("~"), "Desktop","ur5Robotics","template", "0.25_0.475")
+path_q9=os.path.join(os.path.expanduser("~"),"Desktop","ur5Robotics","template", "0.25_0.6375")
 
 
 for img in glob.glob(path):
