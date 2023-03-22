@@ -28,7 +28,7 @@ public class WriteJson {
                 position.put("y", pair.getValue());
                 position.put("z", block.getRealHeight());
                 position.put("r", block.getRotation());
-                position.put("class",block.getClass().getSimpleName());
+                position.put("class",block.getClass().getSimpleName().replaceAll("_","-"));
                 jsonObject.put(i,position);
                 i++;
             }
