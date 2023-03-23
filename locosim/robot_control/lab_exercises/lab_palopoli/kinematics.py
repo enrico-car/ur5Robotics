@@ -13,6 +13,8 @@ from pprint import pprint
 import copy
 import time
 import lab_exercises.lab_palopoli.params as conf
+from scipy.optimize import fsolve
+from pprint import pprint
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -40,8 +42,20 @@ d = mat([d1, 0, 0, d4, d5, d6])
 a = mat([0, 0, a2, a3, 0, 0])
 alph = mat([pi, pi / 2, 0, 0, pi / 2, -pi / 2])
 
-def rotY(theta):
-    return mat([[cos(theta), 0, sin(theta)], [0, 1, 0], [-sin(theta), 0, cos(theta)]])
+def rotX(roll):
+    return mat([[1, 0, 0], 
+                [0, cos(roll), -sin(roll)], 
+                [0, sin(roll),  cos(roll)]])
+
+def rotY(pitch):
+    return mat([[ cos(pitch), 0, sin(pitch)], 
+                [0, 1, 0], 
+                [-sin(pitch), 0, cos(pitch)]])
+
+def rotZ(yaw):
+    return mat([[cos(yaw), -sin(yaw), 0], 
+                [sin(yaw),  cos(yaw), 0], 
+                [0, 0, 1]])
 
 # ----------- DIRECT KINEMATICS ------------------------
 def T01mtrans(theta1):
@@ -197,7 +211,7 @@ def T56trans(th6):
                 [-sin(th6), -cos(th6), 0, 0],
                 [0, 0, 0, 1]])
 
-def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array):
+def inverse_kin(des_pos_usd, des_rotm_usd, actual_angles=zero_array):
     # ricevuta la posizione "des_pos_upsidedown", cioè la posizione desiderata nella configurazione con il braccio "a testa in giù",
     # la trasformo in una posizione in cui il braccio si sviluppa in verticale (grazie alla trasformazione di rotazione attorno all'asse x)
     # in modo da essere in grado di utilizzare la IK sviluppata dal prof.
@@ -205,8 +219,8 @@ def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array)
     th = mat(np.zeros((6, 8)))
 
     des_pose_upsidedown = np.eye(4)
-    des_pose_upsidedown[0:3, 0:3] = des_orientation_usd
-    des_pose_upsidedown[0:3, 3] = des_position_usd.T
+    des_pose_upsidedown[0:3, 0:3] = des_rotm_usd
+    des_pose_upsidedown[0:3, 3] = des_pos_usd.T
 
     trans_frame_to_normal = mat([[1, 0, 0, 0],
                                  [0, cos(alph[0, 0]), -sin(alph[0, 0]), 0],
@@ -342,61 +356,21 @@ def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array)
     Xhat43 = T34[0:3, 0]
     th4_8 = np.round(np.real(atan2(Xhat43[1], Xhat43[0])), 4)
 
-    th[0, 0] = th1_1;
-    th[1, 0] = th2_1;
-    th[2, 0] = th3_1;
-    th[3, 0] = th4_1;
-    th[4, 0] = th5_1;
-    th[5, 0] = th6_1
-    th[0, 1] = th1_1;
-    th[1, 1] = th2_2;
-    th[2, 1] = th3_2;
-    th[3, 1] = th4_2;
-    th[4, 1] = th5_2;
-    th[5, 1] = th6_2
-    th[0, 2] = th1_2;
-    th[1, 2] = th2_3;
-    th[2, 2] = th3_3;
-    th[3, 2] = th4_3;
-    th[4, 2] = th5_3;
-    th[5, 2] = th6_3
-    th[0, 3] = th1_2;
-    th[1, 3] = th2_4;
-    th[2, 3] = th3_4;
-    th[3, 3] = th4_4;
-    th[4, 3] = th5_4;
-    th[5, 3] = th6_4
-    th[0, 4] = th1_1;
-    th[1, 4] = th2_5;
-    th[2, 4] = th3_5;
-    th[3, 4] = th4_5;
-    th[4, 4] = th5_1;
-    th[5, 4] = th6_1
-    th[0, 5] = th1_1;
-    th[1, 5] = th2_6;
-    th[2, 5] = th3_6;
-    th[3, 5] = th4_6;
-    th[4, 5] = th5_2;
-    th[5, 5] = th6_2
-    th[0, 6] = th1_2;
-    th[1, 6] = th2_7;
-    th[2, 6] = th3_7;
-    th[3, 6] = th4_7;
-    th[4, 6] = th5_3;
-    th[5, 6] = th6_3
-    th[0, 7] = th1_2;
-    th[1, 7] = th2_8;
-    th[2, 7] = th3_8;
-    th[3, 7] = th4_8;
-    th[4, 7] = th5_4;
-    th[5, 7] = th6_4
+    th[0, 0],th[1, 0],th[2, 0],th[3, 0],th[4, 0],th[5, 0]=th1_1,th2_1,th3_1,th4_1,th5_1,th6_1
+    th[0, 1],th[1, 1],th[2, 1],th[3, 1],th[4, 1],th[5, 1]=th1_1,th2_2,th3_2,th4_2,th5_2,th6_2
+    th[0, 2],th[1, 2],th[2, 2],th[3, 2],th[4, 2],th[5, 2]=th1_2,th2_3,th3_3,th4_3,th5_3,th6_3
+    th[0, 3],th[1, 3],th[2, 3],th[3, 3],th[4, 3],th[5, 3]=th1_2,th2_4,th3_4,th4_4,th5_4,th6_4
+    th[0, 4],th[1, 4],th[2, 4],th[3, 4],th[4, 4],th[5, 4]=th1_1,th2_5,th3_5,th4_5,th5_1,th6_1
+    th[0, 5],th[1, 5],th[2, 5],th[3, 5],th[4, 5],th[5, 5]=th1_1,th2_6,th3_6,th4_6,th5_2,th6_2
+    th[0, 6],th[1, 6],th[2, 6],th[3, 6],th[4, 6],th[5, 6]=th1_2,th2_7,th3_7,th4_7,th5_3,th6_3
+    th[0, 7],th[1, 7],th[2, 7],th[3, 7],th[4, 7],th[5, 7]=th1_2,th2_8,th3_8,th4_8,th5_4,th6_4
+    pprint(th)
 
     # data la configurazione attuale dei joints (passato alla funzione come actual_angles), calcolo l'IK della
     # posizione desiderata e tra le 8 soluzioni, restituisco quella con la "distanza" minore dalla posizione attuale
     # dei joints, ovvero la configurazione che fa muovere di meno gli assi per raggiungere la posizione desiderata
     # controllo anche che la soluzione dell'IK trovata sia entro un certo errore rispetto alla posizione desiderata,
     # poichè al momento, non tutte le soluzioni trovate dall'algoritmo sono giuste (da risolvere)
-
     dir_kin_angles = [np.array(th[:, 0].flat)]
     actual_norm = np.linalg.norm(actual_angles - dir_kin_angles[0])
     best_angles = dir_kin_angles[0]
@@ -408,13 +382,54 @@ def inverse_kin(des_position_usd, des_orientation_usd, actual_angles=zero_array)
         norm = np.linalg.norm(actual_angles - dir_kin_angles[i])
         # calcolo dell'errore di posizionamento tra la posizione voluta e quella che si sta valutando
         ee_pos = direct_kin(dir_kin_angles[i])[0:3, 3].T
-        pos_error = np.linalg.norm(ee_pos - des_position_usd)
+        pos_error = np.linalg.norm(ee_pos - des_pos_usd)
         # solo se la "distanza" è buona -E- l'errore è sotto una certa soglia, la soluzione va bene
         if norm <= actual_norm and pos_error < 0.1:
             actual_norm = norm
             best_angles = dir_kin_angles[i]
 
     return best_angles
+
+def IKTrajectory(jstate, final_p, final_rotm, curve_type='bezier', vel=1):
+    initial_pose = direct_kin(jstate)
+    initial_p = np.array(initial_pose[0:3, 3].flat)
+    initial_rotm = initial_pose[0:3, 0:3]
+
+    ds = 0.05
+    if curve_type == 'bezier':
+        path, rotms = bezierPath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
+    elif curve_type == 'line':
+        path, rotms = linePath(initial_p, final_p, initial_rotm, final_rotm, int(1/ds))
+    elif curve_type == 'parabola':
+        path, rotms = parabolaPath(initial_p, final_p, initial_rotm, final_rotm, ds)
+    else:
+        print('curva non disponibile')
+        return
+
+    actual_jstate = np.ndarray.copy(jstate)
+    positions = [actual_jstate]
+
+    for i in range(len(path)):
+        next_pos = path[i]
+        next_rotm = rotms[i]
+
+        next_jstate = inverse_kin(next_pos, next_rotm, actual_jstate)
+        positions.append(next_jstate)
+
+        actual_jstate = next_jstate
+    
+    times = [0.]
+    
+    for i in range(1, len(positions)):
+        dtheta = positions[i] - positions[i-1]
+        times.append(times[i-1] + np.amax(abs(dtheta)) / vel)
+    
+    print(jstate)
+    print('-------------------')
+    pprint(positions)
+    
+    return positions, None, times    
+
 
 # ----------- INVERSE DIFFERENTIAL KINEMATICS ------------------------
 def jquintic(self, T, qi, qf, vi, vf, ai, af):
@@ -859,11 +874,11 @@ def bezierPath(start_pos, end_pos, rotm_i, rotm_f, n):
     while (not done):
         done=True
         mid_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])/10,
-                        max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1 +alpha,
+                        max(start_pos[1],end_pos[1]) -1.19*max(start_pos[1],end_pos[1])+1 +alpha,
                             start_pos[2]+(end_pos[2]-start_pos[2])/2])
         
         mid4_pos = np.array([start_pos[0]+(end_pos[0]-start_pos[0])*9/10,
-                        max(start_pos[1],end_pos[1]) -1*max(start_pos[1],end_pos[1])+1 +alpha,
+                        max(start_pos[1],end_pos[1]) -1.19*max(start_pos[1],end_pos[1])+1 +alpha,
                             start_pos[2]+(end_pos[2]-start_pos[2])/2])
 
         mid2_pos = np.array([end_pos[0], end_pos[1]-0.1,
@@ -956,7 +971,7 @@ def invDiffKin(jstate, desired_pose, precision, damping=0.04, max_delta=0.032, t
 
     return positions
 
-def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', vel=2):
+def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', vel=1):
     initial_pose = direct_kin(initial_jstate)
     initial_p = np.array(initial_pose[0:3, 3].flat)
     initial_rotm = initial_pose[0:3, 0:3]
@@ -1026,3 +1041,5 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
         velocities.append(np.array([vel, vel, vel, vel, vel, vel]))
     
     return positions, velocities, times
+
+

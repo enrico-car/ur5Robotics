@@ -11,13 +11,14 @@ from math import pi as pi
 from math import cos as cos
 from math import sin as sin
 from math import atan2 as atan2
+from math import sqrt as sqrt
 import time
 import os
 import cv2
 from gazebo_ros_link_attacher.srv import *
 np.set_printoptions(precision=5, suppress=True)
 
-block_class=0
+block_class=8
 
 global name
 name = ""
@@ -31,7 +32,7 @@ blocks_info = {block_names[0]: (0.03, 0.03), block_names[1]: (0.03, 0.03), block
 class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.031, 0.063, 0.057], 3: [0.031, 0.063, 0.057],
                     4: [0.031, 0.063, 0.057], 5: [0.031, 0.095, 0.057], 6: [0.031, 0.095, 0.057], 7: [0.031, 0.127, 0.039],
                     8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
-blocks_to_spawn = {'brick1_'+block_names[block_class]: block_names[block_class]}
+blocks_to_spawn = {'brick0_'+block_names[block_class]: block_names[block_class]}
 class2niter = {0: 216, 1: 432, 2: 432, 3: 576, 4: 576, 5: 432, 6: 576, 7: 432, 8: 432, 9: 216, 10: 576}
 
 
@@ -62,42 +63,80 @@ def namedef(cl, posx, posy, r, p, y):
     name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(np.round(r, 5))+"_"+str(np.round(p, 5))+"_"+str(np.round(y, 5))+".jpg"
     print("name: " + name + "\n")
 
-def spawnBlocks(random_blocks_to_spawn=0):
+def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
     spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 
     if random_blocks_to_spawn==0:
-        for block in blocks_to_spawn:
-            model_name = block
-            angles = [0, pi/2, pi]
-            w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-            x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-            y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
-            z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
-            orientation = Quaternion(x, y, z, w)
-            
-            spawn_model_client(
+        if json_file is None:
+            for block in blocks_to_spawn:
+                model_name = block
+                angles = [0, pi/2, pi]
+                w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+                x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
+                y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
+                z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
+                orientation = Quaternion(x, y, z, w)
+                
+                spawn_model_client(
+                    model_name = model_name,
+                    model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',str(blocks_to_spawn[model_name]),'model.sdf'), 'r').read(),
+                    robot_namespace = '',
+                    initial_pose = Pose(position=Point(0.95, 0.35, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
+                    reference_frame = 'world'
+                )
+        else:
+            n = json_file["size"]
+
+            for i in range(1, n+1):
+                stl_name = json_file[str(i)]["class"]
+                model_class = block_names.index(stl_name)
+                model_name = 'brick_' + str(i) + '_' + stl_name
+
+                orientation = randomQuaternion()
+
+                x = random.uniform(0.07, 0.93)
+                y = random.uniform(0.25, 0.73)
+
+                # controllo se sono dentro un raggio di 10cm dalla posizione della base del robot (zona di singolarità di spalla)
+                ok = False
+                while not ok:
+                    dist = sqrt((0.5-x)**2 + (0.35-y)**2)
+                    
+                    if dist > 0.12:
+                        ok = True
+                    else:
+                        x = random.uniform(0.07, 0.93)
+                        y = random.uniform(0.23, 0.77)
+                
+                position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2)
+
+                spawn_model_client(
                 model_name = model_name,
-                model_xml = open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+                model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',stl_name,'model.sdf'), 'r').read(),
                 robot_namespace = '',
-                initial_pose = Pose(position=Point(0.5, 0.6, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
+                initial_pose = Pose(position=position, orientation=orientation),
                 reference_frame = 'world'
             )
     else:
         for i in range(0, random_blocks_to_spawn):
             # seleziona una classe a caso
-            model_class = random.choice([0, 1, 2, 3, 4, 5, 6, 9, 10])
-            # crea il nome
-            model_name = 'brick_' + str(i) + block_names[model_class]
+            #model_class = random.choice([1, 2, 3, 5, 6, 7, 8])
+            model_class = 9
 
+            # crea il nome
+            stl_name = block_names[model_class]
+            model_name = 'brick_' + str(i) + '_' + stl_name
+            
             orientation = randomQuaternion()
 
-            x = random.uniform(0.07, 0.93)
-            y = random.uniform(0.22, 0.73)
+            x = random.uniform(0.07, 0.95)
+            y = random.uniform(0.22, 0.75)
+
             position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2)
             
             spawn_model_client(
                 model_name = model_name,
-                model_xml = open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+                model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',stl_name,'model.sdf'), 'r').read(),
                 robot_namespace = '',
                 initial_pose = Pose(position=position, orientation=orientation),
                 reference_frame = 'world'
@@ -128,12 +167,14 @@ def getBlocksInfo():
     return blocks
 
 def randomQuaternion():
-    roll = random.choise([0., -pi/2])
+    roll = random.choice([0., -pi/2])
     if roll == 0.:
         pitch = random.choice([0., pi/2, pi])
     else:
         pitch = 0.
-    yaw = random.uniform(0., 2*pi)
+    roll = 0
+    pitch = 0
+    yaw = random.choice([0., pi/8, pi/4, 3/8*pi, pi/2, 5/8*pi, 3/4*pi, 7/8*pi, pi, pi+pi/8, pi+pi/4, pi+3/8*pi, pi+pi/2, pi+5/8*pi, pi+3/4*pi, pi+7/8*pi])
 
     angles = [roll, pitch, yaw]
 
@@ -306,7 +347,7 @@ def talker():
 
     rate = rospy.Rate(500)
 
-    spawnBlocks()
+    spawnBlocks(1)
     # input('..')
 
     # x_in = [0.25,0.5, 0.75]
