@@ -3,7 +3,7 @@
   <world name="default">
     <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>
     <physics type='ode'>
-      <gravity>0 0 -9.81</gravity>
+      <!--gravity>0 0 -9.81</gravity-->
       <max_step_size>0.001</max_step_size> 
       <real_time_factor>1</real_time_factor>
     </physics>
@@ -26,7 +26,7 @@
     </scene>
     <!-- A ground plane -->
     <include>
-      <uri>model://ground_plane</uri>
+      <uri>model://ground_plane_custom</uri>
     </include>
     <include>
       <name>tavolo</name>
