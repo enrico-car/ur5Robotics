@@ -264,7 +264,7 @@ def talker(p):
         p.startRealRobot()
     else:
         additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 'use_grasp_plugin:='+str(p.use_grasp_plugin),
-                           'gui:=true', 'rviz:=false']
+                           'gui:=false', 'rviz:=true']
         print(additional_args)
         p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 

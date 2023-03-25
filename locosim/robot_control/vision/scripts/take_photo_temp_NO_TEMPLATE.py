@@ -14,7 +14,7 @@ path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "r
                          "vision", "scripts", "yolov5")
 path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", 
                              "vision", "scripts", "template")
-block_class = '9'
+block_class = ''
 
 
 
@@ -38,12 +38,12 @@ def checkTemplate(img_original, name, xmin, ymin, xmax, ymax):
     parts = name.split('_')
     pos_x, pos_y = parts[1], parts[2]
 
-    # if pos_x == '0.75' or pos_y == '0.6375':
-    #     img = changeBackground(img, height, width)
+    if pos_x == '0.75' or pos_y == '0.6375':
+        img = changeBackground(img, height, width)
     
-    # cv2.imshow('.', img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow('.', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # controllo che i bordi siano tutti bianchi (max 3 pixel di fila)
     soglia1 = 3

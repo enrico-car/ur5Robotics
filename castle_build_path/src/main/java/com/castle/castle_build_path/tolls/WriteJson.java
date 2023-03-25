@@ -35,7 +35,7 @@ public class WriteJson {
         }
         jsonObject.put("size",i-1);
         System.out.println(jsonObject.toJSONString());
-        try (PrintWriter out = new PrintWriter(new FileWriter("/home/carro/ur5Robotics/castle_build_path/src/main/java/com/castle/castle_build_path/tolls/output.json"))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter("/home/annachiara/Desktop/ur5Robotics/castle_build_path/src/main/java/com/castle/castle_build_path/tolls/output.json"))) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             JsonElement je = JsonParser.parseString(jsonObject.toJSONString());
             out.write(gson.toJson(je));
