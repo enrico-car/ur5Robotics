@@ -19,11 +19,12 @@
       <self_collide>0</self_collide>
       <kinematic>0</kinematic>
       <enable_wind>0</enable_wind>
+      
       <visual name='visual'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y4-Z1/X1-Y4-Z1_centered.dae</uri>
+            <uri>/X1-Y4-Z1/X1-Y4-Z1_centered.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -31,26 +32,27 @@
           <lighting>1</lighting>
           <script>
             <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/White</name>
+            <name>Gazebo/Grey</name>
           </script>
           <shader type='pixel'>
             <normal_map>__default__</normal_map>
           </shader>
           <ambient>1 1 1 1</ambient>
-          <diffuse>0.7 0.7 0.7 0.7</diffuse>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
           <specular>0.01 0.01 0.01 1</specular>
           <emissive>0 0 0 1</emissive>
         </material>
         <transparency>0</transparency>
         <cast_shadows>1</cast_shadows>
       </visual>
+      
       <collision name='collision'>
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y4-Z1/X1-Y4-Z1_full.dae</uri>
+            <uri>/X1-Y4-Z1/X1-Y4-Z1_full.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

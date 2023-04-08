@@ -18,6 +18,10 @@ class LineCoeff2d:
         self.r = 0.0
 
 class Math:
+    def __init__(self):
+        self._Tomega_mat = np.diag([0.,0.,1.])
+        self._Tomega_dot_mat = np.zeros([3,3])
+
     def normalize(self, n):
         norm1 = np.linalg.norm(n)
         n = np.true_divide(n, norm1)
@@ -137,7 +141,7 @@ class Math:
                       [  s_yaw ,  c_yaw ,          0],
                       [0      ,     0     ,       1]]);
         
-        
+
 
         R =  Rz.dot(Ry.dot(Rx));
         return R
@@ -168,12 +172,26 @@ class Math:
         pitchd = rpyd[1]
         yawd = rpyd[2]
     
-        Tomega_dot = np.array([[ -np.cos(yaw)*np.sin(pitch)*pitchd - np.cos(pitch)*np.sin(yaw)*yawd,  -np.cos(yaw)*yawd, 0],
-                              [ np.cos(yaw)*np.cos(pitch)*yawd - np.sin(yaw)*np.sin(pitch)*pitchd,    -np.sin(yaw)*yawd, 0  ],
-                              [ -np.cos(pitch)*pitchd,  0, 0 ]])
-     
-    
-        return Tomega_dot
+        # Tomega_dot = np.array([[ -np.cos(yaw)*np.sin(pitch)*pitchd - np.cos(pitch)*np.sin(yaw)*yawd,  -np.cos(yaw)*yawd, 0],
+        #                       [ np.cos(yaw)*np.cos(pitch)*yawd - np.sin(yaw)*np.sin(pitch)*pitchd,    -np.sin(yaw)*yawd, 0  ],
+        #                       [ -np.cos(pitch)*pitchd,  0, 0 ]])
+        #
+        #
+        # return Tomega_dot
+
+        # faster way
+        cp = np.cos(pitch)
+        sp = np.sin(pitch)
+        cy = np.cos(yaw)
+        sy = np.sin(yaw)
+        self._Tomega_dot_mat[0, 0] = -sp * cy * pitchd - cp * sy * yawd
+        self._Tomega_dot_mat[1, 0] = -sp * sy * pitchd + cp * cy * yawd
+        self._Tomega_dot_mat[2, 0] = -cp*pitchd
+
+        self._Tomega_dot_mat[0, 1] = -cy * yawd
+        self._Tomega_dot_mat[1, 1] = -sy * yawd
+        
+        return self._Tomega_dot_mat
 
     """
         Computes the mapping matrix between euler rates and angular velocity vector (expressed in the world frame), of the rotating frame
@@ -197,10 +215,24 @@ class Math:
         yaw = rpy[2]
         
 
-        Tomega = np.array([[np.cos(pitch)*np.cos(yaw),       -np.sin(yaw),                    0],
-                           [ np.cos(pitch)*np.sin(yaw),       np.cos(yaw),                    0],
-                           [ -np.sin(pitch),      0 ,                                         1]])
-        return Tomega
+        # Tomega = np.array([[np.cos(pitch)*np.cos(yaw),       -np.sin(yaw),                    0],
+        #                    [ np.cos(pitch)*np.sin(yaw),       np.cos(yaw),                    0],
+        #                    [ -np.sin(pitch),      0 ,                                         1]])
+        # return Tomega
+
+        # faster way
+
+        cp = np.cos(pitch)
+        sp = np.sin(pitch)
+        cy = np.cos(yaw)
+        sy = np.sin(yaw)
+        self._Tomega_mat[0, 0] = cp * cy
+        self._Tomega_mat[1, 0] = cp * sy
+        self._Tomega_mat[2, 0] = -sp
+        self._Tomega_mat[0, 1] = -sy
+        self._Tomega_mat[1, 1] = cy
+
+        return self._Tomega_mat
 
     ##################
     # Geometry Utils
@@ -672,6 +704,53 @@ def forceVectorTransform(position, rotationMx):
     b_X_a[utils.sp_crd("LX"):utils.sp_crd("LX") + 3 ,   utils.sp_crd("LX"): utils.sp_crd("LX") + 3] = rotationMx
     return b_X_a
 
+
+def polynomialRef(x0, xf, v0, vf, a0, af, T):
+    # 7-th order polynomial (impose zero jerk at boundary)
+
+    M = np.array([[1, 0,      0,        0,           0,           0,            0,            0],
+                  [1, T, T ** 2,   T ** 3,      T ** 4,      T ** 5,       T ** 6,       T ** 7],
+                  [0, 1,      0,        0,           0,           0,            0,            0],
+                  [0, 1,  2 * T, 3*T ** 2,    4*T ** 3,    5*T ** 4,     6*T ** 5,     7*T ** 6],
+                  [0, 0,      2,        0,           0,           0,            0,            0],
+                  [0, 0,      2,    6 * T, 12 * T ** 2, 20 * T ** 3,    30*T ** 4,    42*T ** 5],
+                  [0, 0,      0,        6,           0,           0,            0,            0],
+                  [0, 0,      0,        6,      24 * T, 60 * T ** 2, 120 * T ** 3, 210 * T ** 4],
+                  ])
+
+    j0 = np.zeros_like(x0)
+    jf = np.zeros_like(xf)
+    boundary_conds = np.vstack([x0, xf, v0, vf, a0, af, j0, jf])
+
+    p_coeffs = np.linalg.inv(M) @ boundary_conds
+    v_coeffs = np.array([p_coeffs[1], 2 * p_coeffs[2],3 * p_coeffs[3], 4 * p_coeffs[4], 5 * p_coeffs[5], 6 * p_coeffs[6], 7 * p_coeffs[7]])
+    a_coeffs = np.array([v_coeffs[1], 2 * v_coeffs[2],3 * v_coeffs[3], 4 * v_coeffs[4], 5 * v_coeffs[5], 6 * v_coeffs[6]])
+
+    pos = lambda t: (p_coeffs[0] +
+                     p_coeffs[1] * t +
+                     p_coeffs[2] * t ** 2 +
+                     p_coeffs[3] * t ** 3 +
+                     p_coeffs[4] * t ** 4 +
+                     p_coeffs[5] * t ** 5 +
+                     p_coeffs[6] * t ** 6 +
+                     p_coeffs[7] * t ** 7) if 0 <= t <= T else x0 if t <0 else xf
+
+    vel = lambda t: (v_coeffs[0] +
+                     v_coeffs[1] * t +
+                     v_coeffs[2] * t ** 2 +
+                     v_coeffs[3] * t ** 3 +
+                     v_coeffs[4] * t ** 4 +
+                     v_coeffs[5] * t ** 5 +
+                     v_coeffs[6] * t ** 6) if 0 <= t <= T else v0 if t <0 else vf
+
+    acc = lambda t: (a_coeffs[0] +
+                     a_coeffs[1] * t +
+                     a_coeffs[2] * t ** 2 +
+                     a_coeffs[3] * t ** 3 +
+                     a_coeffs[4] * t ** 4 +
+                     a_coeffs[5] * t ** 5) if 0 <= t <= T else a0 if t <0 else af
+
+    return pos, vel, acc
 
 
 

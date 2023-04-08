@@ -56,6 +56,12 @@
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
+        <!--material>
+          <ambient>0.2 0. 0. 1.</ambient>
+          <diffuse>0.2 0. 0. 1.</diffuse>
+          <specular>0 0 0 0</specular>
+          <emissive>0 0 0 1</emissive>
+        </material-->
       </visual>
     
     </link>

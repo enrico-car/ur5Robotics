@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim"))
+from robot_control.vision.scripts.yolov5 import detect
 import rospy
 import numpy as np
 from gazebo_msgs.msg import *
@@ -12,16 +16,20 @@ from math import cos as cos
 from math import sin as sin
 from math import atan2 as atan2
 import time
-import os
+import ast
 import cv2
+from cv_bridge import CvBridge
 from gazebo_ros_link_attacher.srv import *
+from sensor_msgs.msg import Image
 np.set_printoptions(precision=5, suppress=True)
 
-block_class=1
+path_yolo5_images = os.path.join(os.path.expanduser("~"), "yolo5_images")
+path_template = os.path.join(os.path.expanduser("~"), "template")
+path_yolo5 = os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim","robot_control","vision","scripts","yolov5")
 
+bridge = CvBridge()
 
-global name
-name = ""
+block_class = 2
 
 altezza_tavolo = 1.8-0.935
 block_names = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET',
@@ -58,13 +66,13 @@ class Block:
 
 
 def namedef(cl, posx, posy, r, p, y):
-    global name
-    name = ""
     if (-(pi/2)-0.01<=r<=-(pi/2)+0.01) :
         name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r,5)))+"_"+str(np.round(p,5))+"_"+str(np.round(y-pi,5))+".jpg"
     else:
         name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r,5)))+"_"+str(np.round(p,5))+"_"+str(np.round(y,5))+".jpg"
     print("name: " + name + "\n")
+
+    return name
 
 
 def spawnBlocks():
@@ -81,9 +89,9 @@ def spawnBlocks():
         
         spawn_model_client(
             model_name=model_name,
-            model_xml=open('/home/annachiara/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
+            model_xml=open('/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/'+str(blocks_to_spawn[model_name])+'/model.sdf', 'r').read(),
             robot_namespace='',
-            initial_pose=Pose(position=Point(0.8, 0.5, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
+            initial_pose=Pose(position=Point(0.35, 0.5, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
             reference_frame='world'
         )
 
@@ -166,7 +174,7 @@ def createQuaternion(iter):
         else:       #sul lato corto
             pitch=0
             roll= -(pi/2)
-            yaw=(int((iter%432)/9)*(pi/8)+pi)%(2*pi)
+            yaw=(int((iter%432)/9)*(pi/8)+pi)
     angles = [roll, pitch, yaw]
 
     w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
@@ -201,74 +209,147 @@ def moveBlock(blocks, xc, yc, x, y, z, w):
 
     print('blocks moved')
 
-
-def checkTemplate():
-    global name
-    block_class = name.split('_')[0]
-
-    path = os.path.join(os.path.expanduser("~"), "template", block_class, name)
-
-    # controllo se esiste il template, se si controllo che sia a posto
-    if os.path.isfile(path):
-        print('template trovato')
-        # importo il template
-        templ = cv2.imread(os.path.join(os.path.expanduser("~"), "template", block_class, name), cv2.IMREAD_GRAYSCALE)
-        print(templ.shape)
-        height, width  = templ.shape
-
-        # controllo che i bordi siano tutti bianchi (controllo che max 5 pixel di fila non siano bianchi)
-        soglia1 = 3
-        soglia2 = 3
-        print('sinistra - destra')
-        for i in range(height):
-            # prima colonna a sx
-            if templ[i, 0] < 250:
-                soglia1 -= 1
-            else:
-                soglia1 = 3
-
-            # ultima colonna a dx
-            if templ[i, width-1] < 250:
-                soglia2 -= 1
-            else:
-                soglia2 = 3
-            
-            #print(templ[i, 0], '-', templ[i, width-1])
-            
-            if soglia1 == 0 or soglia2 == 0:
-                print('** template incorretto, creazione di un nuovo template in corso... **')
-                return False
-        print('*** sinistra - destra OK ***')
-
-        soglia1 = 3
-        soglia2 = 3
-        print('sopra - sotto')
-        for j in range(width):
-            # prima riga in alto
-            if templ[0, j] < 250:
-                soglia1 -= 1
-            else:
-                soglia1 = 3
-
-            #ultima riga in basso
-            if templ[height-1, j] < 250:
-                soglia2 -= 1
-            else:
-                soglia2 = 3
-            
-            #print(templ[0, j], '-', templ[height-1, j])
-            
-            if soglia1 == 0 or soglia2 == 0:
-                print('** template incorretto, creazione di un nuovo template in corso... **')
-                return False
-        print('*** sopra - sotto OK ***')
-
-        return True
-    
-    # se il template non esiste, lo devo fare
+    if block_class in [3, 4, 6, 10]:
+        time.sleep(3.5)
     else:
-        print('** template non ancora creato, creazione in corso... **')
-        return False
+        time.sleep(1.)
+
+
+def removeBackground(img, height, width):
+    for i in range(0, height):
+        for j in range(0, width):
+            if img[i][j] > 210:
+                img[i][j] = 255
+
+
+def checkTemplate(img_original, xmin, ymin, xmax, ymax):
+    # print('controllo template')
+    h, w = img_original.shape
+
+    img = img_original[ymin:ymax, xmin:xmax]
+    height, width = img.shape
+
+    removeBackground(img, height, width)
+    
+    if xmin <= 0 or xmax >= w-1 or ymin <= 0 or ymax >= h-1:
+        return True, xmin, ymin, xmax, ymax, img
+
+    # print(xmin, xmax, ymin, ymax)
+    # print(height, width)
+
+    # cv2.imshow('.', img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    n = 3
+
+    # controllo che i bordi siano tutti bianchi (max 3 pixel di fila)
+    soglia1 = n
+    soglia2 = n
+    #p rint('sinistra - destra')
+    for i in range(height):
+        # prima colonna a sx
+        if img[i, 0] < 210:
+            soglia1 -= 1
+        else:
+            soglia1 = n
+
+        # ultima colonna a dx
+        if img[i, width-1] < 210:
+            soglia2 -= 1
+        else:
+            soglia2 = n
+        
+        #print(img[i, 0], '-', img[i, width-1])
+        
+        # se la soglia arriva a 0 -> sto tagliando male il template -> allargo il bounding box
+        if soglia1 == 0:
+            xmin -= 1
+            #print('--- correzione template ---')
+            return False, xmin, ymin, xmax, ymax, None
+
+        if soglia2 == 0:
+            xmax += 1
+            #print('--- correzione template ---')
+            return False, xmin, ymin, xmax, ymax, None
+                      
+    #print('*** sinistra - destra OK ***')
+
+    soglia1 = n
+    soglia2 = n
+    # print('sopra - sotto')
+    for j in range(width):
+        # prima riga in alto
+        if img[0, j] < 210:
+            soglia1 -= 1
+        else:
+            soglia1 = n
+
+        #ultima riga in basso
+        if img[height-1, j] < 210:
+            soglia2 -= 1
+        else:
+            soglia2 = n
+        
+        # print(img[0, j], '-', img[height-1, j])
+
+        # se la soglia arriva a 0 -> sto tagliando male il template -> allargo il bounding box
+        if soglia1 == 0:
+            ymin -= 1
+            #print('--- correzione template ---')
+            return False, xmin, ymin, xmax, ymax, None
+
+        if soglia2 == 0:
+            ymax += 1
+            #print('--- correzione template ---')
+            return False, xmin, ymin, xmax, ymax, None
+        
+        # se il controllo riesce ad arrivare a questo punto (ha fatto entrambi i cicli for senza uscire e ricominciare) allora il template è ok
+    #print('*** sopra - sotto OK ***')
+
+    return True, xmin, ymin, xmax, ymax, img
+
+
+def take_photo(name, dir_name):
+    print('--- taking photo ---')
+    img = rospy.wait_for_message('/ur5/zed_node/left/image_rect_color', Image)
+    time.sleep(0.5)
+
+    cv_image = bridge.imgmsg_to_cv2(img, "mono8")
+
+    cv_image_cropped = cv_image[400:1000, 560:1350]
+    height, width = cv_image_cropped.shape
+
+    # cv2.imshow('.', cv_image_cropped)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    cv2.imwrite(os.path.join(path_yolo5_images, dir_name, name), cv_image_cropped)
+
+    print('--- running yolo ---')
+    detect.run(source=os.path.join(path_yolo5_images, dir_name, name), imgsz=(width, height))
+    
+    print("post detection")
+    with open(os.path.join(path_yolo5, "res_save.txt")) as file:
+        det_res = [ast.literal_eval(line.rstrip("\n")) for line in file]
+    
+    if len(det_res):
+        xmin, ymin, xmax, ymax, p, c = det_res[0]
+
+        c_x, c_y = int((xmin+xmax)/2), int((ymin+ymax)/2)
+        xmin_0, xmax_0 = c_x-5, c_x+5
+        ymin_0, ymax_0 = c_y-5, c_y+5
+
+        print('--- correcting template ---')
+        ok = False
+        while not ok:
+            ok, xmin_0, ymin_0, xmax_0, ymax_0, img = checkTemplate(cv_image_cropped, xmin_0, ymin_0, xmax_0, ymax_0)
+        
+        # cv2.imshow('.', img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        cv2.imwrite(os.path.join(path_template, dir_name, name), img)
 
 
 def talker():
@@ -279,8 +360,8 @@ def talker():
     spawnBlocks()
     input('..')
 
-    x_in = [0.1667,0.5, 0.8333]
-    y_in = [0.2584,0.475, 0.6917]
+    x_in = [0.1667, 0.5, 0.8333]
+    y_in = [0.2584, 0.475, 0.6917]
 
     iter = 0
     end = class2niter[block_class]
@@ -294,20 +375,23 @@ def talker():
 
         xc = np.round(x_in[i], 5)
         yc = np.round(y_in[j], 5)
-        x, y, z, w, roll, pitch, yaw= createQuaternion(iter)
+        x, y, z, w, roll, pitch, yaw = createQuaternion(iter)
 
-        namedef(block_class, xc, yc, roll, pitch, yaw)
+        name = namedef(block_class, xc, yc, roll, pitch, yaw)
         print('template: ', name)
 
-        if not checkTemplate():
-            print('--- (ri)facimento template ---')
-            # se il template non c'è o è fatto male -> da (ri)fare
+        posx, posy = name.split('_')[1:3]
+        dir_name = posx+'_'+posy
+
+        path = os.path.join(path_template, dir_name, name)
+
+        # controllo se esiste il template, se non esiste, lo creo
+        if not os.path.isfile(path):
+            print('--- creazione template ---')
             moveBlock(blocks, xc, yc, x, y, z, w)
-            time.sleep(2.)
-            #os.system("python3 vision/scripts/yolov8/yolov8_test.py " + name)
-            os.system("python3 ./take_photo_temp.py " + name)
-        
-        time.sleep(1.)
+
+            take_photo(name, dir_name)
+            
         print('template ', name,' -> OK')
 
         iter += 1

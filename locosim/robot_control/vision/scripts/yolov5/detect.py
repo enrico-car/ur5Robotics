@@ -30,8 +30,9 @@ import os
 import platform
 import sys
 from pathlib import Path
-
 import torch
+
+sys.path.insert(0, os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim","robot_control","vision","scripts","yolov5"))
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -49,10 +50,10 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 @smart_inference_mode()
 def run(
-        weights=ROOT / 'yolov5s.pt',  # model path or triton URL
-        source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
-        data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(1280, 720),  # inference size (height, width)
+        weights=ROOT / 'best2.pt',  # model path or triton URL
+        source=ROOT / 'cv_img.jpg',  # file/dir/URL/glob/screen/0(webcam)
+        data=ROOT / 'data.yaml',  # dataset.yaml path
+        imgsz=(1920, 1080),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
@@ -194,8 +195,9 @@ def run(
                     windows.append(p)
                     cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
+                cv2.imshow('.', im0)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
 
             # Save results (image with detections)
             if save_img:

@@ -49,7 +49,7 @@ robotName = "ur5"
 from base_controllers.components.inverse_kinematics.inv_kinematics_pinocchio import robotKinematics
 from base_controllers.utils.math_tools import Math
 from gazebo_msgs.srv import ApplyBodyWrench
-from base_controllers.utils.common_functions import plotCoM, plotJoint
+from base_controllers.utils.common_functions import plotJoint
 
 class BaseControllerFixed(threading.Thread):
     """
@@ -148,17 +148,10 @@ class BaseControllerFixed(threading.Thread):
         ros.sleep(1.0)
         print(colored('SIMULATION Started', 'blue'))
 
-    def loadModelAndPublishers(self,  xacro_path = None):
+    def loadModelAndPublishers(self,  xacro_path = None, additional_urdf_args = None):
 
-        # Loading a robot model of robot (Pinocchio)
-        if xacro_path is None:
-            xacro_path = rospkg.RosPack().get_path(self.robot_name+'_description') + '/urdf/'+self.robot_name+'.xacro'
-        else:
-            print("loading custom xacro path: ", xacro_path)
-        self.robot = getRobotModel(self.robot_name, generate_urdf=True, xacro_path=xacro_path)
         # instantiating objects
         self.ros_pub = RosPub(self.robot_name, only_visual=True)
-
         self.pub_des_jstate = ros.Publisher("/command", JointState, queue_size=1, tcp_nodelay=True)
         # freeze base  and pause simulation service
         self.reset_world = ros.ServiceProxy('/gazebo/set_model_state', SetModelState)
@@ -169,13 +162,24 @@ class BaseControllerFixed(threading.Thread):
         self.reset_joints_client = ros.ServiceProxy('/gazebo/set_model_configuration', SetModelConfiguration)
 
         self.u.putIntoGlobalParamServer("verbose", self.verbose)
-
-        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState, callback=self._receive_jstate, queue_size=1,buff_size = 2 ** 24, tcp_nodelay=True)
+        # subscribers
+        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState,
+                                         callback=self._receive_jstate, queue_size=1,buff_size = 2 ** 24, tcp_nodelay=True)
 
         self.apply_body_wrench = ros.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
 
         if (self.use_torque_control):
             self.pid = PidManager(self.joint_names)
+
+        # Loading a robot model of robot (Pinocchio)
+        if xacro_path is None:
+            print(colored(f"setting default xacro path", "blue"))
+            xacro_path = rospkg.RosPack().get_path(
+                self.robot_name + '_description') + '/urdf/' + self.robot_name + '.xacro'
+        else:
+            print(colored(f"loading custom xacro path:  : {xacro_path}", "blue"))
+        self.robot = getRobotModel(self.robot_name, generate_urdf=True, xacro_path=xacro_path,
+                                   additional_urdf_args=additional_urdf_args)
 
     def _receive_jstate(self, msg):
          for msg_idx in range(len(msg.name)):          
@@ -184,6 +188,7 @@ class BaseControllerFixed(threading.Thread):
                      self.q[joint_idx] = msg.position[msg_idx]
                      self.qd[joint_idx] = msg.velocity[msg_idx]
                      self.tau[joint_idx] = msg.effort[msg_idx]
+
 
     def send_des_jstate(self, q_des, qd_des, tau_ffwd):
          # No need to change the convention because in the HW interface we use our conventtion (see ros_impedance_contoller_xx.yaml)
@@ -196,6 +201,7 @@ class BaseControllerFixed(threading.Thread):
     def deregister_node(self):
         print( "deregistering nodes"     )
         self.ros_pub.deregister_node()
+
 
     def startupProcedure(self):
         if (self.use_torque_control):
@@ -240,6 +246,7 @@ class BaseControllerFixed(threading.Thread):
 
         self.ikin = robotKinematics(self.robot, conf.robot_params[self.robot_name]['ee_frame'])
 
+
     def logData(self):
         if (self.log_counter<conf.robot_params[self.robot_name]['buffer_size'] ):
             self.q_des_log[:, self.log_counter] = self.q_des
@@ -253,6 +260,21 @@ class BaseControllerFixed(threading.Thread):
             self.contactForceW_log[:,self.log_counter] =  self.contactForceW
             self.time_log[self.log_counter] = self.time
             self.log_counter+=1
+  # if self.log_counter > 0 and (self.log_counter % conf.robot_params[self.robot_name]['buffer_size']) == 0:
+  #       self.q_des_log = self.log_policy(self.q_des_log)
+  #       self.q_log = self.log_policy(self.q_log)
+  #       self.qd_des_log = self.log_policy(self.qd_des_log)
+  #       self.qd_log = self.log_policy(self.qd_log)
+  #       self.tau_ffwd_log = self.log_policy(self.tau_ffwd_log)
+  #       self.tau_log = self.log_policy(self.tau_log)
+  #       self.x_ee_log = self.log_policy(self.x_ee_log)
+  #       self.x_ee_des_log = self.log_policy(self.x_ee_des_log)
+  #       self.contactForceW_log = self.log_policy(self.contactForceW_log)
+  #       self.time_log = self.log_policy(self.time_log)
+  #   def log_policy(self, var):
+  #       tmp = np.empty((var.shape[0], var.shape[1] + conf.robot_params[self.robot_name]['buffer_size'])) * np.nan
+  #       tmp[:var.shape[0], :var.shape[1]] = var
+  #       return tmp
 
     def reset_joints(self, q0, joint_names = None):
         # create the message

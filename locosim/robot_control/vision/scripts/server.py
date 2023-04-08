@@ -3,36 +3,32 @@
 from __future__ import print_function
 import os
 import sys
-sys.path.insert(0, os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim"))
+sys.path.insert(0, os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim"))
 from robot_control.vision.scripts.yolov5 import detect
 from vision.srv import vision, visionResponse
 import rospy
 from sensor_msgs.msg import Image, PointCloud2, PointField
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 import cv2
 import ast
 import numpy as np
-from stl import mesh
 import sensor_msgs.point_cloud2 as pc2
-from roslib import message
 import open3d as o3d
-from simpleicp import SimpleICP, PointCloud
-import math
-from math import pi as pi
-from math import cos as cos
-from math import sin as sin
-import time
-import glob
+import cmath
+from math import pi, cos, sin, atan2, sqrt
 from pprint import pprint
 import copy
 from lab_exercises.lab_palopoli.kinematics import rotX, rotY, rotZ
+import time
 
 altezza_tavolo_da_gound_plane_gazebo = 0.8675
 
-path_stls = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "ros_impedance_controller", "worlds", "models")
-path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "yolov5")
-path_vision = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision")
-path_template = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "template")
+locosim = os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim")
+path_stls = os.path.join(locosim, "ros_impedance_controller", "worlds", "models")
+path_yolo = os.path.join(locosim, "robot_control", "vision", "scripts", "yolov5")
+path_vision = os.path.join(locosim, "robot_control", "vision")
+path_template = os.path.join(locosim, "robot_control", "vision", "scripts", "template")
+path_template_pcds = os.path.join(locosim, "robot_control", "vision", "scripts", "template", "pcds")
 path_template_home = os.path.join(os.path.expanduser("~"), "template")
 
 FIELDS_XYZ = [
@@ -47,312 +43,335 @@ class Listener:
         self.cl = []
         self.x_tavolo = []
         self.y_tavolo = []
-        self.x_tavolo_def = []
         self.roll = []
         self.pitch = []
         self.yaw = []
         self.processed = []
-        self.pointCloud = 0
+        self.gazebo_pcd = None
+        self.pcd_axis_aligned_bb = None
     
-    def changeBackground(self, img, height, width):
-        print('changing background')
-        for i in range(0, height):
-            for j in range (0, width):
-                # if i in range(0, int(height/10)) or i in range(int(9*height/10), height) \
-                #         or j in range(0, int(width/7)) or j in range(int(6*width/7), width):
-                pixel = img[i][j]
-                if pixel in [148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 235]:
-                    img[i][j] = 255
-        
-        return img
+    def checkTemplate(self, img_original, xmin, ymin, xmax, ymax):
+        h, w = img_original.shape
 
-    def createImageForTemplate(self, img_original, x_pos, y_pos, xmin, ymin, xmax, ymax):
-        print('controllo template')
-        img = img_original[ymin:ymax, xmin:xmax].copy()
+        img = img_original[ymin:ymax, xmin:xmax]
         height, width = img.shape
-
-        if x_pos > 0.75 or y_pos > 0.65:
-            img = self.changeBackground(img, height, width)
         
-        # cv2.imshow('.', img)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+        if xmin <= 0 or xmax >= w-1 or ymin <= 0 or ymax >= h-1:
+            return True, xmin, ymin, xmax, ymax
+
+        n = 3
 
         # controllo che i bordi siano tutti bianchi (max 3 pixel di fila)
-        soglia1 = 3
-        soglia2 = 3
-        print('sinistra - destra')
+        soglia1 = n
+        soglia2 = n
+        #p rint('sinistra - destra')
         for i in range(height):
             # prima colonna a sx
-            if img[i, 0] < 250:
+            if img[i, 0] < 210:
                 soglia1 -= 1
             else:
-                soglia1 = 3
+                soglia1 = n
 
             # ultima colonna a dx
-            if img[i, width-1] < 250:
+            if img[i, width-1] < 210:
                 soglia2 -= 1
             else:
-                soglia2 = 3
-            
-            #print(img[i, 0], '-', img[i, width-1])
+                soglia2 = n
             
             # se la soglia arriva a 0 -> sto tagliando male il template -> allargo il bounding box
             if soglia1 == 0:
                 xmin -= 1
-                print('--- correzione template ---')
-                return False, xmin, ymin, xmax, ymax, None
+                #print('--- correzione template ---')
+                return False, xmin, ymin, xmax, ymax
 
             if soglia2 == 0:
                 xmax += 1
-                print('--- correzione template ---')
-                return False, xmin, ymin, xmax, ymax, None
-                        
-        print('*** sinistra - destra OK **')
+                #print('--- correzione template ---')
+                return False, xmin, ymin, xmax, ymax
 
-        soglia1 = 3
-        soglia2 = 3
-        print('sopra - sotto')
+        soglia1 = n
+        soglia2 = n
+        # print('sopra - sotto')
         for j in range(width):
             # prima riga in alto
-            if img[0, j] < 250:
+            if img[0, j] < 210:
                 soglia1 -= 1
             else:
-                soglia1 = 3
+                soglia1 = n
 
             #ultima riga in basso
-            if img[height-1, j] < 250:
+            if img[height-1, j] < 210:
                 soglia2 -= 1
             else:
-                soglia2 = 3
-            
-            # print(img[0, j], '-', img[height-1, j])
+                soglia2 = n
 
             # se la soglia arriva a 0 -> sto tagliando male il template -> allargo il bounding box
             if soglia1 == 0:
                 ymin -= 1
-                print('--- correzione template ---')
-                return False, xmin, ymin, xmax, ymax, None
+                #print('--- correzione template ---')
+                return False, xmin, ymin, xmax, ymax
 
             if soglia2 == 0:
                 ymax += 1
-                print('--- correzione template ---')
-                return False, xmin, ymin, xmax, ymax, None
-            
-            # se il controllo riesce ad arrivare a questo punto (ha fatto entrambi i cicli for senza uscire e ricominciare) allora il template è ok
-        print('*** sopra - sotto OK **')
-
-        return True, xmin, ymin, xmax, ymax, img
+                #print('--- correzione template ---')
+                return False, xmin, ymin, xmax, ymax
+        
+        return True, xmin, ymin, xmax, ymax
 
     def getTemplatePosition(self, xpos, ypos):
         if 0. < xpos < 0.333:
-            template_x = 0.25
+            template_x = 0.1667
         elif 0.333 <= xpos <= 0.667:
             template_x = 0.5
         else:
-            template_x = 0.75
+            template_x = 0.8333
         
         if 0. < ypos < 0.367:
-            template_y = 0.3125
+            template_y = 0.2584
         elif 0.367 <= ypos <= 0.5834:
             template_y = 0.475
         else:
-            template_y = 0.6375
+            template_y = 0.6917
         
         return template_x, template_y
 
-    def call(self, xmin, xmax, ymin, ymax, classe=None):
-        rospy.loginfo('--- reading pointcloud to get first positions ---')
-        print("-----------------------------getting distances----------------------------")
+    def getPointcloudInfo(self):
+        print('getPointcloudInfo')
+        self.pcd_axis_aligned_bb = self.gazebo_pcd.get_axis_aligned_bounding_box()
+        self.pcd_axis_aligned_bb.color = (1, 0, 0)
+        pcd_center = self.pcd_axis_aligned_bb.get_center()
+        print('centro bb: ', pcd_center)
+        self.x_tavolo.append(np.round(pcd_center[0], 4))
+        self.y_tavolo.append(np.round(pcd_center[1], 4))
+
+        pcd_dimensions = self.pcd_axis_aligned_bb.get_extent()
+        print('dimensions of bb: ', pcd_dimensions)
+
+        return pcd_center, pcd_dimensions
+
+    def prepareGazeboPointCloud(self, xmin, ymin, xmax, ymax):
+        print('prepareGazeboPointCloud')
         # calcolo il centro del bb di yolo e leggo la pointcloud in quel punto per ottenere una posizione approssimativa del blocco
-        self.pointCloud = rospy.wait_for_message("/ur5/zed2/point_cloud/cloud_registered", PointCloud2, timeout=None)
-        field_names = [field.name for field in self.pointCloud.fields]
-        data_out = list(pc2.read_points(self.pointCloud, field_names=field_names, skip_nans=False, uvs=[[int((xmax+xmin)/2), int(((ymax+ymin)/2))]]))
+        raw_pointcloud = rospy.wait_for_message("/ur5/zed_node/point_cloud/cloud_registered", PointCloud2, timeout=None)
+        field_names = [field.name for field in raw_pointcloud.fields]
+
+        data_out = list(pc2.read_points(raw_pointcloud, field_names=field_names, skip_nans=False, uvs=[[int((xmax+xmin)/2), int(((ymax+ymin)/2))]]))
         xyz = np.array(np.array(data_out).flat)
 
         rot_z = np.matrix([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         rot_x = np.matrix([[1, 0, 0], [0, -0.5, 0.866], [0, -0.866, -0.5]])
         res = np.dot(rot_z @ rot_x, np.array([xyz[0], xyz[1], xyz[2]])) + np.array([-0.4, 0.475, 1.45])
-
-        x_pos = round(res[0, 0], 4)
-        y_pos = round(res[0, 1], 4)
-
-        # controllo se un blocco in una posizione vicina è già stato aggiunto, se si, non serve processare questo blocco
-        pos_ok = True
-        for x,y in zip(self.x_tavolo, self.y_tavolo):
-            if x-0.03 < x_pos < x+0.03 and y-0.03 < y_pos < y+0.03:
-                pos_ok = False
         
         # controllo sulla posizione data dalla pointcloud
-        if res[0, 2] > 0.9:
-            pos_ok = False
-        
-        if not pos_ok:
-            print('terminazione per pericolo di processazione dello stesso blocco - detection multiple sullo stesso blocco')
-            return
+        if res[0, 2] > 1.1:
+            print('detection incorretta - non è un blocco (probabilmente gripper o braccio)')
+            return False
 
-        rospy.loginfo('--- running template matching ---')
-        print("-----------------------------template matching----------------------------")
-        # dato il bb di yolo, controllo se va bene e in caso lo sistemo (aumentando le dimensioni) nel caso in cui il blocco venisse tagliato male aggiornando xmin, xmax, ymin, ymax
-        img_original = cv2.imread(os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim","robot_control","vision","scripts","yolov5","cv_img.jpg"), 0)
-
+        cv_image = cv2.imread(os.path.join(locosim,"robot_control","vision","scripts","yolov5","cv_img.jpg"), 0)
         ok = False
         while not ok:
-            ok, xmin, ymin, xmax, ymax, img = self.createImageForTemplate(img_original, x_pos, y_pos, xmin, ymin, xmax, ymax)
+            ok, xmin, ymin, xmax, ymax = self.checkTemplate(cv_image, xmin, ymin, xmax, ymax)
 
-        method = cv2.TM_CCORR_NORMED
-
-        # ottengo il quadrante di appartenenza del blocco
-        temp_x, temp_y = self.getTemplatePosition(x_pos, y_pos)
-
-        template_path = os.path.join(path_template, str(temp_x)+'_'+str(temp_y))
-        print("path: ", template_path)
-
-        val_name = {}
-        max_corr_index = ""
-        max_val_rel = -1
-        # provo tutti i template in quel quadrante e tengo quello con matching migliore per ricavare classe e orientazione
-        for t in os.listdir(template_path):
-            if classe is not None:
-                template_class = int(t.split('_')[0])
-                if classe != template_class:
-                    continue
-
-            temp = cv2.imread(os.path.join(template_path, t), 0)
-            
-            h, w = temp.shape
-            image_ratio = h/w
-            if image_ratio*0.9 <= ((ymax-ymin)/(xmax-xmin)) <= image_ratio*1.1:
-                #resize immagine
-                img2 = img.copy()
-
-                if(h > ymax-ymin):
-                    temp = cv2.resize(temp, (int(xmax-xmin), int(ymax-ymin)-2))
-                else:
-                    img2 = cv2.resize(img2, (w+2,h+2))
-
-                # cv2.namedWindow("res")
-                # cv2.namedWindow("temp")
-                # cv2.moveWindow("res", 40,30)
-                # cv2.moveWindow("temp", 340,30)
-                # cv2.imshow("res", img2)
-                # cv2.imshow('temp', temp)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-
-                result = cv2.matchTemplate(img2, temp, method) 
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                location = max_loc
-                
-                val_name[t] = max_val
-                if max_val_rel < val_name[t]:
-                    max_corr_index = t
-                    max_val_rel = val_name[t]
-                
-        print("*****************************************")
-        print("index:",max_corr_index)
-        print("val_rel:", max_val_rel)
-
-        info = max_corr_index.split("_")
-        print(info)
-        self.cl.append(int(info[0]))
-        self.roll.append(np.round(float(info[3]),4))
-        self.pitch.append(np.round(float(info[4]),4))
-        info[5] = info[5][:len(info[5])-4] # per togliere il .jpg
-        self.yaw.append(np.round(float(info[5]),4))
-
-        rospy.loginfo('--- getting precise center of block ---')
         # calcolo più preciso del centro del blocco (attraverso la poincloud)
         uvs = []
         for i in range(int(xmin), int(xmax)):
             for j in range(int(ymin), int(ymax)):
                 uvs.append([i, j])
         
-        cloud_data = list(pc2.read_points(self.pointCloud, field_names=field_names, skip_nans=True, uvs=uvs))
+        cloud_data = list(pc2.read_points(raw_pointcloud, field_names=field_names, skip_nans=True, uvs=uvs))
         
         xyz = [np.array([x,y,z]) for x,y,z,_ in cloud_data ]
         
         xyz_worldframe = []
         for p in xyz:
             p_worldframe = np.array((np.dot(rot_z @ rot_x, p) + np.array([-0.4, 0.475, 1.45])).flat)
-            if p_worldframe[2] > 0.816:
+            if p_worldframe[2] > 0.866 and p_worldframe[1] > 0.155:
                 xyz_worldframe.append(p_worldframe)
         
-        open3d_cloud = o3d.geometry.PointCloud()
+        raw_gazebo_pcd = o3d.geometry.PointCloud()
         if len(xyz_worldframe):
-            open3d_cloud.points = o3d.utility.Vector3dVector(np.array(xyz_worldframe))
-            open3d_cloud.paint_uniform_color([0, 0, 1])
-            aabb = open3d_cloud.get_axis_aligned_bounding_box()
-            aabb.color = (1, 0, 0)
-            c = aabb.get_center()
-            print('centro bb: ', c)
-            self.x_tavolo.append(np.round(c[0], 4))
-            self.y_tavolo.append(np.round(c[1], 4))
-            self.processed.append(False)
-            # o3d.visualization.draw_geometries([open3d_cloud, aabb])
+            raw_gazebo_pcd.points = o3d.utility.Vector3dVector(np.array(xyz_worldframe))
+            raw_gazebo_pcd.paint_uniform_color([0, 0, 1])
+            
+            # o3d.visualization.draw_geometries([raw_gazebo_pcd])
+            
+            gazebo_pcd = raw_gazebo_pcd.voxel_down_sample(voxel_size=0.004)
+            gazebo_pcd.paint_uniform_color([0, 0, 1])
+
+            self.gazebo_pcd = gazebo_pcd
+
+            return True
         else:
             print('errore nella lettura della pointcloud, nessun punto rilevato')
+            return False
 
-        # tot = np.array([0., 0., 0.])
-        # for p in xyz_worldframe:
-        #     tot += p
-        # com = tot / len(xyz_worldframe)
+    def bbDistance(self, template_pcd, transformation):
+        template_pcd.transform(transformation)
+        bb = template_pcd.get_axis_aligned_bounding_box()
+        return np.linalg.norm(self.pcd_axis_aligned_bb.get_extent()-bb.get_extent())
 
-        # stl_data = mesh.Mesh.from_file(os.path.join(path_stls, "X1-Y4-Z2", "X1-Y4-Z2.stl"))
-        # points = stl_data.points.reshape([-1,3])
-        # stl_points = np.unique(points, axis=0)
+    def getTransformation(self, gazebo_pcd_dimensions, template_dir):
+        template_files = []
+        for pc in os.listdir(os.path.join(path_template_pcds, template_dir)):
+            template_files.append(pc)
+        template_files.sort()
 
-        # stl_cloud = o3d.geometry.PointCloud()
-        # stl_cloud.points = o3d.utility.Vector3dVector(np.array(stl_points))
-        # stl_cloud.paint_uniform_color([1, 0.706, 0])
+        top_result = ''
+        best_transformation = None
+        best_fitness = 0.
+        best_correspondence = 0
+        best_rmse = 1.
+        for pc in template_files:
+            # pcd BLU -> lettura da yolo (blocco incognito di cui stabilire classe e orientamento)
+            # pcd ROSSA -> pcd template
+            # print(pc)
+            
+            template_pcd = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, pc))
+            template_bb = template_pcd.get_axis_aligned_bounding_box()
+            template_dimensions = template_bb.get_extent()
+            
+            ok = False
+            if template_dimensions[2]-0.007 < gazebo_pcd_dimensions[2] < template_dimensions[2]+0.0025:
+                if gazebo_pcd_dimensions[1]*0.8 < template_dimensions[1] < gazebo_pcd_dimensions[1]*1.2 or gazebo_pcd_dimensions[0]*0.8 < template_dimensions[0] < gazebo_pcd_dimensions[0]*1.2:
+                    ok = True
+            
+            if not ok:
+                # print(' - dimensioni non adeguate')
+                continue
+            
+            print(pc)
+            # print(' - gaz-temp pcd dims: ', gazebo_pcd_dimensions, template_dimensions)
+            
+            template_pcd.paint_uniform_color([1, 0, 0])
 
-        # diameter = np.linalg.norm(np.asarray(stl_cloud.get_max_bound()) - np.asarray(stl_cloud.get_min_bound()))
-        # camera = [1., 0., diameter]
-        # print('camera: ', camera)
-        # radius = diameter * 1000
+            source = copy.deepcopy(template_pcd)
+            target = copy.deepcopy(self.gazebo_pcd)
 
-        # _, pt_map = stl_cloud.hidden_point_removal(camera, radius)
+            trans_init = np.asarray([[1.,0.,0.,0.], [0.,1.,0.,0.], [0.,0.,1.,0.], [0.,0.,0.,1.]])
+            source.transform(trans_init)
 
-        # pcd = stl_cloud.select_by_index(pt_map)
+            threshold = 0.009
+            reg_p2p = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,o3d.pipelines.registration.TransformationEstimationPointToPoint())
+            print('best fitness finora: ', best_fitness)
+            
+            if reg_p2p.fitness >= best_fitness*0.95:
+                dist = self.bbDistance(source, reg_p2p.transformation)
+                print(dist)
+                if reg_p2p.fitness >= 0.95 and dist < 0.01:
+                    if len(reg_p2p.correspondence_set) >= best_correspondence and reg_p2p.inlier_rmse*0.8 <= best_rmse:
+                        best_fitness = reg_p2p.fitness
+                        best_rmse = reg_p2p.inlier_rmse
+                        top_result = pc
+                        best_correspondence = len(reg_p2p.correspondence_set)
+                        best_transformation = reg_p2p.transformation
+                    
+                else:
+                    if reg_p2p.inlier_rmse <= best_rmse and dist < 0.01:
+                        best_fitness = reg_p2p.fitness
+                        best_rmse = reg_p2p.inlier_rmse
+                        top_result = pc
+                        best_transformation = reg_p2p.transformation
+
+            print(' - ', reg_p2p.fitness, reg_p2p.inlier_rmse, len(reg_p2p.correspondence_set))
+            print('----------------')
+            # source.transform(reg_p2p.transformation)
+            # o3d.visualization.draw_geometries([source, target])
+
+        if top_result != '':
+            print('best pc: ', top_result)
+            source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
+            source.transform(best_transformation)
+            source.paint_uniform_color([1, 0, 0])
+            # aabb = source.get_axis_aligned_bounding_box()
+            # print(self.bbDistance(aabb))
+            
+            o3d.visualization.draw_geometries([source, target])
+
+            return top_result, best_transformation
+        else:
+            print('###### Nessun match eseguito con successo ######')
+            return None, None
+
+    def getAngles(self, transformation, result):
+        rotm = transformation[0:3, 0:3]
         
-        # pcd_moved = []
-        # for p in np.asarray(pcd.points):
-        #     if p[2] > 0.005:
-        #         pcd_moved.append(p + np.array([c[0], c[1], 0.816]))
+        theta1 = -np.real(cmath.asin(rotm[2][0]))
+        theta2 = pi - theta1
+
+        phi1 = np.round(atan2(rotm[1][0]/cos(theta1), rotm[0][0]/cos(theta1)), 4)
+        phi2 = np.round(atan2(rotm[1][0]/cos(theta2), rotm[0][0]/cos(theta2)), 4)
+
+        # quando il blocco è in piedi (implementare il controllo), 
+        # prendo il phi (angolo sulla Z, yaw) che sta tra 0 e pi
+        info = result.split('_')
+        roll = float(info[3])
+        pitch = float(info[4])
+        major_yaw = float(info[5][:len(info[5])-4]) # per togliere il .jpg
         
-        # pcd.points = o3d.utility.Vector3dVector(np.array(pcd_moved))
+        yaw1 = np.round(phi1 + major_yaw, 4)
+        yaw2 = np.round(phi2 + major_yaw, 4)
+
+        if 0.0-0.01 < roll < 0.0+0.01 and 0.0-0.01 < pitch < 0.0+0.01 or pi-0.01 < pitch < pi+0.01:
+            if 0.0 < yaw1 < pi:
+                yaw = yaw1
+            else:
+                yaw = yaw2
+        else: #if pi/2-0.01 < roll < pi/2+0.01 or pi/2-0.01 < pitch < pi/2+0.01 or 2. < roll < 3.:
+            yaw = np.round((yaw1 + 2*pi) % (2*pi), 4)
+
+        return roll, pitch, yaw
+
+    def call(self, xmin, xmax, ymin, ymax, classe=None):
+        print("----------------------getting gazebo pointcloud----------------------")
+        ok = self.prepareGazeboPointCloud(xmin, ymin, xmax, ymax)
+
+        if not ok:
+            return False
         
-        # downpcd = open3d_cloud.voxel_down_sample(voxel_size=0.004)
-        # downpcd.paint_uniform_color([0, 1, 0])
+        pcd_center, pcd_dimensions = self.getPointcloudInfo()
 
-        # # o3d.visualization.draw_geometries([pcd, downpcd])
+        print('-------- running ICP --------')
+        temp_x, temp_y = self.getTemplatePosition(pcd_center[0], pcd_center[1])
+        temp_x = 0.5
+        template_dir = str(temp_x)+'_'+str(temp_y)
+        
+        # # scommentare per salvare la pointcloud
+        # o3d.visualization.draw_geometries([self.gazebo_pcd])
+        # o3d.io.write_point_cloud(os.path.join(path_template_pcds, template_dir, '6_'+template_dir+'_1.5708_0_1.5708.pcd'), self.gazebo_pcd)
+        # input('...')
 
-        # trans_init = np.asarray([[1.,0.,0.,0.], [0.,1.,0.,0.], [0.,0.,1.,0.], [0.,0.,0.,1.]])
+        x_offset = 0.5 - pcd_center[0]
+        y_offset = float(temp_y) - pcd_center[1]
 
-        # source = copy.deepcopy(pcd)
-        # target = copy.deepcopy(downpcd)
+        trans_mat = np.eye(4)
+        trans_mat[0:3, 3] = [x_offset, y_offset, 0]
+        self.gazebo_pcd.transform(trans_mat)
 
-        # source.paint_uniform_color([1, 0, 0])
-        # target.paint_uniform_color([0, 1, 0])
-        # source.transform(trans_init)
-        # o3d.visualization.draw_geometries([source, target])
+        top_result, best_transformation = self.getTransformation(pcd_dimensions, template_dir)
 
-        # threshold = 0.02
-        # evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
-        # print(evaluation)
-
-        # reg_p2p = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,o3d.pipelines.registration.TransformationEstimationPointToPoint())
-        # print(reg_p2p)
-        # print("Transformation is:")
-        # print(reg_p2p.transformation)
-
-        # source.transform(reg_p2p.transformation)
-        # o3d.visualization.draw_geometries([source, target])
-
+        if top_result is not None and best_transformation is not None:
+            roll, pitch, yaw = self.getAngles(best_transformation, top_result)
+            
+            info = top_result.split('_')
+            classe = info[0]
+            
+            print('------------------------------------')
+            print(top_result)
+            print('classe: ', classe, ' - roll: ', roll, ' - pitch: ', pitch, ' - yaw: ', yaw)
+            self.cl.append(int(classe))
+            self.roll.append(roll)
+            self.pitch.append(pitch)
+            self.yaw.append(yaw)
+            print('-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-')
+            return True
+        
+        return False
+        
        
-def presenceControl(arr, xmin, ymin):
-    for xmin1, ymin1, xmax1, ymax1, prob1, cl1 in arr:
-        if ((xmin < xmin1 + 3 and xmin > xmin1 - 3) and (ymin < ymin1 + 3 and ymin > ymin1 - 3)):
+def presenceControl(arr, xmin, ymin, xmax, ymax):
+    for xmin1, ymin1, xmax1, ymax1, _, _ in arr:
+        if (xmin1-5 < xmin < xmin1+5 and ymin1-5 < ymin < ymin1+5) or (xmax1-5 < xmax < xmax1+5 and ymax1-5 < ymax < ymax1+5):
+            print('detection multipla')
             return True
     return False
 
@@ -366,36 +385,28 @@ def dataProcessing():
     print(det_res)
 
     blocks_info = []
-    to_ret = []
     if len(det_res):
-        xmin, ymin, xmax, ymax, confidence, classe = det_res[0]
-        blocks_info.append(det_res[0])
-
-        xc_ = ((xmax + xmin) / 2)
-        yc_ = ((ymin+ymax) / 2)
-
         l = Listener()
 
-        if confidence > 0.94:
-            l.call(xmin,xmax,ymin,ymax, int(classe))
-        else:
-            l.call(xmin,xmax,ymin,ymax)
-
-        to_ret.append([classe, xc_, yc_])
-
         for xmin, ymin, xmax, ymax, confidence, classe in det_res:
-            if (not presenceControl(blocks_info, xmin, ymin)):
-                blocks_info.append([xmin, ymin, xmax, ymax, confidence, classe])
+            print('considering [', xmin, ymin, xmax, ymax, confidence, classe, ']')
+            if ymax < 420:
+                continue
+            
+            block_presence = presenceControl(blocks_info, xmin, ymin, xmax, ymax)
+            print('blocco presente?: ', block_presence)
+            pprint(blocks_info)
 
-                xc_ = ((xmax + xmin) / 2)
-                yc_ = ((ymax + ymin) / 2)
-
+            if not block_presence:
                 if confidence > 0.94:
-                    l.call(xmin,xmax,ymin,ymax, int(classe))
+                    ok = l.call(xmin, xmax, ymin, ymax, int(classe))
                 else:
-                    l.call(xmin,xmax,ymin,ymax)
+                    ok = l.call(xmin, xmax, ymin, ymax)
                 
-                to_ret.append([int(classe), xc_, yc_])
+                if not ok:
+                    continue
+                
+                blocks_info.append([xmin, ymin, xmax, ymax, confidence, classe])
 
         print("results in data: ", l.cl, l.x_tavolo, l.y_tavolo, l.roll, l.pitch, l.yaw)
         return visionResponse(len(l.cl), l.cl, l.x_tavolo, l.y_tavolo, l.roll, l.pitch, l.yaw, l.processed)
@@ -410,7 +421,7 @@ def detection():
 
 def retImage():
     print("------------------------taking image----------------------------")
-    image = rospy.wait_for_message("/ur5/zed2/left/image_rect_color", Image, timeout=None)
+    image = rospy.wait_for_message("/ur5/zed_node/left/image_rect_color", Image, timeout=None)
     bridge = CvBridge()
     cv_image = bridge.imgmsg_to_cv2(image, "mono8")
     

@@ -1,17 +1,5 @@
 {
-    "python.autoComplete.extraPaths": [
-        "/home/rico/ros_ws/devel/lib/python3/dist-packages",
-        "/home/rico/ros_ws/install/lib/python3/dist-packages",
-        "/opt/ros/noetic/lib/python3/dist-packages",
-        "/opt/openrobots/lib/python3.8/site-packages",
-        "/home/rico/ros_ws/src/locosim/robot_control"
-    ],
     "python.analysis.extraPaths": [
-        "/home/rico/ros_ws/devel/lib/python3/dist-packages",
-        "/home/rico/ros_ws/install/lib/python3/dist-packages",
-        "/opt/ros/noetic/lib/python3/dist-packages",
-        "/opt/openrobots/lib/python3.8/site-packages",
-        "/home/rico/ros_ws/src/locosim/robot_control",
-        "./robot_control/lab_exercises/lab_palopoli"
+        "./robot_control/vision/scripts/yolov5"
     ]
 }

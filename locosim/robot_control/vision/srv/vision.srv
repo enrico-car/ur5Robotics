@@ -1,8 +1,9 @@
 ---
 int64 n_res
-int64[] class_
-float64[] xcentre
-float64[] ycentre
+int64[] classe
+float64[] x_center
+float64[] y_center
 float64[] roll
 float64[] pitch
 float64[] yaw
+bool[] processed

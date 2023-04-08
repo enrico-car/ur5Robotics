@@ -12,13 +12,13 @@ from math import cos as cos
 from math import sin as sin
 from math import atan2 as atan2
 from math import sqrt as sqrt
-import time
+import json
 import os
 import cv2
 from gazebo_ros_link_attacher.srv import *
 np.set_printoptions(precision=5, suppress=True)
 
-block_class=8
+block_class=0
 
 global name
 name = ""
@@ -81,7 +81,7 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
                     model_name = model_name,
                     model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',str(blocks_to_spawn[model_name]),'model.sdf'), 'r').read(),
                     robot_namespace = '',
-                    initial_pose = Pose(position=Point(0.95, 0.35, altezza_tavolo + class2dimensions[block_class][1]/2), orientation=orientation),
+                    initial_pose = Pose(position=Point(0.95, 0.35, altezza_tavolo+class2dimensions[block_class][1]/2), orientation=orientation),
                     reference_frame = 'world'
                 )
         else:
@@ -89,6 +89,7 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
 
             for i in range(1, n+1):
                 stl_name = json_file[str(i)]["class"]
+                print('spawning ', stl_name)
                 model_class = block_names.index(stl_name)
                 model_name = 'brick_' + str(i) + '_' + stl_name
 
@@ -97,18 +98,18 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
                 x = random.uniform(0.07, 0.93)
                 y = random.uniform(0.25, 0.73)
 
-                # controllo se sono dentro un raggio di 10cm dalla posizione della base del robot (zona di singolarità di spalla)
+                # controllo se sono dentro un raggio di 12cm dalla posizione della base del robot (zona di singolarità di spalla)
                 ok = False
                 while not ok:
                     dist = sqrt((0.5-x)**2 + (0.35-y)**2)
                     
-                    if dist > 0.12:
+                    if dist > 0.15:
                         ok = True
                     else:
                         x = random.uniform(0.07, 0.93)
                         y = random.uniform(0.23, 0.77)
                 
-                position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2)
+                position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.03)
 
                 spawn_model_client(
                 model_name = model_name,
@@ -121,7 +122,7 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
         for i in range(0, random_blocks_to_spawn):
             # seleziona una classe a caso
             #model_class = random.choice([1, 2, 3, 5, 6, 7, 8])
-            model_class = 9
+            model_class = 0
 
             # crea il nome
             stl_name = block_names[model_class]
@@ -132,7 +133,7 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
             x = random.uniform(0.07, 0.95)
             y = random.uniform(0.22, 0.75)
 
-            position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2)
+            position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.05)
             
             spawn_model_client(
                 model_name = model_name,
@@ -172,10 +173,9 @@ def randomQuaternion():
         pitch = random.choice([0., pi/2, pi])
     else:
         pitch = 0.
-    roll = 0
-    pitch = 0
-    yaw = random.choice([0., pi/8, pi/4, 3/8*pi, pi/2, 5/8*pi, 3/4*pi, 7/8*pi, pi, pi+pi/8, pi+pi/4, pi+3/8*pi, pi+pi/2, pi+5/8*pi, pi+3/4*pi, pi+7/8*pi])
-
+    #yaw = random.choice([0., pi/8, pi/4, 3/8*pi, pi/2, 5/8*pi, 3/4*pi, 7/8*pi, pi, pi+pi/8, pi+pi/4, pi+3/8*pi, pi+pi/2, pi+5/8*pi, pi+3/4*pi, pi+7/8*pi])
+    yaw = random.uniform(0.0, 2*pi)
+    
     angles = [roll, pitch, yaw]
 
     w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
@@ -190,56 +190,56 @@ def createQuaternion(iter):
 
     #BLOCCHI RETTANGOLARI
     if block_class in [1, 2, 5, 7, 8]:
-        if(iter<72):
-            pitch= 0
-            yaw=int(iter/9)*(pi/8)
-            roll= 0
-        elif(iter<144):
-            pitch=pi
-            yaw=int((iter%72)/9)*(pi/8)
-            roll= 0
-        elif(iter<288):
-            pitch=pi/2
-            roll= 0
-            yaw=int((iter%144)/9)*(pi/8)
+        if iter < 72:
+            pitch = 0
+            yaw = int(iter/9)*(pi/8)
+            roll = 0
+        elif iter < 144:
+            pitch = pi
+            yaw = int((iter%72)/9)*(pi/8)
+            roll = 0
+        elif iter < 288:
+            pitch = pi/2
+            roll = 0
+            yaw = int((iter%144)/9)*(pi/8)
         else:
-            pitch=0
-            roll= pi/2
-            yaw=int((iter%288)/9)*(pi/8)
+            pitch = 0
+            roll = -pi/2
+            yaw = int((iter%288)/9)*(pi/8)+pi
 
     #BLOCCHI QUADRATI
     elif block_class in [0, 9]:
-        if(iter<36):
-            pitch= 0
-            yaw=int(iter/9)*(pi/8)
-            roll= 0
-        elif(iter<72):
-            pitch=pi
-            yaw=int((iter%36)/9)*(pi/8)
-            roll= 0
+        if iter < 36:
+            pitch = 0
+            yaw = int(iter/9)*(pi/8)
+            roll = 0
+        elif iter < 72:
+            pitch = pi
+            yaw = int((iter%36)/9)*(pi/8)
+            roll = 0
         else:
-            pitch=pi/2
-            roll= 0
-            yaw=int((iter-72)/9)*(pi/8)+pi
+            pitch = pi/2
+            roll = 0
+            yaw = int((iter-72)/9)*(pi/8)+pi
 
     #BLOCCO CHAMFER/FILLET
     else:
-        if(iter<144): #in piedi
-            roll= 0
-            pitch= 0
-            yaw=int(iter/9)*(pi/8)%(2*pi)
-        elif(iter<288): #pi, storto
-            roll= 0
-            pitch=pi
-            yaw=int((iter%144)/9)*(pi/8)%(2*pi)
-        elif(iter<432):   #sul lato lungo
-            pitch=pi/2
-            roll= 0
-            yaw=int((iter%288)/9)*(pi/8)%(2*pi)
+        if iter < 144: #in piedi
+            roll = 0
+            pitch = 0
+            yaw = int(iter/9)*(pi/8)%(2*pi)
+        elif iter < 288: #pi, storto
+            roll = 0
+            pitch = pi
+            yaw = int((iter%144)/9)*(pi/8)%(2*pi)
+        elif iter < 432:   #sul lato lungo
+            pitch = pi/2
+            roll = 0
+            yaw = int((iter%288)/9)*(pi/8)%(2*pi)
         else:       #sul lato corto
-            pitch=0
-            roll= 3*(pi/2)
-            yaw=int((iter%432)/9)*(pi/8)%(2*pi)
+            pitch = 0
+            roll = -pi/2
+            yaw = (int((iter%432)/9)*(pi/8)+pi)%(2*pi)
 
     angles = [roll, pitch, yaw]
 
@@ -347,8 +347,17 @@ def talker():
 
     rate = rospy.Rate(500)
 
-    spawnBlocks(1)
+    json_fd = open(os.path.join(os.path.expanduser("~"),"ros_ws","src","castle_build_path","output.json"))
+    json_file = json_fd.read()
+    json_fd.close()
+    json_file = json.loads(json_file)
+
+    spawnBlocks(json_file=json_file)
+    #spawnBlocks(1)
     # input('..')
+
+    # x_in = [0.25,0.5, 0.75]
+    # y_in = [0.3125,0.475, 0.6375]
 
     # x_in = [0.25,0.5, 0.75]
     # y_in = [0.3125,0.475, 0.6375]

@@ -4,14 +4,19 @@ import time
 from base_controllers.utils.utils import Utils
 
 class LegOdometry:
-    def __init__(self, robot):
+    def __init__(self, robot, real_robot = False):
         self.robot = robot
+        self.real_robot = real_robot
+
         self.u = Utils()
 
         self.w_feet_pos_init = np.empty([3, len(self.robot.getEndEffectorsFrameId)]) * np.nan
 
-        self.w_p_b_update = np.empty(3) * np.nan
-        self.w_v_b_update = np.empty(3) * np.nan
+        self.w_p_b_update = np.zeros(3)
+        self.w_v_b_update = np.zeros(3)
+
+        self.w_p_b = np.zeros(3)
+        self.w_v_b = np.zeros(3)
 
         self._b_conf_neutral = pin.neutral(self.robot.model)
         self._b_vel_neutral  = np.zeros(self.robot.model.nv)
@@ -21,9 +26,7 @@ class LegOdometry:
 
 
     def compute_feet_position(self, q):
-        q_tmp = q.copy()
-        q_tmp[7:] = self.u.mapFromRos(q_tmp[7:])
-        pin.forwardKinematics(self.robot.model, self.robot.data, q_tmp)
+        pin.forwardKinematics(self.robot.model, self.robot.data, q)
         pin.updateFramePlacements(self.robot.model, self.robot.data)
         for i, index in enumerate(self.robot.getEndEffectorsFrameId):
             self.w_feet_pos_init[:, i] = self.robot.data.oMf[index].translation.copy()
@@ -33,7 +36,7 @@ class LegOdometry:
         self.compute_feet_position(q)
         self._reset_has_been_called_once = True
 
-
+    # deprecated
     def estimate_base_wrt_world(self, contacts_state, quat, qj, ang_vel, vj):
         '''
         get base position (and velocity) given legs joints configuration (and velocity)
@@ -70,14 +73,51 @@ class LegOdometry:
                 b_v_f = b_Jl_f @ self._b_vel_neutral
                 w_v_b = -pin.skew(w_omega_b) @ w_R_b @ b_p_f - w_R_b @ b_v_f
 
-                self.w_p_b_update += w_p_b
-                self.w_v_b_update += w_v_b
+                self.w_p_b_update = (k * self.w_p_b_update + w_p_b)/(k+1)
+                self.w_v_b_update = (k * self.w_v_b_update + w_v_b)/(k+1)
 
-        if nc != 0:
-            self.w_p_b_update/=nc
-            self.w_v_b_update/=nc
+        # if nc != 0:
+        #     self.w_p_b_update/=nc
+        #     self.w_v_b_update/=nc
 
         return self.w_p_b_update, self.w_v_b_update
+
+
+    def base_in_world(self, contact_state,  B_contacts, b_R_w, wJ, ang_vel, qd, update_legOdom=True):
+        '''
+        same idea of the above, but faster. to be used togeter with Controller in quadruped_controller.py
+        '''
+
+        if update_legOdom:
+            if  self._reset_has_been_called_once:
+                nc = 0
+                if any(contact_state):
+                    self.w_p_b_update[:] = 0.
+                    self.w_v_b_update[:] = 0.
+                    if self.real_robot == False:
+                        for k, value in enumerate(contact_state):
+                            if value:
+                                nc+=1
+                                w_p_b_foot = self.w_feet_pos_init[:, k] - b_R_w@ B_contacts[k]
+                                w_v_b_foot = -pin.skew(ang_vel) @  b_R_w @ B_contacts[k] - wJ[k] @ self.u.getLegJointState(k, qd)
+
+                                self.w_p_b_update += w_p_b_foot
+                                self.w_v_b_update += w_v_b_foot
+                    else:
+                        for k, value in enumerate(contact_state):
+                            nc = 4
+                            w_p_b_foot = self.w_feet_pos_init[:, k] - b_R_w @ B_contacts[k]
+                            w_v_b_foot = -pin.skew(ang_vel) @ b_R_w @ B_contacts[k] - wJ[k] @ self.u.getLegJointState(k,
+                                                                                                                      qd)
+
+                            self.w_p_b_update += w_p_b_foot  + 0.02 # this is the foot radius
+                            self.w_v_b_update += w_v_b_foot
+
+                    self.w_p_b = self.w_p_b_update/nc
+                    self.w_v_b = self.w_v_b_update/nc
+
+
+        return self.w_p_b, self.w_v_b
 
 
 

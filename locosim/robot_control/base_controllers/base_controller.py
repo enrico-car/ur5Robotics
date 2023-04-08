@@ -40,7 +40,7 @@ from base_controllers.utils.pidManager import PidManager
 from base_controllers.utils.math_tools import *
 from numpy import nan
 import matplotlib.pyplot as plt
-from base_controllers.utils.common_functions import plotCoM, plotJoint
+from base_controllers.utils.common_functions import *
 import pinocchio as pin
 from base_controllers.utils.common_functions import getRobotModel
 from ros_impedance_controller.msg import EffortPid
@@ -48,7 +48,7 @@ from ros_impedance_controller.msg import EffortPid
 #dynamics
 np.set_printoptions(threshold=np.inf, precision = 5, linewidth = 1000, suppress = True)
 import  base_controllers.params as conf
-robotName = "go1"
+robotName = "solo"
 
 
 class BaseController(threading.Thread):
@@ -180,6 +180,7 @@ class BaseController(threading.Thread):
         self.pause_physics_client = ros.ServiceProxy('/gazebo/pause_physics', Empty)
         self.unpause_physics_client = ros.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.u.putIntoGlobalParamServer("verbose", self.verbose)
+
         self.apply_body_wrench = ros.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
 
 
@@ -210,28 +211,28 @@ class BaseController(threading.Thread):
         grf[0] = msg.states[0].wrenches[0].force.x
         grf[1] =  msg.states[0].wrenches[0].force.y
         grf[2] =  msg.states[0].wrenches[0].force.z
-        self.u.setLegJointState(0, grf, self.grForcesLocal_gt)
+        self.u.setLegJointState(self.u.leg_map["LF"], grf, self.grForcesLocal_gt)
 
     def _receive_contact_rf(self, msg):
         grf = np.zeros(3)
         grf[0] = msg.states[0].wrenches[0].force.x
         grf[1] =  msg.states[0].wrenches[0].force.y
         grf[2] =  msg.states[0].wrenches[0].force.z
-        self.u.setLegJointState(1, grf, self.grForcesLocal_gt)
+        self.u.setLegJointState(self.u.leg_map["RF"], grf, self.grForcesLocal_gt)
 
     def _receive_contact_lh(self, msg):
         grf = np.zeros(3)
         grf[0] = msg.states[0].wrenches[0].force.x
         grf[1] =  msg.states[0].wrenches[0].force.y
         grf[2] =  msg.states[0].wrenches[0].force.z
-        self.u.setLegJointState(2, grf, self.grForcesLocal_gt)
+        self.u.setLegJointState(self.u.leg_map["LH"], grf, self.grForcesLocal_gt)
 
     def _receive_contact_rh(self, msg):
         grf = np.zeros(3)
         grf[0] = msg.states[0].wrenches[0].force.x
         grf[1] =  msg.states[0].wrenches[0].force.y
         grf[2] =  msg.states[0].wrenches[0].force.z
-        self.u.setLegJointState(3, grf, self.grForcesLocal_gt)
+        self.u.setLegJointState(self.u.leg_map["RH"], grf, self.grForcesLocal_gt)
 
     def _receive_pose(self, msg):
         
@@ -368,61 +369,83 @@ class BaseController(threading.Thread):
     def updateKinematics(self):
         # q is continuously updated
         # to compute in the base frame  you should put neutral base
-        b_X_w = motionVectorTransform(np.zeros(3), self.b_R_w)
-        gen_velocities  = np.hstack((b_X_w.dot(self.baseTwistW),self.u.mapToRos(self.qd)))
-        neutral_fb_jointstate = np.hstack(( pin.neutral(self.robot.model)[0:7], self.u.mapToRos(self.q)))
-        pin.forwardKinematics(self.robot.model, self.robot.data, neutral_fb_jointstate, gen_velocities)
+        # b_X_w = motionVectorTransform(np.zeros(3), self.b_R_w)
+        # b_X_w = pin.SE3(self.b_R_w, np.zeros(3)).action
+        # self.gen_velocities[:6] = b_X_w.dot(self.baseTwistW)
+        self.gen_velocities[:3] = self.b_R_w.dot(self.u.linPart(self.baseTwistW))
+        self.gen_velocities[3:6] = self.b_R_w.dot(self.u.angPart(self.baseTwistW))
+        self.gen_velocities[6:] = self.qd
+        self.neutral_fb_jointstate[7:] = self.q
+        pin.forwardKinematics(self.robot.model, self.robot.data, self.neutral_fb_jointstate, self.gen_velocities)
         pin.computeJointJacobians(self.robot.model, self.robot.data)  
         pin.updateFramePlacements(self.robot.model, self.robot.data)
         ee_frames = conf.robot_params[self.robot_name]['ee_frames']
         for leg in range(4):
-            self.B_contacts[leg] = self.robot.framePlacement(neutral_fb_jointstate,  self.robot.model.getFrameId(ee_frames[leg]), update_kinematics=True ).translation
+            self.B_contacts[leg] = self.robot.framePlacement(self.neutral_fb_jointstate,
+                                                             self.robot.model.getFrameId(ee_frames[leg]),
+                                                             update_kinematics=False ).translation
             self.W_contacts[leg] = self.mapBaseToWorld(self.B_contacts[leg].transpose())
-            if self.use_ground_truth_contacts:
+        if self.use_ground_truth_contacts:
+            for leg in range(4):
                 self.w_R_lowerleg[leg] = self.b_R_w.transpose().dot(self.robot.data.oMf[self.lowerleg_index[leg]].rotation)
 
         for leg in range(4):
             # TODO fix for different number of joint per leg
-            leg_joints =  range(6+self.u.mapIndexToRos(leg)*3, 6+self.u.mapIndexToRos(leg)*3+3) 
-            self.J[leg] = self.robot.frameJacobian(neutral_fb_jointstate,  self.robot.model.getFrameId(ee_frames[leg]), pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)[:3,leg_joints]  
+            self.J[leg] = self.robot.frameJacobian(self.neutral_fb_jointstate,
+                                                   self.robot.model.getFrameId(ee_frames[leg]),
+                                                   update=False,
+                                                   ref_frame=pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)[:3,6+leg*3:6+leg*3+3]
             self.wJ[leg] = self.b_R_w.transpose().dot(self.J[leg])
-
+            try:
+                self.J_inv[leg] = np.linalg.inv(self.J[leg])
+                self.wJ_inv[leg] = self.J_inv[leg].dot(self.b_R_w)
+            except np.linalg.linalg.LinAlgError as error:
+                self.J_inv[leg][:,:] = 0.
+                self.wJ_inv[leg][:,:] = 0.
 
         # Pinocchio Update the joint and frame placements
-        gen_velocities  = np.hstack((b_X_w.dot(self.baseTwistW),self.u.mapToRos(self.qd)))
-        configuration = np.hstack(( self.u.linPart(self.basePoseW), self.quaternion, self.u.mapToRos(self.q)))
-        self.M = self.robot.mass(configuration)
-        self.h = pin.nonLinearEffects(self.robot.model, self.robot.data, configuration, gen_velocities) 
-        self.h_joints = self.h[6:]  
+        self.configuration[:3] = self.u.linPart(self.basePoseW)
+        self.configuration[3:7] = self.quaternion
+        self.configuration[7:] = self.q
+
+        self.M = self.robot.mass(self.configuration)
+        self.h = pin.nonLinearEffects(self.robot.model, self.robot.data, self.configuration, self.gen_velocities)
+        self.h_joints = self.h[6:]
+        self.g = self.robot.gravity(self.configuration)
+        self.g_joints = self.g[6:]
         
         #compute contact forces
         self.estimateContactForces()
         
         # compute com / robot inertias
-        self.comB = self.robot.robotComB(self.u.mapToRos(self.q))
+        self.comPosB, self.comVelB = copy.deepcopy(self.robot.robotComB(self.q, self.qd))
         self.comPoseW = copy.deepcopy(self.basePoseW)
-        self.comPoseW[self.u.sp_crd["LX"]:self.u.sp_crd["LX"]+3] = self.robot.robotComW(configuration) # + np.array([0.05, 0.0,0.0])
-        W_base_to_com = self.u.linPart(self.comPoseW)  - self.u.linPart(self.basePoseW) 
-        self.comTwistW = np.dot( motionVectorTransform( W_base_to_com, np.eye(3)),self.baseTwistW)
+        self.comPoseW[self.u.sp_crd["LX"]:self.u.sp_crd["LX"]+3] = self.robot.robotComW(self.configuration) # + np.array([0.05, 0.0,0.0])
+        W_base_to_com = self.u.linPart(self.comPoseW)  - self.u.linPart(self.basePoseW)
+        # self.comTwistW = np.dot( motionVectorTransform( W_base_to_com, np.eye(3)),self.baseTwistW)
+        self.comTwistW = pin.SE3(np.eye(3), W_base_to_com).action.dot(self.baseTwistW)
+
         # inertia w.r.t the com
-        self.centroidalInertiaB = self.robot.centroidalInertiaB(configuration, gen_velocities)
+        self.centroidalInertiaB = self.robot.centroidalInertiaB(self.configuration, self.gen_velocities)
         # inertia w.r.t the base frame origin
-        self.compositeRobotInertiaB = self.robot.compositeRobotInertiaB(configuration)
+        self.compositeRobotInertiaB = self.robot.compositeRobotInertiaB(self.configuration)
 
     def estimateContactForces(self):           
         # estimate ground reaxtion forces from tau 
         for leg in range(4):
-            try:
-                grf = np.linalg.inv(self.wJ[leg].T).dot(self.u.getLegJointState(leg,  self.u.mapFromRos(self.h_joints)-self.tau ))
-            except np.linalg.linalg.LinAlgError as error:
-                grf = np.zeros(3)
+            grf = self.wJ_inv[leg].T.dot(self.u.getLegJointState(leg,  self.h_joints-self.tau ))
             self.u.setLegJointState(leg, grf, self.grForcesW)
+
             if self.contact_normal[leg].dot(grf) >= conf.robot_params[self.robot_name]['force_th']:
                 self.contact_state[leg] = True
+
             else:
                 self.contact_state[leg] = False
+                # if self.time % 100:
+                #     print('contact lost on leg: ' + conf.robot_params[self.robot_name]['ee_frames'][leg])
 
-            if self.use_ground_truth_contacts:
+        if self.use_ground_truth_contacts:
+            for leg in range(4):
                 grfLocal_gt = self.u.getLegJointState(leg,  self.grForcesLocal_gt)
                 grf_gt = self.w_R_lowerleg[leg] @ grfLocal_gt
                 self.u.setLegJointState(leg, grf_gt, self.grForcesW_gt)
@@ -453,7 +476,7 @@ class BaseController(threading.Thread):
             if (self.robot_name == 'hyq'):                        
                 # these torques are to compensate the leg gravity
                 self.gravity_comp = np.array(
-                    [24.2571, 1.92, 50.5, 24.2, 1.92, 50.5739, 21.3801, -2.08377, -44.9598, 21.3858, -2.08365, -44.9615])
+                    [24.2571, 1.92, 50.5,  21.3801, -2.08377, -44.9598, 24.2, 1.92, 50.5739, 21.3858, -2.08365, -44.9615])
                                                         
                 print("reset posture...")
                 self.freezeBase(1, basePoseW=np.hstack( (self.base_offset, np.array([0.,0.,0.]))) )
@@ -482,20 +505,31 @@ class BaseController(threading.Thread):
                 self.pid.setPDs(0.0, 0.0, 0.0)
                 self.use_torque_control = True
             
-            if (self.robot_name == 'solo' or self.robot_name == 'aliengo'):
+            if (self.robot_name == 'aliengo' or self.robot_name=='go1'):
                 start_t = ros.get_time()
                 while ros.get_time() - start_t < 0.5:
                     self.send_des_jstate(self.q_des, self.qd_des, self.tau_ffwd)
                     ros.sleep(0.01)
-                #self.pid.setPDs(0.0, 0.0, 0.0)                    
+                #self.pid.setPDs(0.0, 0.0, 0.0)
+
+            if (self.robot_name == 'solo'):
+                start_t = ros.get_time()
+                while ros.get_time() - start_t < 0.5:
+                    self.send_des_jstate(self.q_des, self.qd_des, self.tau_ffwd)
+                    ros.sleep(0.01)
             print(colored("finished startup -- starting controller", "red"))
 
     def initVars(self):
-        self.comPoseW = np.zeros(6)
+        self.basePoseW = np.zeros(6)
         self.baseTwistW = np.zeros(6)
+        self.comPoseW = np.zeros(6)
+        self.comTwistsW = np.zeros(6)
         self.stance_legs = np.array([True, True, True, True])
-        self.centroidalInertiaB = np.identity(3)
-        self.compositeRobotInertiaB = np.identity(3)
+        self.centroidalInertiaB = np.eye(3)
+        self.compositeRobotInertiaB = np.eye(3)
+        self.gen_velocities = np.zeros(self.robot.nv)
+        self.neutral_fb_jointstate = pin.neutral(self.robot.model)
+        self.configuration = pin.neutral(self.robot.model)
         self.q = np.zeros(self.robot.na)
         self.qd = np.zeros(self.robot.na)
         self.tau = np.zeros(self.robot.na)
@@ -510,31 +544,35 @@ class BaseController(threading.Thread):
         self.grForcesW = np.zeros(self.robot.na)
         self.grForcesLocal_gt = np.zeros(self.robot.na)
         self.grForcesW_gt = np.zeros(self.robot.na)
-        self.basePoseW = np.zeros(6)
-        self.J = [np.zeros((6, self.robot.nv))] * 4
-        self.wJ = [np.eye(3)] * 4
-        self.W_contacts = [np.zeros((3))] * 4
-        self.W_contacts_des = [np.zeros((3))] * 4
-        self.B_contacts = [np.zeros((3))] * 4
-        self.B_contacts_des = [np.zeros((3))] * 4
-        self.contact_state = np.array([False, False, False, False])
-        self.contact_normal = [np.array([0., 0., 1.])]*4
-        self.w_R_lowerleg =  [np.eye(3)] * 4
+
+        self.J = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.wJ = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.J_inv = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.wJ_inv = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.W_contacts = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.W_contacts_des = self.u.full_listOfArrays(4, 3)
+        self.B_contacts = self.u.listOfArrays(4, np.zeros((3,3)))
+        self.B_contacts_des = self.u.full_listOfArrays(4, 3)
+        self.contact_state = self.u.full_listOfArrays(4, 1, 0, False)
+        self.contact_normal = self.u.listOfArrays(4, np.array([0., 0., 1]))
+        self.w_R_lowerleg =  self.u.listOfArrays(4, np.eye(3))
 
         #log vars
-        self.basePoseW_log = np.empty((6, conf.robot_params[self.robot_name]['buffer_size']))*nan
-        self.baseTwistW_log = np.empty((6,conf.robot_params[self.robot_name]['buffer_size'] ))*nan
-        self.q_des_log = np.empty((self.robot.na, conf.robot_params[self.robot_name]['buffer_size'] ))*nan    
-        self.q_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] )) *nan   
-        self.qd_des_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] ))*nan    
-        self.qd_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] )) *nan                                  
-        self.tau_ffwd_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] ))*nan    
-        self.tau_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] ))*nan                                  
-        self.grForcesW_log = np.empty((self.robot.na,conf.robot_params[self.robot_name]['buffer_size'] ))  *nan 
-        self.time_log = np.empty((conf.robot_params[self.robot_name]['buffer_size']))*nan
-        self.constr_viol_log = np.empty((4,conf.robot_params[self.robot_name]['buffer_size'] ))*nan
+        self.basePoseW_log = np.full((6, conf.robot_params[self.robot_name]['buffer_size']), np.nan)
+        self.baseTwistW_log = np.full((6, conf.robot_params[self.robot_name]['buffer_size']), np.nan)
+        self.comPoseW_log = np.full((6, conf.robot_params[self.robot_name]['buffer_size']), np.nan)
+        self.comTwistW_log = np.full((6, conf.robot_params[self.robot_name]['buffer_size']), np.nan)
+        self.q_des_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)    
+        self.q_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)   
+        self.qd_des_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)    
+        self.qd_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)                                  
+        self.tau_ffwd_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)    
+        self.tau_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan)                                  
+        self.grForcesW_log = np.full((self.robot.na, conf.robot_params[self.robot_name]['buffer_size']), np.nan) 
+        self.time_log = np.full((conf.robot_params[self.robot_name]['buffer_size']), np.nan)
+        self.constr_viol_log = np.full((4, conf.robot_params[self.robot_name]['buffer_size']), np.nan)
         
-        self.time = 0.0
+        self.time = np.zeros(1)
         self.loop_time = conf.robot_params[self.robot_name]['dt']
         self.log_counter = 0
 
@@ -622,9 +660,9 @@ def talker(p):
         
         # plot actual (green) and desired (blue) contact forces 
         for leg in range(4):
-            p.ros_pub.add_arrow(p.W_contacts[leg], p.contact_state[leg]*p.u.getLegJointState(leg, p.grForcesW/(6*p.robot.robot_mass)),"green")
+            p.ros_pub.add_arrow(p.W_contacts[leg], p.contact_state[leg]*p.u.getLegJointState(leg, p.grForcesW/(6*p.robot.robotMass)),"green")
             if (p.use_ground_truth_contacts):
-                p.ros_pub.add_arrow(p.W_contacts[leg], p.u.getLegJointState(leg, p.grForcesW_gt / (6 * p.robot.robot_mass)), "red")
+                p.ros_pub.add_arrow(p.W_contacts[leg], p.u.getLegJointState(leg, p.grForcesW_gt / (6 * p.robot.robotMass)), "red")
         p.ros_pub.publishVisual()      				
   
 #        if (p.time>0.5): 
@@ -650,8 +688,10 @@ if __name__ == '__main__':
         ros.signal_shutdown("killed")
         p.deregister_node()
         if conf.plotting:
-            plotJoint('position',0, p.time_log, p.q_log, p.q_des_log, p.qd_log, p.qd_des_log, None, None, p.tau_log, p.tau_ffwd_log, p.joint_names)
-            plotCoM('position', 1, p.time_log, None, p.basePoseW_log, None, p.baseTwistW_log, None, None)
+            plotJoint('position', time_log=p.time_log, q_log=p.q_log, q_des_log=p.q_des_log, sharex=True, sharey=False,
+                      start=0, end=-1)
+            plotFrame('position', time_log=p.time_log, des_Pose_log=p.basePoseW_des_log, Pose_log=p.basePoseW_log,
+                      title='CoM', frame='W', sharex=True, sharey=False, start=0, end=-1)
 
 
 

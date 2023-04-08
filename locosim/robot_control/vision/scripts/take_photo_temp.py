@@ -35,8 +35,8 @@ def checkTemplate(img_original, name, xmin, ymin, xmax, ymax):
     img = img_original[ymin:ymax, xmin:xmax].copy()
     height, width = img.shape
 
-    parts = name.split('_')
-    pos_x, pos_y = parts[1], parts[2]
+    # parts = name.split('_')
+    # pos_x, pos_y = parts[1], parts[2]
 
     # if pos_x == '0.75' or pos_y == '0.6375':
     #     img = changeBackground(img, height, width)

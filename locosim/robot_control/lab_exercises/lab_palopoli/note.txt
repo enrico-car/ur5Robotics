@@ -1,6 +1,0 @@
-There are several heuristics that can be used to choose an appropriate damping factor for correcting a singular matrix. Here are a few common ones:
-
-Optimal damping factor: This approach involves finding the damping factor that minimizes the error between the original matrix and the damped matrix. This can be done through optimization techniques such as gradient descent. However, this approach can be computationally expensive, especially for large matrices.
-Fixed damping factor: In this approach, a fixed damping factor is chosen based on the scale of the elements in the matrix. For example, if the elements of the matrix are all on the order of 1, a damping factor of 0.001 might be appropriate. If the elements are much larger or smaller, a larger or smaller damping factor may be needed.
-Damping factor based on the condition number: The condition number of a matrix is a measure of its "numerical conditioning," which reflects how sensitive the matrix is to perturbations. A high condition number indicates that the matrix is poorly conditioned, while a low condition number indicates that the matrix is well-conditioned. The damping factor can be chosen based on the condition number of the matrix, with larger damping factors being used for matrices with higher condition numbers.
-

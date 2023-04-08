@@ -26,7 +26,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     <arg name="camera_name"          default="zed2" />
 
-    <arg name="base_frame"           default="root_camera_link" />
+    <arg name="base_frame"           default="root_camera_frame" />
 
     <arg name="cam_pos_x"             default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
     <arg name="cam_pos_y"             default="0.0" /> <!-- Position respect to base frame (i.e. "base_link) -->
@@ -34,6 +34,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <arg name="cam_roll"              default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
     <arg name="cam_pitch"             default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
     <arg name="cam_yaw"               default="0.0" /> <!-- Orientation respect to base frame (i.e. "base_link) -->
+    
+    
+
+    <!--TODO rosparam file="$(find zed_wrapper)/params/zed2_calibration.yaml" /-->
+
+    
+    <arg name="rviz"                  default="false" />
+	
+
 
     <group ns="$(arg camera_name)">
         <include file="$(find zed_wrapper)/launch/include/zed_camera.launch.xml">
@@ -52,4 +61,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <arg name="cam_yaw"             value="$(arg cam_yaw)" />
         </include>
     </group>
+    
+      <!-- root_camera_link is a root link coincident with the base link, ise needed because the camera requires  -->
+    <node pkg="tf" type="static_transform_publisher" name="world_to_base_link" args="0.90331147  -0.22947563 0.48998522 0.042  -0.52 0.138  root_camera_frame  base_link     10" />
+    
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find zed_wrapper)/cfg/conf.rviz -f base_link" if="$(arg rviz)"/>
 </launch>

@@ -457,8 +457,10 @@ def jquintic(self, T, qi, qf, vi, vf, ai, af):
     self.des_jvels = velocities
     self.times = times
 
-def jcubic(self, T, qi, qf, vi, vf):
+def jcubic(qi, qf, vi=np.array([0,0,0,0,0,0]), vf=np.array([0,0,0,0,0,0]), vmax=1):
     h = qf - qi  # vettore - displacement sui 6 theta tra pos iniziale e finale
+    dq_max = np.amax(h)
+    T = dq_max / vmax
     # calcolo i parametri della cubica, per ogni joint
     a0 = np.ndarray.copy(qi)  # vettore [qi1, qi2, qi3, qi4, qi5, qi6]
     a1 = np.ndarray.copy(vi)  # vettore [qf1, qf2, qf3, qf4, qf5, qf6]
@@ -475,11 +477,9 @@ def jcubic(self, T, qi, qf, vi, vf):
         points.append(a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3)
         velocities.append(a1 + 2 * a2 * t + 3 * a3 * t ** 2)
 
-    self.des_jstates = points
-    self.des_jvels = velocities
-    self.times = times
+    return points, velocities, times
 
-def quinticMovement(self, t, a0, a1, a2, a3, a4, a5):
+def quinticMovement(t, a0, a1, a2, a3, a4, a5):
         return a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
 
 def Jacobian(th):

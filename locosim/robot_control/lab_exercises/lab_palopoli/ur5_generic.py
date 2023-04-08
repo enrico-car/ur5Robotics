@@ -25,7 +25,7 @@ from base_controllers.utils.math_tools import *
 import pinocchio as pin
 from termcolor import colored
 from base_controllers.utils.common_functions import plotJoint, plotEndeff
-import params as conf
+import lab_exercises.lab_palopoli.params as conf
 
 # controller manager management
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
@@ -264,7 +264,7 @@ def talker(p):
         p.startRealRobot()
     else:
         additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 'use_grasp_plugin:='+str(p.use_grasp_plugin),
-                           'gui:=false', 'rviz:=true']
+                           'gui:=true', 'rviz:=true']
         print(additional_args)
         p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 

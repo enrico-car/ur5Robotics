@@ -23,7 +23,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y4-Z2/X1-Y4-Z2_centered.dae</uri>
+            <uri>/X1-Y4-Z2/X1-Y4-Z2_centered.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -31,13 +31,13 @@
           <lighting>1</lighting>
           <script>
             <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/White</name>
+            <name>Gazebo/Grey</name>
           </script>
           <shader type='pixel'>
             <normal_map>__default__</normal_map>
           </shader>
           <ambient>1 1 1 1</ambient>
-          <diffuse>0.7 0.7 0.7 0.7</diffuse>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
           <specular>0.01 0.01 0.01 1</specular>
           <emissive>0 0 0 1</emissive>
         </material>
@@ -50,7 +50,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y4-Z2/X1-Y4-Z2_full.dae</uri>
+            <uri>/X1-Y4-Z2/X1-Y4-Z2_full.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

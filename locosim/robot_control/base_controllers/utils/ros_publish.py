@@ -101,12 +101,14 @@ class RosPub():
 
         if len(self.markerArrayFixed.markers) > 0:
             self.marker_fixed_pub.publish(self.markerArrayFixed)
+            self.markerArrayFixed.markers.clear()
+            self.id_fixed = 0
 
 
 
 
-        self.delete_all_markers()
-                                
+        #self.delete_all_markers()
+
     def add_marker(self, pos, radius = 0.1, color = "red"):
         marker = Marker()
         marker.header.frame_id = self.visual_frame
@@ -257,8 +259,7 @@ class RosPub():
         self.arrow_pub.publish(marker_array_msg)
 
     def add_cone(self,  origin, normal, friction_coeff, height=0.05, color = "green"):
-        
-       height = 0.2;
+
        radius = friction_coeff* height
        tail_end = origin + normal*height; 
        marker = Marker()

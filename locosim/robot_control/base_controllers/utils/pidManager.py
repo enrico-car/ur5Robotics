@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.expanduser("~"),"ros_ws","src","locosim"))
+
 from ros_impedance_controller.srv import set_pids
 from ros_impedance_controller.srv import set_pidsRequest
 from ros_impedance_controller.msg import pid
@@ -128,10 +134,12 @@ class PidManager:
                     self.joint_pid.p_value = kp
                 else:
                     self.joint_pid.p_value = kp[joint]
+
                 if not isinstance(kd, np.ndarray):
                     self.joint_pid.d_value = kd
                 else:
                     self.joint_pid.d_value = kd[joint]
+
                 if not isinstance(ki, np.ndarray):
                     self.joint_pid.i_value = ki
                 else:
@@ -147,13 +155,12 @@ class PidManager:
     def setPDjoints(self, kp, kd, ki):
         """
         Set array of values of PID for all joints
-        @joint_idx: (int) index of the joint /(array) of indices of the set of joints
         @kp: proportional gain (array)
         @kd: derivative gain (array)
-        @kp: integral gain (array)
+        @ki: integral gain (array)
         """
         # create the message
-        self.req_msg.data = []
+        #self.req_msg.data = []
         
         for joint_idx in range(len(self.joint_names)):
             # fill in the message with des values for kp kd
@@ -167,5 +174,12 @@ class PidManager:
 
         # send request and get response (in this case none)
         self.set_pd_service(self.req_msg)
+
+
+    def __repr__(self):
+        string = f"Joint PID controller"
+        for joint_pid in self.joint_pid_log:
+            string += f"\njoint name: {joint_pid.joint_name} \t Kp: {joint_pid.p_value} \t Kd: {joint_pid.d_value} \t Ki: {joint_pid.i_value}"
+        return string
 
 
