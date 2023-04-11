@@ -77,13 +77,10 @@ public class X1_Y3_Z2_FILLET extends Block {
 
     @Override
     public Pair<Integer, Integer> getRealPosition() {
-        if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
-        {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py-unitLength/2);
-        }
-        else
-        {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)-unitLength/2,unitLength*py+unitLength/2);
+        if (rotationState == RotationState.UP || rotationState == RotationState.DOWN) {
+            return new Pair<Integer, Integer>(unitLength * (Cgrid - px - 1) + unitLength / 2, (unitLength * py) + unitLength * 3 / 2);
+        } else {
+            return new Pair<Integer, Integer>(unitLength * (Cgrid - px - 1) - unitLength / 2, (unitLength * py) + unitLength / 2);
         }
     }
 

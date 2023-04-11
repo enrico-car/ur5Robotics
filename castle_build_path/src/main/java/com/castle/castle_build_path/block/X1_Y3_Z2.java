@@ -5,24 +5,21 @@ import javafx.util.Pair;
 
 
 public class X1_Y3_Z2 extends Block {
-    public X1_Y3_Z2(int Cgrid,int Rgrid) {
-        super(Cgrid,Rgrid);
+    public X1_Y3_Z2(int Cgrid, int Rgrid) {
+        super(Cgrid, Rgrid);
         this.x = 1;
         this.y = 3;
         this.z = 2;
         this.color = Color.rgb(255, 113, 0);
-        this.underColor = Color.rgb(255, 113, 0,0.4);
+        this.underColor = Color.rgb(255, 113, 0, 0.4);
     }
 
     @Override
     public Pair<Integer, Integer> getRealPosition() {
-        if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
-        {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py-unitLength/2);
-        }
-        else
-        {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)-unitLength/2,unitLength*py+unitLength/2);
+        if (rotationState == RotationState.UP || rotationState == RotationState.DOWN) {
+            return new Pair<Integer, Integer>(unitLength * (Cgrid - px - 1) + unitLength / 2, (unitLength * py) + unitLength * 3 / 2);
+        } else {
+            return new Pair<Integer, Integer>(unitLength * (Cgrid - px - 1) - unitLength / 2, (unitLength * py) + unitLength / 2);
         }
     }
 

@@ -18,7 +18,7 @@ public class X1_Y4_Z2 extends Block {
     public Pair<Integer, Integer> getRealPosition() {
         if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
         {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*(py-1));
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py + 2*unitLength);
         }
         else
         {

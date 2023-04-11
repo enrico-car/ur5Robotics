@@ -83,7 +83,7 @@ public class CastleBuildPath extends Application {
         root.setBottom(button3);
 
 
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 800, 650);
         scene.setOnKeyPressed(keyHandler);
         stage.setTitle("Hello!");
         stage.setScene(scene);

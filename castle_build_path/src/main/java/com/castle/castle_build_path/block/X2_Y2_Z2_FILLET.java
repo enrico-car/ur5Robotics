@@ -10,13 +10,13 @@ import java.util.List;
 
 
 public class X2_Y2_Z2_FILLET extends Block {
-    public X2_Y2_Z2_FILLET(int Cgrid,int Rgrid) {
-        super(Cgrid,Rgrid);
+    public X2_Y2_Z2_FILLET(int Cgrid, int Rgrid) {
+        super(Cgrid, Rgrid);
         this.x = 2;
         this.y = 2;
         this.z = 2;
         this.color = Color.rgb(255, 207, 2);
-        this.underColor = Color.rgb(255, 207, 2,0.4);
+        this.underColor = Color.rgb(255, 207, 2, 0.4);
     }
 
     @Override
@@ -25,27 +25,24 @@ public class X2_Y2_Z2_FILLET extends Block {
 
         if (rotationState == RotationState.UP) {
             list.add(new SquarePos(px, py, new Square(color, true)));
-            list.add(new SquarePos(px+1, py, new Square(color, true)));
-            list.add(new SquarePos(px, py+1, new Square(color, false)));
-            list.add(new SquarePos(px+1, py+1, new Square(color, false)));
-        }
-        else if (rotationState == RotationState.RIGHT){
+            list.add(new SquarePos(px + 1, py, new Square(color, true)));
+            list.add(new SquarePos(px, py + 1, new Square(color, false)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(color, false)));
+        } else if (rotationState == RotationState.RIGHT) {
             list.add(new SquarePos(px, py, new Square(color, false)));
-            list.add(new SquarePos(px+1, py, new Square(color, true)));
-            list.add(new SquarePos(px, py+1, new Square(color, false)));
-            list.add(new SquarePos(px+1, py+1, new Square(color, true)));
-        }
-        else if (rotationState == RotationState.DOWN){
+            list.add(new SquarePos(px + 1, py, new Square(color, true)));
+            list.add(new SquarePos(px, py + 1, new Square(color, false)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(color, true)));
+        } else if (rotationState == RotationState.DOWN) {
             list.add(new SquarePos(px, py, new Square(color, false)));
-            list.add(new SquarePos(px+1, py, new Square(color, false)));
-            list.add(new SquarePos(px, py+1, new Square(color, true)));
-            list.add(new SquarePos(px+1, py+1, new Square(color, true)));
-        }
-        else if (rotationState == RotationState.LEFT){
+            list.add(new SquarePos(px + 1, py, new Square(color, false)));
+            list.add(new SquarePos(px, py + 1, new Square(color, true)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(color, true)));
+        } else if (rotationState == RotationState.LEFT) {
             list.add(new SquarePos(px, py, new Square(color, true)));
-            list.add(new SquarePos(px+1, py, new Square(color, false)));
-            list.add(new SquarePos(px, py+1, new Square(color, true)));
-            list.add(new SquarePos(px+1, py+1, new Square(color, false)));
+            list.add(new SquarePos(px + 1, py, new Square(color, false)));
+            list.add(new SquarePos(px, py + 1, new Square(color, true)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(color, false)));
         }
 
         return list;
@@ -57,27 +54,24 @@ public class X2_Y2_Z2_FILLET extends Block {
 
         if (rotationState == RotationState.UP) {
             list.add(new SquarePos(px, py, new Square(underColor, true)));
-            list.add(new SquarePos(px+1, py, new Square(underColor, true)));
-            list.add(new SquarePos(px, py+1, new Square(underColor, false)));
-            list.add(new SquarePos(px+1, py+1, new Square(underColor, false)));
-        }
-        else if (rotationState == RotationState.RIGHT){
+            list.add(new SquarePos(px + 1, py, new Square(underColor, true)));
+            list.add(new SquarePos(px, py + 1, new Square(underColor, false)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(underColor, false)));
+        } else if (rotationState == RotationState.RIGHT) {
             list.add(new SquarePos(px, py, new Square(underColor, false)));
-            list.add(new SquarePos(px+1, py, new Square(underColor, true)));
-            list.add(new SquarePos(px, py+1, new Square(underColor, false)));
-            list.add(new SquarePos(px+1, py+1, new Square(underColor, true)));
-        }
-        else if (rotationState == RotationState.DOWN){
+            list.add(new SquarePos(px + 1, py, new Square(underColor, true)));
+            list.add(new SquarePos(px, py + 1, new Square(underColor, false)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(underColor, true)));
+        } else if (rotationState == RotationState.DOWN) {
             list.add(new SquarePos(px, py, new Square(underColor, false)));
-            list.add(new SquarePos(px+1, py, new Square(underColor, false)));
-            list.add(new SquarePos(px, py+1, new Square(underColor, true)));
-            list.add(new SquarePos(px+1, py+1, new Square(underColor, true)));
-        }
-        else if (rotationState == RotationState.LEFT){
+            list.add(new SquarePos(px + 1, py, new Square(underColor, false)));
+            list.add(new SquarePos(px, py + 1, new Square(underColor, true)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(underColor, true)));
+        } else if (rotationState == RotationState.LEFT) {
             list.add(new SquarePos(px, py, new Square(underColor, true)));
-            list.add(new SquarePos(px+1, py, new Square(underColor, false)));
-            list.add(new SquarePos(px, py+1, new Square(underColor, true)));
-            list.add(new SquarePos(px+1, py+1, new Square(underColor, false)));
+            list.add(new SquarePos(px + 1, py, new Square(underColor, false)));
+            list.add(new SquarePos(px, py + 1, new Square(underColor, true)));
+            list.add(new SquarePos(px + 1, py + 1, new Square(underColor, false)));
         }
 
         return list;
@@ -85,7 +79,7 @@ public class X2_Y2_Z2_FILLET extends Block {
 
     @Override
     public Pair<Integer, Integer> getRealPosition() {
-        return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1),unitLength*py);
+        return new Pair<Integer, Integer>(unitLength * (Cgrid - px - 1), unitLength * py + unitLength);
     }
 
 }

@@ -48,7 +48,8 @@ public class X1_Y2_Z2_TWINFILLET extends Block {
     public Pair<Integer, Integer> getRealPosition() {
         if(rotationState == RotationState.UP || rotationState == RotationState.DOWN)
         {
-            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py);
+            System.out.println(py);
+            return new Pair<Integer,Integer>(unitLength*(Cgrid-px-1)+unitLength/2,unitLength*py+unitLength);
         }
         else
         {

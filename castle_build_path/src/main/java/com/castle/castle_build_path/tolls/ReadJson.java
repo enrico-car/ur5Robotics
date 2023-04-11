@@ -14,7 +14,7 @@ public class ReadJson {
         JSONParser parser = new JSONParser();
         dim=0;
         try {
-            Object obj = parser.parse(new FileReader("/home/annachiara/Desktop/ur5Robotics/castle_build_path/current.json")); //TO CHANGE
+            Object obj = parser.parse(new FileReader("/home/rico/Documents/ur5Robotics/castle_build_path/current.json")); //TO CHANGE
             JSONObject jsonObject = (JSONObject)obj;
             for(int i=0; i<11; i++){
                 final int ind=i;
