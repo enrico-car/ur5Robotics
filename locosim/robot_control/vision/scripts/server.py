@@ -141,6 +141,12 @@ class Listener:
         self.pcd_axis_aligned_bb.color = (1, 0, 0)
         pcd_center = self.pcd_axis_aligned_bb.get_center()
         print('centro bb: ', pcd_center)
+
+        # se un blocco nella stessa posizione è gia stato inserito, salta questo
+        for xc, yc in zip(self.x_tavolo, self.y_tavolo):
+            if xc-0.01 < pcd_center[0] < xc+0.01 and yc-0.01 < pcd_center[1] < yc+0.01:
+                return None, None
+
         self.x_tavolo.append(np.round(pcd_center[0], 4))
         self.y_tavolo.append(np.round(pcd_center[1], 4))
 
@@ -221,6 +227,7 @@ class Listener:
         best_fitness = 0.
         best_correspondence = 0
         best_rmse = 1.
+        best_dist = 1.
         for pc in template_files:
             # pcd BLU -> lettura da yolo (blocco incognito di cui stabilire classe e orientamento)
             # pcd ROSSA -> pcd template
@@ -257,14 +264,22 @@ class Listener:
             if reg_p2p.fitness >= best_fitness*0.95:
                 dist = self.bbDistance(source, reg_p2p.transformation)
                 print(dist)
-                if reg_p2p.fitness >= 0.95 and dist < 0.01:
+                if reg_p2p.fitness >= 1. and reg_p2p.inlier_rmse < best_rmse and dist < 0.0075:
+                    best_fitness = reg_p2p.fitness
+                    best_rmse = reg_p2p.inlier_rmse
+                    best_correspondence = len(reg_p2p.correspondence_set)
+                    top_result = pc
+                    best_transformation = reg_p2p.transformation
+                
+                elif reg_p2p.fitness >= 0.95 and dist < 0.01:
                     if len(reg_p2p.correspondence_set) >= best_correspondence and reg_p2p.inlier_rmse*0.8 <= best_rmse:
                         best_fitness = reg_p2p.fitness
                         best_rmse = reg_p2p.inlier_rmse
+                        best_dist = dist
                         top_result = pc
                         best_correspondence = len(reg_p2p.correspondence_set)
                         best_transformation = reg_p2p.transformation
-                    
+
                 else:
                     if reg_p2p.inlier_rmse <= best_rmse and dist < 0.01:
                         best_fitness = reg_p2p.fitness
@@ -329,6 +344,8 @@ class Listener:
             return False
         
         pcd_center, pcd_dimensions = self.getPointcloudInfo()
+        if pcd_center is None and pcd_dimensions is None:
+            return False
 
         print('-------- running ICP --------')
         temp_x, temp_y = self.getTemplatePosition(pcd_center[0], pcd_center[1])
