@@ -1,6 +1,6 @@
 # ur5Robotics
 
-
+## Kinematics
 
 ## Vision
 We developed the vision part as the combination of two main techniques: Yolo and ICP.
@@ -13,3 +13,5 @@ To use Yolov5 we had to perform a training usign a custom dataset, that we reali
 After the training, yolo elaborates the weights of the trained neural network that will be used for each detection. 
 
 #### ICP - Iterativa Closest Point
+In order to understand the center and the orientation of the block detected by yolo, we decided to use the ICP technique. The main difference from yolo is that ICP uses the point cloud of the area and not the plain image. ICP is an algorithm that aims to minimize the difference between two given point cloud. It is implemented by iterating a process of comparison between a point cloud that is fixed and another that is trasformed in order to best fit the KPI of the algorithm.
+For this project we created point cloud templates for each object. Everytime an object is found by yolo, the corresponding area of the point cloud is compared with the templates and the one that best satisfies the chosen KPI gives both the center and the orientation od the block.
