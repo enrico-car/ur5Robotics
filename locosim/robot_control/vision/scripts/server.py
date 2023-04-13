@@ -50,6 +50,19 @@ class Listener:
         self.gazebo_pcd = None
         self.pcd_axis_aligned_bb = None
     
+    def savePointCloudTemplate(self):
+        print('########## SAVING PCD ##########')
+        pcd_center, pcd_dimensions = self.getPointcloudInfo()
+        temp_x, temp_y = self.getTemplatePosition(pcd_center[0], pcd_center[1])
+        temp_x = 0.5
+        template_dir = str(temp_x)+'_'+str(temp_y)
+        name = '0_'+template_dir+'_0_3.1415_0.3927.pcd'
+        print(name)
+
+        o3d.visualization.draw_geometries([self.gazebo_pcd])
+        o3d.io.write_point_cloud(os.path.join(path_template_pcds, template_dir, name), self.gazebo_pcd)
+        input('...')
+    
     def checkTemplate(self, img_original, xmin, ymin, xmax, ymax):
         h, w = img_original.shape
 
@@ -177,8 +190,11 @@ class Listener:
         ok = False
         while not ok:
             ok, xmin, ymin, xmax, ymax = self.checkTemplate(cv_image, xmin, ymin, xmax, ymax)
-
+        
         # calcolo più preciso del centro del blocco (attraverso la poincloud)
+        # xmin, ymin, xmax, ymax = 770, 520, 830, 600 # blocco sx
+        # xmin, ymin, xmax, ymax = 930, 520, 990, 600 # blocco centrale
+        # xmin, ymin, xmax, ymax = 1090, 520, 1150, 600 # blocco dx
         uvs = []
         for i in range(int(xmin), int(xmax)):
             for j in range(int(ymin), int(ymax)):
@@ -187,7 +203,6 @@ class Listener:
         cloud_data = list(pc2.read_points(raw_pointcloud, field_names=field_names, skip_nans=True, uvs=uvs))
         
         xyz = [np.array([x,y,z]) for x,y,z,_ in cloud_data ]
-        
         xyz_worldframe = []
         for p in xyz:
             p_worldframe = np.array((np.dot(rot_z @ rot_x, p) + np.array([-0.4, 0.475, 1.45])).flat)
@@ -205,6 +220,9 @@ class Listener:
             gazebo_pcd.paint_uniform_color([0, 0, 1])
 
             self.gazebo_pcd = gazebo_pcd
+ 
+            # # scommentare per salvare la pointcloud
+            # self.savePointCloudTemplate()
 
             return True
         else:
@@ -227,7 +245,6 @@ class Listener:
         best_fitness = 0.
         best_correspondence = 0
         best_rmse = 1.
-        best_dist = 1.
         for pc in template_files:
             # pcd BLU -> lettura da yolo (blocco incognito di cui stabilire classe e orientamento)
             # pcd ROSSA -> pcd template
@@ -239,7 +256,7 @@ class Listener:
             
             ok = False
             if template_dimensions[2]-0.007 < gazebo_pcd_dimensions[2] < template_dimensions[2]+0.0025:
-                if gazebo_pcd_dimensions[1]*0.8 < template_dimensions[1] < gazebo_pcd_dimensions[1]*1.2 or gazebo_pcd_dimensions[0]*0.8 < template_dimensions[0] < gazebo_pcd_dimensions[0]*1.2:
+                if gazebo_pcd_dimensions[1]*0.9 < template_dimensions[1] < gazebo_pcd_dimensions[1]*1.1 or gazebo_pcd_dimensions[0]*0.90 < template_dimensions[0] < gazebo_pcd_dimensions[0]*1.1:
                     ok = True
             
             if not ok:
@@ -258,13 +275,13 @@ class Listener:
             source.transform(trans_init)
 
             threshold = 0.009
-            reg_p2p = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,o3d.pipelines.registration.TransformationEstimationPointToPoint())
+            reg_p2p = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init, o3d.pipelines.registration.TransformationEstimationPointToPoint())
             print('best fitness finora: ', best_fitness)
             
             if reg_p2p.fitness >= best_fitness*0.95:
                 dist = self.bbDistance(source, reg_p2p.transformation)
                 print(dist)
-                if reg_p2p.fitness >= 1. and reg_p2p.inlier_rmse < best_rmse and dist < 0.0075:
+                if reg_p2p.fitness >= 1. and reg_p2p.inlier_rmse < best_rmse and dist < 0.0075 and len(reg_p2p.correspondence_set) > best_correspondence:
                     best_fitness = reg_p2p.fitness
                     best_rmse = reg_p2p.inlier_rmse
                     best_correspondence = len(reg_p2p.correspondence_set)
@@ -275,7 +292,6 @@ class Listener:
                     if len(reg_p2p.correspondence_set) >= best_correspondence and reg_p2p.inlier_rmse*0.8 <= best_rmse:
                         best_fitness = reg_p2p.fitness
                         best_rmse = reg_p2p.inlier_rmse
-                        best_dist = dist
                         top_result = pc
                         best_correspondence = len(reg_p2p.correspondence_set)
                         best_transformation = reg_p2p.transformation
@@ -294,6 +310,7 @@ class Listener:
 
         if top_result != '':
             print('best pc: ', top_result)
+            pprint(best_transformation)
             source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
             source.transform(best_transformation)
             source.paint_uniform_color([1, 0, 0])
@@ -351,11 +368,6 @@ class Listener:
         temp_x, temp_y = self.getTemplatePosition(pcd_center[0], pcd_center[1])
         temp_x = 0.5
         template_dir = str(temp_x)+'_'+str(temp_y)
-        
-        # # scommentare per salvare la pointcloud
-        # o3d.visualization.draw_geometries([self.gazebo_pcd])
-        # o3d.io.write_point_cloud(os.path.join(path_template_pcds, template_dir, '6_'+template_dir+'_1.5708_0_1.5708.pcd'), self.gazebo_pcd)
-        # input('...')
 
         x_offset = 0.5 - pcd_center[0]
         y_offset = float(temp_y) - pcd_center[1]
@@ -365,6 +377,10 @@ class Listener:
         self.gazebo_pcd.transform(trans_mat)
 
         top_result, best_transformation = self.getTransformation(pcd_dimensions, template_dir)
+        # center_offset = np.array(best_transformation[0:3, 3].flat)*0.001
+        # print(pcd_center)
+        # print(pcd_center+center_offset)
+        # input('...')
 
         if top_result is not None and best_transformation is not None:
             roll, pitch, yaw = self.getAngles(best_transformation, top_result)

@@ -44,11 +44,11 @@ class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.03
 configurations = ['in_piedi', 'sdraiato', 'sottosopra', 'normale']
 
 def get_yaw(rot): #è corretto?
-    if(rot==0):
-        return pi
-    elif (rot==2):
+    if rot == 0:
         return 0
-    elif (rot==1):
+    elif rot == 2:
+        return pi
+    elif rot == 1:
         return pi/2
     else:
         return -pi/2
@@ -135,8 +135,7 @@ class Block:
             approach_rotm = eul2rotm(approach_rpy)
             approach_pos = self.position
 
-            if self.configuration == configurations[3] and self.classe in [1, 7]:
-                print('******* MODIFICA ALTEZZA BLOCCO BASSO *******')
+            if self.configuration == configurations[3]:
                 approach_pos += np.array([0, 0, -0.008])
 
             # se voglio prendere il blocco con il gripper perpendicolare al tavolo 
@@ -149,18 +148,24 @@ class Block:
             land_pos = np.array([self.position[0], self.position[1], approach_pos[2]])
             if xy_land_pos is not None:
                 land_pos = np.array([xy_land_pos[0], xy_land_pos[1], approach_pos[2]])
+            
+            land_pos_no_correction = land_pos
 
         # se l'angolo di approccio è 45° -> si vuole girare il blocco
         elif y_approach_angle == 45:
             # blocco sulla faccia piccola - in piedi
             if self.configuration == configurations[0]:
                 land_rpy += np.array([0, 0, -pi])
+                
                 # si lascia un po di spazio in piu atrimenti il gripper tocca il pezzo
                 d = 0
                 if self.classe == 9:
                     d = 0.016
                 elif self.classe == 10:
                     d = 0.01
+                elif self.classe in [2, 3, 5]:
+                    d = -0.01
+                
                 correction_approach45 = np.array([sin(self.rpy[2])*d, -cos(self.rpy[2])*d, 0])
                 correction_land45 = np.array([0, 0, d])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.classe][2]/2 + 0.0015
@@ -168,7 +173,7 @@ class Block:
             # blocco sulla faccia grande - sdraiato
             elif self.configuration == configurations[1]:
                 if self.classe in [1, 2, 3, 4]:
-                    approach_rpy += np.array([0, 0, +pi/2])
+                    approach_rpy += np.array([0, 0, pi/2])
 
                 land_rpy += np.array([0, 0, -pi/2])
                 d = 0.01
@@ -181,7 +186,7 @@ class Block:
                 correction_approach45 = np.array([0, 0, 0])
                 if self.classe in [9, 10]:
                     correction_approach45 = np.array([0, 0, 0.025])
-                correction_land45 = np.array([0, 0, 0])
+                correction_land45 = np.array([0, 0, 0.002])
                 land_Z_pos = altezza_tavolo + class2dimensions[self.classe][1]/2
             
             approach_pos = self.position + correction_approach45
@@ -190,9 +195,10 @@ class Block:
             theta = pi/4
             approach_rotm = approach_rotm90 @ rotY(theta)
             
-            land_pos = np.array([self.position[0], self.position[1], land_Z_pos]) + correction_land45
+            land_pos_no_correction = np.array([self.position[0], self.position[1], land_Z_pos])
             if xy_land_pos is not None:
-                land_pos = np.array([xy_land_pos[0], xy_land_pos[1], land_Z_pos]) + correction_land45
+                land_pos_no_correction = np.array([xy_land_pos[0], xy_land_pos[1], land_Z_pos])
+            land_pos = land_pos_no_correction + correction_land45
 
             land_rotm90 = eul2rotm(land_rpy)
             land_rotm = land_rotm90 @ rotY(-theta)
@@ -201,10 +207,11 @@ class Block:
         self.approach_rotm = approach_rotm
         self.land_pos = land_pos + np.array([0, 0, z_offset])
         self.land_rotm = land_rotm
+        self.final_pos = land_pos_no_correction
         self.final_rpy = final_rpy
 
     def autoUpdate(self):
-        self.position = self.land_pos
+        self.position = self.final_pos
         self.rpy = self.final_rpy
 
         self.update()
@@ -212,18 +219,24 @@ class Block:
     def getFinalRPY(self):
         if not -0.01 < self.rpy[1] < 0.01:
             roll = pi/2
-            if self.classe in [1,2,3,4]:
-                roll = 0
-            
-            if self.quadrant in [1, 4]:
-                final_rpy = np.array([roll, 0, pi])
+            yaw = pi/2
+
+            if pi/2-0.01 < self.rpy[1] < pi/2+0.01:
+                # se il blocco è sdraiato e la classe è tra quelle possibili, lo giro con una mossa sola invece di farne due
+                if self.classe in [1, 2, 3, 4]:
+                    roll = 0
+
+                if self.quadrant in [1, 4]:
+                    yaw = pi
             else:
                 if self.position[0] < 0.5:
-                    final_rpy = np.array([roll, 0, pi/2])
+                    yaw = pi/2
                 else:
-                    final_rpy = np.array([roll, 0, 3*pi/2])
-    
-        if not -0.01 < self.rpy[0] < 0.01:
+                    yaw = 3*pi/2
+            
+            final_rpy = np.array([roll, 0, yaw])
+
+        elif not -0.01 < self.rpy[0] < 0.01:
             final_rpy = np.array([0, 0, pi/2])
         
         return final_rpy
@@ -236,44 +249,6 @@ class Block:
     def __repr__(self):
         return str(self)
 
-
-class Block2:
-    name = ''
-
-    def __init__(self, classe, position, rpy):
-        self.classe = classe
-        self.rpy = rpy
-        self.computeHeight()
-        self.position = np.array([position[0], position[1], altezza_tavolo+self.height/2])
-
-    def computeHeight(self):
-        # blocco in piedi sulla faccia piccola
-        if pi/2-0.1 < self.rpy[0] < pi/2+0.1:
-            self.height = class2dimensions[self.classe][1]
-            self.configuration = configurations[0]
-        # blocco sdraiato sulla faccia grande
-        elif pi/2-0.1 < self.rpy[1] < pi/2+0.1 or 3*pi/2-0.1 < self.rpy[1] < 3*pi/2+0.1:
-            self.height = class2dimensions[self.classe][0]
-            self.configuration = configurations[1]
-        # blocco sottosopra o normale
-        else:
-            self.height = class2dimensions[self.classe][2]
-            
-            # blocco normale
-            if -0.1 < self.rpy[0] < 0.1 and  -0.1 < self.rpy[1] < 0.1:
-                self.configuration = configurations[3]
-            # blocco sottosopra
-            else:
-                self.configuration = configurations[2]
-        # TODO: gestire casi speciali per i fillet/chamfer
-
-    def __str__(self):
-        return '---- Block info -----' + '\nclass: ' + str(class2name[self.classe]) + '\nposition: ' + str(self.position) \
-               + '\nrpy: ' + str(self.rpy) + '\nheight: ' + str(self.height) + '\n---------------------'
-
-    def __repr__(self):
-        return str(self)
-    
 
 class JointStatePublisher:
 
@@ -528,20 +503,20 @@ class JointStatePublisher:
     def getGripPositions(self):
         # blocco sdraiato sulla faccia grande
         if self.block.configuration == configurations[1]:
-            class2gripsize = {0: [70, 33], 1: [70, 72], 2: [95, 72], 3: [95, 72], 4: [95, 72], 5: [95, 67],
-                              6: [95, 67], 7: [70, 45], 8: [95, 68], 9: [95, 67], 10: [95, 67]}
+            class2gripsize = {0: [70, 33], 1: [70, 72], 2: [95, 72], 3: [95, 72], 4: [95, 73], 5: [95, 70],
+                              6: [95, 67], 7: [70, 45], 8: [95, 70], 9: [95, 67], 10: [95, 67]}
         # blocco sottosopra
         elif self.block.configuration == configurations[2]:
-            class2gripsize = {0: [70, 34], 1: [70, 34], 2: [70, 34], 3: [70, 34], 4: [70, 34], 5: [70, 34],
-                              6: [70, 34], 7: [70, 34], 8: [70, 34], 9: [100, 79], 10: [100, 79]}
+            class2gripsize = {0: [70, 35], 1: [70, 35], 2: [70, 35], 3: [70, 35], 4: [70, 35], 5: [70, 35],
+                              6: [70, 35], 7: [70, 35], 8: [70, 35], 9: [100, 79], 10: [100, 79]}
         # blocco in piedi sulla faccia piccola
         elif self.block.configuration == configurations[0]:
-            class2gripsize = {0: [70, 35], 1: [70, 35], 2: [70, 35], 3: [70, 35], 4: [70, 35], 5: [70, 36],
+            class2gripsize = {0: [70, 35], 1: [70, 35], 2: [70, 36], 3: [70, 35], 4: [70, 35], 5: [70, 36],
                               6: [70, 35], 7: [70, 35], 8: [70, 35], 9: [100, 90], 10: [100, 78]}
         # blocco in posizione normale
         else:
-            class2gripsize = {0: [70, 33], 1: [70, 33], 2: [70, 33], 3: [70, 33], 4: [70, 33], 5: [70, 33],
-                              6: [70, 33], 7: [70, 33], 8: [70, 33], 9: [100, 73], 10: [100, 72]}
+            class2gripsize = {0: [70, 34], 1: [70, 34], 2: [70, 34], 3: [70, 34], 4: [70, 34], 5: [70, 34],
+                              6: [70, 34], 7: [70, 34], 8: [70, 34], 9: [100, 73], 10: [100, 72]}
         
         return class2gripsize[self.block.classe]
 
@@ -773,6 +748,8 @@ class JointStatePublisher:
                 else:
                     if self.block.classe in [0, 9]:
                         self.block.rpy = np.array([0, pi, pi+self.block.rpy[2]])
+                    elif self.block.classe in [1, 2, 5, 7, 8]:
+                        self.block.rpy = np.array([0, pi, pi+self.block.rpy[2]])
                     else:
                         new_block_rpy = np.array([0, pi, pi])
                         self.ruotaBlocco(new_block_rpy)
@@ -826,7 +803,7 @@ class JointStatePublisher:
         #                 self.ruotaBlocco(new_block_rpy)
         elif self.block.quadrant == 4:
             # controllo se come è posizionato da problemi
-            if not pi/2+0.01 < self.block.rpy[2] < 5/4*pi-0.01:
+            if not pi/2-0.01 < self.block.rpy[2] < 5/4*pi+0.01:
                 print('**** preparazione blocco ****')
                 
                 # guardo se il blocco è in piedi (roll=pi/2):
@@ -844,6 +821,8 @@ class JointStatePublisher:
                     # se il blocco è quadrato, non c'è bisogno di correggere la posizione, basta solo cambiare il valore in cui pensa di essere
                     if self.block.classe in [0, 9]:
                         self.block.rpy = np.array([0, pi, pi/2+self.block.rpy[2]])
+                    elif self.block.classe in [1, 2, 5, 7, 8]:
+                        self.block.rpy = np.array([0, pi, pi+self.block.rpy[2]])
                     else:
                         new_block_rpy = np.array([0, pi, 0])
                         self.ruotaBlocco(new_block_rpy)
@@ -871,8 +850,9 @@ class JointStatePublisher:
         print('----- moving block to landing pos ', self.block.land_pos ,' -----')
         # TODO: controllare che in destinazione non ci siano blocchi e in caso cercare una nuova posizione
         self.moveTo(self.block.land_pos+np.array([0, 0, 0.1]), self.block.land_rotm, gripper_closed, vel=0.5)
-        self.moveTo(self.block.land_pos, self.block.land_rotm, gripper_closed, wait_for_end=True, curve_type='line', vel=0.3)
-        
+        self.moveTo(self.block.land_pos, self.block.land_rotm, gripper_closed, wait_for_end=True, curve_type='line', vel=0.15)
+        time.sleep(0.5)
+
         print('------- un-gripping --------')
         if self.gripper:
             self.gripSim(False, gripper_opened)
@@ -916,7 +896,6 @@ class JointStatePublisher:
             y=random.randint(25,75)/100
             raggio=math.sqrt((x-0.50)**2+(y-0.35)**2)
         return (x,y)
-
 
     def homingProcedure(self):
         print('homing procedure')
@@ -976,7 +955,7 @@ class JointStatePublisher:
         print('***** TASK COMPLETED *****')
 
     def castle(self, json_file):
-        castle_pos_max = (1., 0.7) #angolo in basso a sx del quadrato
+        castle_pos_max = (0.95, 0.75) #angolo in basso a sx del quadrato
         x_max, y_max = castle_pos_max
 
         n = json_file["size"]
@@ -1064,28 +1043,6 @@ class Res:
 # float64[] yaw
 # bool[] processed
 
-def takeBlock(p):
-    # test con blocchi in piedi (sulla faccia piccola), del tipo [pi/2, 0, phi]
-    for i, block in enumerate(p.present_blocks):
-        p.block = block
-        gripper_opened, gripper_closed = p.getGripPositions()
-
-        block_pos_above = block.position + np.array([0, 0, 0.05])
-        block_rotm = eul2rotm([pi, 0, block.rpy[2]+pi/2])
-        p.moveTo(block_pos_above, block_rotm, gripper_opened, wait_for_end=True)
-
-        block_rotm_45 = block_rotm @ rotY(pi/4)
-        p.moveTo(block_pos_above, block_rotm_45, gripper_opened, wait_for_end=True, curve_type='line')
-
-        p.moveTo(block.position, block_rotm_45, gripper_opened, wait_for_end=True, curve_type='line')
-        input('grip?')
-        p.gripSim(True, gripper_closed)
-
-        p.moveTo(block_pos_above, block_rotm_45, gripper_closed, wait_for_end=True, curve_type='line')
-        block_rotm_45 = eul2rotm([pi, 0, 0]) @ rotY(-pi/4)
-        p.moveTo(block_pos_above, block_rotm_45, gripper_closed, wait_for_end=True, curve_type='line')
-
-
 def talker(p):
     ros.init_node('custom_publisher_node', anonymous=True)
     loop_frequency = 1000.
@@ -1094,27 +1051,21 @@ def talker(p):
     p.jstate = p.q
 
     p.homingProcedure()
-    input('...')
+    input('-+-+-')
     
     print('--- spawning blocks ---')
     json_file = readJSON()
     spawnBlocks(json_file=json_file)
-    
-    input('...')
+    input('-+-+-')
 
-    print("vision server called")
+    print("calling vision server...")
     vision_results = p.vision_service.call()
     print(vision_results)
-    input('..')
+    input('-+-+-')
 
     p.moveTo(np.array([0.5, 0.7, -0.6]), eul2rotm([pi, 0, 0]), 40)
 
     p.registerBlocks(vision_results)
-    # pprint(p.present_blocks)
-
-    #takeBlock(p)
-    
-    #p.multipleBlocks(vision_results)
 
     p.castle(json_file)
     

@@ -91,7 +91,7 @@ def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
                 stl_name = json_file[str(i)]["class"]
                 print('spawning ', stl_name)
                 model_class = block_names.index(stl_name)
-                model_name = 'brick_' + str(i) + '_' + stl_name
+                model_name = 'brick_' + str(i+3) + '_' + stl_name
 
                 orientation = randomQuaternion()
 

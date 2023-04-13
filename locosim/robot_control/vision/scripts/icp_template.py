@@ -22,12 +22,12 @@ path_yolo = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "r
 path_template_pcds = os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim", "robot_control", "vision", "scripts", "template", "pcds")
 
 block_names = ['X1-Y1-Z2','X1-Y2-Z1','X1-Y2-Z2','X1-Y2-Z2-CHAMFER','X1-Y2-Z2-TWINFILLET','X1-Y3-Z2','X1-Y3-Z2-FILLET','X1-Y4-Z1','X1-Y4-Z2','X2-Y2-Z2','X2-Y2-Z2-FILLET']
-class2niter = {0: 12, 1: 24, 2: 24, 3: 40, 4: 20, 5: 24, 6: 40, 7: 24, 8: 24, 9: 12, 10: 40}
+class2niter = {0: 24, 1: 48, 2: 48, 3: 80, 4: 32, 5: 48, 6: 80, 7: 48, 8: 48, 9: 24, 10: 80}
 class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.031, 0.063, 0.057], 3: [0.031, 0.063, 0.057],
                     4: [0.031, 0.063, 0.057], 5: [0.031, 0.095, 0.057], 6: [0.031, 0.095, 0.057], 7: [0.031, 0.127, 0.039],
                     8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
 
-block_class = 3
+block_class = 0
 y_positions = [0.2584, 0.475, 0.6917]
 
 altezza_tavolo = 1.8-0.935
@@ -55,7 +55,7 @@ def spawn_blocks():
 
 
 def move_blocks(x, y, z, w, roll, pitch, yaw):
-    print('moving blocks: ', x, y, z, w)
+    print('moving blocks')
 
     rospy.wait_for_service('/gazebo/set_model_state')
     set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
@@ -85,10 +85,10 @@ def move_blocks(x, y, z, w, roll, pitch, yaw):
 
 
 def namedef(posx, posy, r, p, y):
-    if (-(pi/2)-0.01<=r<=-(pi/2)+0.01) :
-        name = str(block_class)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r,4)))+"_"+str(np.round(p,4))+"_"+str(np.round(y-pi,4))+".pcd"
+    if -pi/2-0.01 < r < -pi/2+0.01:
+        name = str(block_class)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r, 4)))+"_"+str(np.round(p, 4))+"_"+str(np.round(y-pi, 4))+".pcd"
     else:
-        name = str(block_class)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r,4)))+"_"+str(np.round(p,4))+"_"+str(np.round(y,4))+".pcd"
+        name = str(block_class)+"_"+str(posx)+"_"+str(posy)+"_"+str(abs(np.round(r, 4)))+"_"+str(np.round(p, 4))+"_"+str(np.round(y, 4))+".pcd"
     print("name: " + name + "\n")
 
     return name
@@ -114,75 +114,75 @@ def get_template_position(xpos, ypos):
 
 def create_quaternion(iter):
     if block_class == 4:
-        if iter < 4:
+        if iter < 8:
             roll = 0
             pitch = 0
-            yaw = iter * pi/4
-        elif iter < 8:
-            roll = 0
-            pitch = pi/2
-            yaw = (iter-4)*pi/4
-        else:
-            roll = 2.1356
-            pitch = 0
-            yaw = (iter-8)*pi/4
-    
-    #BLOCCHI RETTANGOLARI
-    elif block_class in [1, 2, 5, 7, 8]:
-        if iter < 4:
-            roll = 0
-            pitch = 0
-            yaw = iter * pi/4
-        elif iter < 8:
-            roll = 0
-            pitch = pi
-            yaw = (iter-4)*pi/4
+            yaw = iter * pi/8
         elif iter < 16:
             roll = 0
             pitch = pi/2
-            yaw = (iter-8)*pi/4
+            yaw = (iter-8)*pi/8
+        else:
+            roll = 2.1356
+            pitch = 0
+            yaw = (iter-16)*pi/8
+    
+    #BLOCCHI RETTANGOLARI
+    elif block_class in [1, 2, 5, 7, 8]:
+        if iter < 8:
+            roll = 0
+            pitch = 0
+            yaw = iter * pi/8
+        elif iter < 16:
+            roll = 0
+            pitch = pi
+            yaw = (iter-8)*pi/8
+        elif iter < 32:
+            roll = 0
+            pitch = pi/2
+            yaw = (iter-16)*pi/8
         else:
             roll = -pi/2
             pitch = 0
-            yaw = (iter-16)*pi/4 + pi
+            yaw = (iter-32)*pi/8 + pi
 
     #BLOCCHI QUADRATI
     elif block_class in [0, 9]:
-        if iter < 2:
+        if iter < 4:
             roll = 0
             pitch = 0
-            yaw = iter*pi/4
-        elif iter < 4:
+            yaw = iter*pi/8
+        elif iter < 8:
             roll = 0
             pitch = pi
-            yaw = (iter-2)*pi/4
+            yaw = (iter-4)*pi/8
         else:
             roll = -pi/2
             pitch = 0
-            yaw = (iter-4)*pi/4 + pi
+            yaw = (iter-8)*pi/8 + pi
 
     #BLOCCO CHAMFER/FILLET
     else:
-        if iter < 8: 
+        if iter < 16: 
             roll = 0
             pitch = 0
-            yaw = iter*pi/4
-        elif iter < 16: 
+            yaw = iter*pi/8
+        elif iter < 32: 
             roll = 0
             pitch = pi
-            yaw = (iter-8)*pi/4
-        elif iter < 24:
+            yaw = (iter-16)*pi/8
+        elif iter < 48:
             roll = 0
             pitch = pi/2
-            yaw = (iter-16)*pi/4
-        elif iter < 32:
+            yaw = (iter-32)*pi/8
+        elif iter < 64:
             roll = 0
             pitch = 3*pi/2
-            yaw = (iter-24)*pi/4
+            yaw = (iter-48)*pi/8
         else:
             pitch = 0
             roll = -pi/2
-            yaw = (iter-32)*pi/4 + pi
+            yaw = (iter-64)*pi/8 + pi
     
     angles = [roll, pitch, yaw]
     print(angles)
@@ -216,7 +216,7 @@ def checkTemplate(img_original, xmin, ymin, xmax, ymax):
         return True, xmin, ymin, xmax, ymax
 
     n = 1
-    expand = 5
+    expand = 20
     color = 220
 
     # controllo che i bordi siano tutti bianchi (max n pixel di fila)
@@ -292,10 +292,10 @@ def take_template(name):
     results = yolo_results.readlines()
 
     processed_blocks = []
-    for res in results:
+    for i, res in enumerate(results):
         xmin, ymin, xmax, ymax, p, c = res.split(',')
         xmin, ymin, xmax, ymax, p, c = float(xmin), float(ymin), float(xmax), float(ymax), float(p), float(c)
-        xmin, ymin, xmax, ymax, p, c = int(xmin)+3, int(ymin)+3, int(xmax)+3, int(ymax)+3, np.round(p,2), int(c)
+        xmin, ymin, xmax, ymax, p, c = int(xmin), int(ymin), int(xmax), int(ymax), np.round(p,2), int(c)
         
         if presenceControl(processed_blocks, xmin, ymin, xmax, ymax):
             continue
@@ -307,7 +307,7 @@ def take_template(name):
         while not ok:
             ok, xmin, ymin, xmax, ymax = checkTemplate(cv_image, xmin, ymin, xmax, ymax)
 
-        print('reading pointcloud')
+        print('reading pointcloud ', i)
         gazebo_pcd = rospy.wait_for_message("/ur5/zed_node/point_cloud/cloud_registered", PointCloud2, timeout=None)
 
         field_names = [field.name for field in gazebo_pcd.fields]
@@ -334,7 +334,7 @@ def take_template(name):
         template_pcd = o3d.geometry.PointCloud()
         template_pcd.points = o3d.utility.Vector3dVector(np.array(xyz_worldframe))
         downpcd = template_pcd.voxel_down_sample(voxel_size=0.004)
-        downpcd.paint_uniform_color([0, 1, 0])
+        downpcd.paint_uniform_color([0, 0, 1])
         
         aabb = template_pcd.get_axis_aligned_bounding_box()
         aabb.color = (1, 0, 0)
@@ -358,7 +358,7 @@ def talker():
     
     spawn_blocks()
 
-    iter = 24
+    iter = 0
     end = class2niter[block_class]
 
     while not rospy.is_shutdown():
@@ -374,7 +374,7 @@ def talker():
 
         if not os.path.isfile(file):
             print('--- creazione template ---')
-            
+
             move_blocks(x, y, z, w, roll, pitch, yaw)
             
             take_template(name)
