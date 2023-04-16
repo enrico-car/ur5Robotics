@@ -43,15 +43,6 @@ class2dimensions = {0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.03
                     8: [0.031, 0.127, 0.057], 9: [0.063, 0.063, 0.057], 10: [0.063, 0.063, 0.057]}
 configurations = ['in_piedi', 'sdraiato', 'sottosopra', 'normale']
 
-def get_yaw(rot): #è corretto?
-    if rot == 0:
-        return 0
-    elif rot == 2:
-        return pi
-    elif rot == 1:
-        return pi/2
-    else:
-        return -pi/2
 
 class Block:
     def __init__(self, classe=None, position=None, rpy=None):
@@ -135,7 +126,7 @@ class Block:
             approach_rotm = eul2rotm(approach_rpy)
             approach_pos = self.position
 
-            if self.configuration == configurations[3]:
+            if self.configuration == configurations[3] and self.classe not in [9, 10]:
                 approach_pos += np.array([0, 0, -0.008])
 
             # se voglio prendere il blocco con il gripper perpendicolare al tavolo 
@@ -597,7 +588,6 @@ class JointStatePublisher:
         if use_IK:
             print('----- USING IK -----')
             poss, vels, times = IKTrajectory(self.jstate, final_pos+np.array([-0.5, -0.35, 0]), final_rotm, curve_type=curve_type, vel=vel)
-            input('..')
         else:
             poss, vels, times = differential_kin(self.jstate, final_pos+np.array([-0.5, -0.35, 0]), final_rotm, curve_type=curve_type, vel=vel)
         
@@ -621,8 +611,8 @@ class JointStatePublisher:
                     poss[i] = np.append(poss[i], final_q_gripper)
                     vels[i] = np.append(vels[i], np.zeros(len(self.q_gripper)))
 
-        time.sleep(1.)
         times = [t + 0.1 for t in times]
+        time.sleep(2.)
 
         self.sendDesTrajectory(poss, vels, times)
 
@@ -955,7 +945,7 @@ class JointStatePublisher:
         print('***** TASK COMPLETED *****')
 
     def castle(self, json_file):
-        castle_pos_max = (0.95, 0.75) #angolo in basso a sx del quadrato
+        castle_pos_max = (0.98, 0.78) #angolo in basso a sx del quadrato
         x_max, y_max = castle_pos_max
 
         n = json_file["size"]
@@ -995,6 +985,16 @@ def readJSON():
     json_file = json.loads(json_file)
 
     return json_file
+
+def get_yaw(rot):
+    if rot == 0:
+        return 0
+    elif rot == 2:
+        return pi
+    elif rot == 1:
+        return pi/2
+    else:
+        return -pi/2
 
 class Res:
     def __init__(self):
@@ -1052,7 +1052,7 @@ def talker(p):
 
     p.homingProcedure()
     input('-+-+-')
-    
+
     print('--- spawning blocks ---')
     json_file = readJSON()
     spawnBlocks(json_file=json_file)

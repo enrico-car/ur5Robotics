@@ -9,14 +9,16 @@ from math import acos as acos
 from math import asin as asin
 from math import sqrt as sqrt
 import cmath
+from cmath import acos, asin
 from pprint import pprint
 import copy
 import time
 import lab_exercises.lab_palopoli.params as conf
 from scipy.optimize import fsolve
 from pprint import pprint
+homing_position = conf.robot_params['ur5']['q_0']
 
-np.set_printoptions(precision=6, suppress=True)
+np.set_printoptions(precision=4, suppress=True)
 
 global mat
 mat = np.matrix
@@ -42,6 +44,7 @@ d = mat([d1, 0, 0, d4, d5, d6])
 a = mat([0, 0, a2, a3, 0, 0])
 alph = mat([pi, pi / 2, 0, 0, pi / 2, -pi / 2])
 
+
 def rotX(roll):
     return mat([[1, 0, 0], 
                 [0, cos(roll), -sin(roll)], 
@@ -57,7 +60,14 @@ def rotZ(yaw):
                 [sin(yaw),  cos(yaw), 0], 
                 [0, 0, 1]])
 
-# ----------- DIRECT KINEMATICS ------------------------
+def trans(rotm=np.eye(3), trasl=np.zeros(3)):
+    T = np.eye(4)
+    T[0:3, 0:3] = rotm
+    T[0:3, 3] = trasl
+    
+    return T
+
+# ----------- FORWARD KINEMATICS ------------------------
 def T01mtrans(theta1):
     # ---------------------  0->1   ------------------------------------
     # matrice di rotazione iniziale di pi attorno all'asse x0 e displacement di d1 sull'asse z
@@ -174,6 +184,166 @@ def direct_kin(jstate):
     return T06
 
 
+DH = {
+  # i: (alpha, a,  d)
+    1: (0,     0,  d1),
+    2: (pi/2,  0,  0 ),
+    3: (0,     a2, 0 ),
+    4: (0,     a3, d4),
+    5: (pi/2,  0,  d5),
+    6: (-pi/2, 0,  d6)
+}
+
+def T_imeno1_i(t, i):
+    alpha, a, d = DH[i]
+    
+    T_rotX = trans(rotm=rotX(alpha))
+    T_traslX = trans(trasl=np.array([a, 0, d]))
+    T_rotZ = trans(rotm=rotZ(t))
+
+    return T_rotX @ T_traslX @ T_rotZ
+
+def DK(jstate):
+    T = np.eye(4)
+    for i, t in enumerate(jstate):
+        T = T @ T_imeno1_i(t, i+1)
+    
+    return T
+
+
+def IK(p60, R60, actual_angles=np.zeros(6)):
+    # print(actual_angles)
+    # print('p60:', p60)
+    T60 = np.eye(4)
+    T60[0:3, 0:3] = rotX(pi) @ R60
+    T60[0:3, 3] = rotX(pi) @ p60
+
+    th = mat(np.zeros((8, 6)))
+
+    # finding th1
+    p50 = T60 @ np.array([0,0,-d6,1]).T
+    th1_1 = np.real(atan2(p50[1], p50[0]) + acos(d4/np.hypot(p50[1], p50[0])))+pi/2
+    th1_2 = np.real(atan2(p50[1], p50[0]) - acos(d4/np.hypot(p50[1], p50[0])))+pi/2
+    th[0,0],th[1,0],th[2,0],th[3,0],th[4,0],th[5,0],th[6,0],th[7,0]=th1_1,th1_1,th1_2,th1_2, th1_1,th1_1,th1_2,th1_2
+    
+    # finding th5
+    th5_1 = +np.real(acos((p60[0]*sin(th1_1) + p60[1]*cos(th1_1)-d4) / d6))
+    th5_2 = -np.real(acos((p60[0]*sin(th1_1) + p60[1]*cos(th1_1)-d4) / d6))
+    th5_3 = +np.real(acos((p60[0]*sin(th1_2) + p60[1]*cos(th1_2)-d4) / d6))
+    th5_4 = -np.real(acos((p60[0]*sin(th1_2) + p60[1]*cos(th1_2)-d4) / d6))
+    th[0,4],th[1,4],th[2,4],th[3,4],th[4,4],th[5,4],th[6,4],th[7,4]=th5_1,th5_2,th5_3,th5_4, th5_1,th5_2,th5_3,th5_4
+    
+    # finding th6
+    T06 = np.linalg.inv(T60)
+    Xhat = T06[0:3,0]
+    Yhat = T06[0:3,1]
+
+    th6_1,th6_2,th6_3,th6_4 = 0.,0.,0.,0.
+    if th5_1 != 0:
+        th6_1 = np.real(atan2( ((-Xhat[1]*sin(th1_1)+Yhat[1]*cos(th1_1))/sin(th5_1)), ((Xhat[0]*sin(th1_1)-Yhat[0]*cos(th1_1))/sin(th5_1)) ))
+    if th5_2 != 0:
+        th6_2 = np.real(atan2( ((-Xhat[1]*sin(th1_1)+Yhat[1]*cos(th1_1))/sin(th5_2)), ((Xhat[0]*sin(th1_1)-Yhat[0]*cos(th1_1))/sin(th5_2)) ))
+    if th5_3 != 0:
+        th6_3 = np.real(atan2( ((-Xhat[1]*sin(th1_2)+Yhat[1]*cos(th1_2))/sin(th5_3)), ((Xhat[0]*sin(th1_2)-Yhat[0]*cos(th1_2))/sin(th5_3)) ))
+    if th5_4 != 0:
+        th6_4 = np.real(atan2( ((-Xhat[1]*sin(th1_2)+Yhat[1]*cos(th1_2))/sin(th5_4)), ((Xhat[0]*sin(th1_2)-Yhat[0]*cos(th1_2))/sin(th5_4)) ))
+    th[0,5],th[1,5],th[2,5],th[3,5],th[4,5],th[5,5],th[6,5],th[7,5]=th6_1,th6_2,th6_3,th6_4, th6_1,th6_2,th6_3,th6_4
+
+    # finding th3
+    T41m = np.linalg.inv(T_imeno1_i(th1_1,1)) @ T60 @ np.linalg.inv(T_imeno1_i(th6_1,6)) @ np.linalg.inv(T_imeno1_i(th5_1,5))
+    p41_1 = T41m[0:3,3]
+    p41xz_1 = np.hypot(p41_1[0], p41_1[2])
+    
+    T41m = np.linalg.inv(T_imeno1_i(th1_1,1)) @ T60 @ np.linalg.inv(T_imeno1_i(th6_2,6)) @ np.linalg.inv(T_imeno1_i(th5_2,5))
+    p41_2 = T41m[0:3,3]
+    p41xz_2 = np.hypot(p41_2[0], p41_2[2])
+    
+    T41m = np.linalg.inv(T_imeno1_i(th1_2,1)) @ T60 @ np.linalg.inv(T_imeno1_i(th6_3,6)) @ np.linalg.inv(T_imeno1_i(th5_3,5))
+    p41_3 = T41m[0:3,3]
+    p41xz_3 = np.hypot(p41_3[0], p41_3[2])
+    
+    T41m = np.linalg.inv(T_imeno1_i(th1_2,1)) @ T60 @ np.linalg.inv(T_imeno1_i(th6_4,6)) @ np.linalg.inv(T_imeno1_i(th5_4,5))
+    p41_4 = T41m[0:3,3]
+    p41xz_4 = np.hypot(p41_4[0], p41_4[2])
+     
+    th3_1 = np.real( acos( (p41xz_1**2-a2**2-a3**2) / (2*a2*a3) ))
+    th3_2 = np.real( acos( (p41xz_2**2-a2**2-a3**2) / (2*a2*a3) ))
+    th3_3 = np.real( acos( (p41xz_3**2-a2**2-a3**2) / (2*a2*a3) ))
+    th3_4 = np.real( acos( (p41xz_4**2-a2**2-a3**2) / (2*a2*a3) ))
+    th3_5,th3_6,th3_7,th3_8 = -th3_1,-th3_2,-th3_3,-th3_4
+    th[0,2],th[1,2],th[2,2],th[3,2],th[4,2],th[5,2],th[6,2],th[7,2]=th3_1,th3_2,th3_3,th3_4,th3_5,th3_6,th3_7,th3_8
+    
+    # finding th2
+    th2_1 = np.real( atan2( -p41_1[2], -p41_1[0] ) - asin( (-a3*sin(th3_1)) / p41xz_1) )
+    th2_2 = np.real( atan2( -p41_2[2], -p41_2[0] ) - asin( (-a3*sin(th3_2)) / p41xz_2) )
+    th2_3 = np.real( atan2( -p41_3[2], -p41_3[0] ) - asin( (-a3*sin(th3_3)) / p41xz_3) )
+    th2_4 = np.real( atan2( -p41_4[2], -p41_4[0] ) - asin( (-a3*sin(th3_4)) / p41xz_4) )
+    th2_5 = np.real( atan2( -p41_1[2], -p41_1[0] ) - asin( (a3*sin(th3_1)) / p41xz_1) ) 
+    th2_6 = np.real( atan2( -p41_2[2], -p41_2[0] ) - asin( (a3*sin(th3_2)) / p41xz_2) ) 
+    th2_7 = np.real( atan2( -p41_3[2], -p41_3[0] ) - asin( (a3*sin(th3_3)) / p41xz_3) ) 
+    th2_8 = np.real( atan2( -p41_4[2], -p41_4[0] ) - asin( (a3*sin(th3_4)) / p41xz_4) )
+    th[0,1],th[1,1],th[2,1],th[3,1],th[4,1],th[5,1],th[6,1],th[7,1]=th2_1,th2_2,th2_3,th2_4,th2_5,th2_6,th2_7,th2_8
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_1,3))@np.linalg.inv(T_imeno1_i(th2_1,2))@np.linalg.inv(T_imeno1_i(th1_1,1))@T60@np.linalg.inv(T_imeno1_i(th6_1,6))@np.linalg.inv(T_imeno1_i(th5_1,5))
+    Xhat43 = T43m[0:3,0]
+    th4_1 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_2,3))@np.linalg.inv(T_imeno1_i(th2_2,2))@np.linalg.inv(T_imeno1_i(th1_1,1))@T60@np.linalg.inv(T_imeno1_i(th6_2,6))@np.linalg.inv(T_imeno1_i(th5_2,5))
+    Xhat43 = T43m[0:3,0]
+    th4_2 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_3,3))@np.linalg.inv(T_imeno1_i(th2_3,2))@np.linalg.inv(T_imeno1_i(th1_2,1))@T60@np.linalg.inv(T_imeno1_i(th6_3,6))@np.linalg.inv(T_imeno1_i(th5_3,5))
+    Xhat43 = T43m[0:3,0]
+    th4_3 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_4,3))@np.linalg.inv(T_imeno1_i(th2_4,2))@np.linalg.inv(T_imeno1_i(th1_2,1))@T60@np.linalg.inv(T_imeno1_i(th6_4,6))@np.linalg.inv(T_imeno1_i(th5_4,5))
+    Xhat43 = T43m[0:3,0]
+    th4_4 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_5,3))@np.linalg.inv(T_imeno1_i(th2_5,2))@np.linalg.inv(T_imeno1_i(th1_1,1))@T60@np.linalg.inv(T_imeno1_i(th6_1,6))@np.linalg.inv(T_imeno1_i(th5_1,5))
+    Xhat43 = T43m[0:3,0]
+    th4_5 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_6,3))@np.linalg.inv(T_imeno1_i(th2_6,2))@np.linalg.inv(T_imeno1_i(th1_1,1))@T60@np.linalg.inv(T_imeno1_i(th6_2,6))@np.linalg.inv(T_imeno1_i(th5_2,5))
+    Xhat43 = T43m[0:3,0]
+    th4_6 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_7,3))@np.linalg.inv(T_imeno1_i(th2_7,2))@np.linalg.inv(T_imeno1_i(th1_2,1))@T60@np.linalg.inv(T_imeno1_i(th6_3,6))@np.linalg.inv(T_imeno1_i(th5_3,5))
+    Xhat43 = T43m[0:3,0]
+    th4_7 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    
+    T43m = np.linalg.inv(T_imeno1_i(th3_8,3))@np.linalg.inv(T_imeno1_i(th2_8,2))@np.linalg.inv(T_imeno1_i(th1_2,1))@T60@np.linalg.inv(T_imeno1_i(th6_4,6))@np.linalg.inv(T_imeno1_i(th5_4,5))
+    Xhat43 = T43m[0:3,0]
+    th4_8 = np.real(atan2(Xhat43[1], Xhat43[0]))
+    th[0,3],th[1,3],th[2,3],th[3,3],th[4,3],th[5,3],th[6,3],th[7,3]=th4_1,th4_2,th4_3,th4_4,th4_5,th4_6,th4_7,th4_8
+
+    # pprint(th)
+
+    solution = np.array(th[0].flat)
+    actual_norm = np.linalg.norm(actual_angles - solution)
+    best_angles = solution
+   
+    for i in range(8):
+        solution = np.array(th[i].flat)
+        # calcolo della "distanza" sulla posizione dei joint
+        norm = np.linalg.norm(actual_angles - solution)
+        #print(norm)
+        # calcolo dell'errore di posizionamento tra la posizione voluta e quella che si sta valutando
+        ee_pos = np.array(direct_kin(solution)[0:3, 3].flat)
+        pos_error = np.linalg.norm(ee_pos - p60)
+        #print(ee_pos, ' - ', pos_error)
+        # solo se la "distanza" è buona -E- l'errore è sotto una certa soglia, la soluzione va bene
+        if norm <= actual_norm:
+            actual_norm = norm
+            best_angles = solution
+
+    # print()
+    # print('best angles:', best_angles, 'error: ', actual_norm)
+    # print('---------------------------------------')
+
+    # input('....')
+    return best_angles
+
 # ----------- INVERSE KINEMATICS ------------------------
 def T01trans(th1):
     return mat([[cos(th1), -sin(th1), 0, 0],
@@ -220,7 +390,7 @@ def inverse_kin(des_pos_usd, des_rotm_usd, actual_angles=zero_array):
 
     des_pose_upsidedown = np.eye(4)
     des_pose_upsidedown[0:3, 0:3] = des_rotm_usd
-    des_pose_upsidedown[0:3, 3] = des_pos_usd.T
+    des_pose_upsidedown[0:3, 3] = des_pos_usd
 
     trans_frame_to_normal = mat([[1, 0, 0, 0],
                                  [0, cos(alph[0, 0]), -sin(alph[0, 0]), 0],
@@ -390,7 +560,7 @@ def inverse_kin(des_pos_usd, des_rotm_usd, actual_angles=zero_array):
 
     return best_angles
 
-def IKTrajectory(jstate, final_p, final_rotm, curve_type='bezier', vel=1):
+def IKTrajectory(jstate, final_p, final_rotm, curve_type='line', vel=1):
     initial_pose = direct_kin(jstate)
     initial_p = np.array(initial_pose[0:3, 3].flat)
     initial_rotm = initial_pose[0:3, 0:3]
@@ -413,7 +583,7 @@ def IKTrajectory(jstate, final_p, final_rotm, curve_type='bezier', vel=1):
         next_pos = path[i]
         next_rotm = rotms[i]
 
-        next_jstate = inverse_kin(next_pos, next_rotm, actual_jstate)
+        next_jstate = IK(next_pos, next_rotm, actual_jstate)
         positions.append(next_jstate)
 
         actual_jstate = next_jstate
@@ -422,14 +592,9 @@ def IKTrajectory(jstate, final_p, final_rotm, curve_type='bezier', vel=1):
     
     for i in range(1, len(positions)):
         dtheta = positions[i] - positions[i-1]
-        times.append(times[i-1] + np.amax(abs(dtheta)) / vel)
-    
-    print(jstate)
-    print('-------------------')
-    pprint(positions)
+        times.append(times[i-1] + np.amax(abs(dtheta)) / vel + 0.1)
     
     return positions, None, times    
-
 
 # ----------- INVERSE DIFFERENTIAL KINEMATICS ------------------------
 def jquintic(self, T, qi, qf, vi, vf, ai, af):
@@ -1042,4 +1207,6 @@ def differential_kin(initial_jstate, final_p, final_rotm, curve_type='bezier', v
     
     return positions, velocities, times
 
-
+# poss, _, times = IKTrajectory(homing_position, np.array([0.05, 0.05, -0.90]), eul2rotm([pi, 0, 0]))
+# pprint(poss)
+# pprint(direct_kin(poss[-1]))
