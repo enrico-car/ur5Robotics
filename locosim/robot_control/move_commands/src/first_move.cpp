@@ -2,30 +2,34 @@
 #include <std_msgs/Float64MultiArray.h>
 
 #include "kinematic.h"
+#include "joint_state_publisher.h"
 #include "block.h"
 
 int main(int argc, char **argv)
 {
-    std::cout << BlockDimension.at(4) << std::endl;
-    // Vector6 initialJ;
-    // initialJ << -0.32, -0.2, -2.8, -1.63, 0, -1.0;
-    // Vector3 finalJ;
-    // finalJ << 0.0, 0.6, -0.7;
-    // Matrix3 m4;
-    // m4 << 1, 0, 0,
-    //     0, -1, 0,
-    //     0, 0, -1;
+    JointStatePublisher joint_state_publisher(argc, argv);
 
-    // Trajectory res = Kinematic::differentialKinematic(initialJ, finalJ, m4);
+    ros::Rate loop_rate(1000);
 
-    // for (auto x : res.positions)
-    // {
-    //     for (auto y : x)
-    //     {
-    //         std::cout << y << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
+    Vector6 initial_jstate;
+    initial_jstate << -0.32, -0.2, -2.8, -1.63, 0, -1.0;
+    Vector3 final_p;
+    final_p << 0.2, 0.5, -0.8;
+    Matrix3 final_rotm;
+    final_rotm << 1, 0, 0,
+        0, 1, 0,
+        0, 0, 1;
 
+    // Trajectory trajectory = Kinematic::differentialKinematic(initial_jstate, final_p, final_rotm);
+
+    while (ros::ok())
+    {
+
+        // joint_state_publisher.sendDesJState({M_PI/2,0,0,0,0,0});
+        // joint_state_publisher.sendDesTrajectory(trajectory);
+        ros::spin();
+        
+    }
+    ros::shutdown();
     return 0;
 }

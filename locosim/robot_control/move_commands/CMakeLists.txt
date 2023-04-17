@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(move_commands)
 
 # # Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs vision gazebo_ros_link_attacher)
 find_package(Eigen3 3.3 REQUIRED)
 
 # # Declare a catkin package

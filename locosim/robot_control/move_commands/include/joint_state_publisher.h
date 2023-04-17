@@ -9,28 +9,60 @@
 #include <vector>
 #include <math.h>
 #include <Eigen/Dense>
+#include <gazebo_ros_link_attacher/Attach.h>
+#include <gazebo_ros_link_attacher/SetStatic.h>
+#include <gazebo_msgs/GetWorldProperties.h>
+#include <gazebo_msgs/GetModelState.h>
+#include <vision/vision.h>
 
 #include "constants.h"
 #include "kinematic.h"
-
-
+#include "block.h"
 
 class JointStatePublisher
 {
 private:
-    ros::Publisher pub_des_joint_state;
-    ros::Publisher pub_traj_jstate;
-    ros::Subscriber sub_jstate;
+    Vector6 q;
+    Vector6 jstate;
+    Block block;
+    std::vector<Block> presentBlock;
+
+    // * Robot configuration
+    bool realRobot;
+    bool vision;
+    bool gripper;
+    bool gripperSim;
+    bool softGripper;
+    bool useGraspPlugin;
+#ifdef SOFT_GRIPPER
+    Vector2 qGripper;
+#endif
+#ifndef SOFT_GRIPPER
+    Vector3 qGripper;
+#endif
+
+    // * Ros topic
+    ros::Publisher pubDesJstate;
+    ros::Publisher pubtrajJstate;
+    ros::Subscriber subJstate;
+
+    ros::ServiceClient attachSrv;
+    ros::ServiceClient detachSrv;
+    ros::ServiceClient setStaticSrv;
+
+    ros::ServiceClient getWorldProperties;
+    ros::ServiceClient getModelState;
+
+    ros::ServiceClient visionService;
 
 
-    std::vector<double> linspace(double start, double end, int num);
-    void subCallback(const sensor_msgs::JointState &msg);
+    void receiveJstate(const sensor_msgs::JointState &state);
 
 public:
     JointStatePublisher(int argc, char **argv);
 
     void sendDesJState(std::vector<double> q_des);
-    void sendDesTrajectory(const Trajectory& trajectory)const;
+    void sendDesTrajectory(const Trajectory &trajectory) const;
 };
 
 #endif
