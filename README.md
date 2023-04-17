@@ -4,7 +4,7 @@
 
 ## Vision
 We developed the vision part as the combination of two main techniques: YOLO and ICP.
-We use Yolo in order to understand where the blocks are on the table, and then the ICP technique to truly obtain its position, orientation while also performing the classification. 
+We use Yolo in order to understand where the blocks are on the table, and then the ICP technique to truly obtain its position and orientation while also performing the classification. 
 
 #### Yolo - You Only Look Once
 Yolo is a tool developed to perform real-time object detection on custom dataset of objects. 
