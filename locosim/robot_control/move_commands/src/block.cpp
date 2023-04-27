@@ -18,6 +18,41 @@ Block::Block(std::string name, BlockClass blockClass, Cartesian position, Quater
     update();
 }
 
+BlockConfiguration Block::getConfiguration()
+{
+    return configuration;
+}
+
+BlockClass Block::getClass()
+{
+    return blockClass;
+}
+
+std::string Block::getName()
+{
+    return name;
+}
+
+Vector3 Block::getApproachPos()
+{
+    return approachPos.toVector();
+}
+
+Matrix3 Block::getApproachRotm()
+{
+    return approachRotm;
+}
+
+Vector3 Block::getLandPos()
+{
+    return landPos.toVector();
+}
+
+Matrix3 Block::getLandRotm()
+{
+    return landRotm;
+}
+
 void Block::update()
 {
     Cartesian dim = BlockDimension.at(blockClass);

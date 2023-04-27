@@ -1,0 +1,1 @@
+/usr/bin/g++-8 -fPIC -g  -shared -Wl,-soname,libJointStatePublisher.so -o devel/lib/libJointStatePublisher.so CMakeFiles/JointStatePublisher.dir/src/joint_state_publisher.cpp.o 

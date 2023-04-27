@@ -357,12 +357,10 @@ public:
         return positions;
     }
 
-    static Trajectory differentialKinematic(const Vector6 &initial_jstate, const Vector3 &final_p, const Matrix3 &final_rotm, const CurveType &curveType = CurveType::BEZIER, const double &vel = 2)
+    static Trajectory differentialKinematic(const Vector6 &initial_jstate, const Vector3 &final_p, const Matrix3 &final_rotm, const CurveType &curveType = CurveType::BEZIER, const double &vel = 1)
     {
         Trajectory trajectory;
         Matrix4 intial_pose = directKinematic(initial_jstate);
-        std::cout<<"initial pose"<<std::endl;
-        std::cout<<intial_pose<<std::endl;
         Vector3 initial_p;
         initial_p << intial_pose(0, 3), intial_pose(1, 3), intial_pose(2, 3);
         Matrix3 intial_rotm = intial_pose.block(0, 0, 3, 3);
@@ -376,12 +374,6 @@ public:
         if (curveType == CurveType::BEZIER)
         {
             path = Algebra::bezierPath(initial_p, final_p, (int)(1 / ds));
-            std::cout<<"path"<<std::endl;
-            for(auto x:path)
-            {
-                std::cout<<x<<std::endl;
-            }
-            std::cout<<"================================================================="<<std::endl;
         }
         else if (curveType == CurveType::LINE)
         {
@@ -404,7 +396,6 @@ public:
                 rotms[i](2, 0), rotms[i](2, 1), rotms[i](2, 2), path[i](2),
                 0, 0, 0, 1;
 
-            std::cout<<"nextPose"<< nextPose<<std::endl;
             if (i < path.size() - 3)
             {
                 newViaPoints = inversDifferentialKinematic(actual_jstate, nextPose, intermediatePrecision);
@@ -433,9 +424,22 @@ public:
             actual_jstate = (Vector6() << temp[0], temp[1], temp[2], temp[3], temp[4], temp[5]).finished();
         }
 
+        std::vector<double> dtheta;
+
+        std::vector<std::vector<double>> temPosition;
+        temPosition.push_back(trajectory.positions[0]);
+        for (int i = 1; i < trajectory.positions.size(); i++)
+        {
+            dtheta = Algebra::diff(trajectory.positions[i], trajectory.positions[i - 1]);
+            if (Algebra::max(dtheta) > 0.0005)
+            {
+                temPosition.push_back(trajectory.positions[i]);
+            }
+        }
+        trajectory.positions = temPosition;
+
         trajectory.times.push_back(0.0);
         trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
-        std::vector<double> dtheta;
         for (int i = 1; i < trajectory.positions.size(); i++)
         {
             dtheta = Algebra::diff(trajectory.positions[i], trajectory.positions[i - 1]);
@@ -443,6 +447,10 @@ public:
             trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
         }
 
+        for (auto x : trajectory.times)
+        {
+            std::cout << x << std::endl;
+        }
         return trajectory;
     }
 };

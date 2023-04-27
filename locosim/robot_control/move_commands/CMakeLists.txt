@@ -22,7 +22,7 @@ add_library(Costants src/constants.cpp)
 add_library(Block src/block.cpp)
 add_library(Algebra src/algebra.cpp)
 
-target_link_libraries(first_move Costants JointStatePublisher Kinematic ${catkin_LIBRARIES})
+target_link_libraries(first_move Costants JointStatePublisher Kinematic Block Algebra ${catkin_LIBRARIES})
 
 install(TARGETS first_move
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

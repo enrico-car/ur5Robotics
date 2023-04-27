@@ -44,6 +44,8 @@ typedef Eigen::Matrix<double, 2, 1> Vector2;
 typedef Eigen::Matrix<double, 3, 1> Vector3;
 typedef Eigen::Matrix<double, 4, 1> Vector4;
 typedef Eigen::Matrix<double, 6, 1> Vector6;
+typedef Eigen::Matrix<double, 8, 1> Vector8;
+typedef Eigen::Matrix<double, 9, 1> Vector9;
 typedef Eigen::Matrix<double, 2, 2> Matrix2;
 typedef Eigen::Matrix<double, 3, 3> Matrix3;
 typedef Eigen::Matrix<double, 4, 4> Matrix4;
@@ -64,7 +66,7 @@ public:
 
     static const std::string pubDesJstate;
     static const std::string pubtrajJstateRealRobot;
-    static const std::string pubtrajJstate;
+    static const std::string pubTrajJstate;
 
     static const std::string subJstate;
 
@@ -76,12 +78,13 @@ public:
     static const std::string getModelState;
 
     static const std::string visionService;
+    static const std::string markerPub;
 };
 
 const std::string Constants::init_node = "custom_joint_pub_node_cpp";
 const std::string Constants::pubDesJstate = "/ur5/joint_group_pos_controller/command";
 const std::string Constants::pubtrajJstateRealRobot = "/ur5/scaled_pos_joint_traj_controller/command";
-const std::string Constants::pubtrajJstate = "/ur5/pos_joint_traj_controller/command";
+const std::string Constants::pubTrajJstate = "/ur5/pos_joint_traj_controller/command";
 const std::string Constants::subJstate = "/ur5/joint_states";
 
 const std::string Constants::attachSrv = "/link_attacher_node/attach";
@@ -92,8 +95,7 @@ const std::string Constants::getWorldProperties = "/gazebo/get_world_properties"
 const std::string Constants::getModelState = "/gazebo/get_model_state";
 
 const std::string Constants::visionService = "vision_service";
-
-
+const std::string Constants::markerPub = "/vis";
 
 const Vector6 Constants::d = (Vector6() << D1, 0, 0, D4, D5, D6).finished();
 const Vector6 Constants::a = (Vector6() << 0, 0, A2, A3, 0, 0).finished();

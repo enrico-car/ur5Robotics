@@ -65,8 +65,8 @@ private:
     double zPos;
     double top;
     /*
-    * Position on the desk
-    */
+     * Position on the desk
+     */
     int quadrant;
 
     Matrix3 approachRotm;
@@ -74,14 +74,23 @@ private:
     Matrix3 landRotm;
     Cartesian landPos;
 
-    void update();
-    void computeApproachAndLandPose(double xLandPose, double yLandPose, RPY finalRpy, double zOffset=0.0, int yApproachAngle=90);
 
 public:
     Block(){};
     Block(std::string name, BlockClass blockClass, Cartesian position, RPY rpy);
     Block(std::string name, BlockClass blockClass, Cartesian position, Quaternion orientation);
+
+    void computeApproachAndLandPose(double xLandPose, double yLandPose, RPY finalRpy, double zOffset = 0.0, int yApproachAngle = 90);
+
+    void update();
     
+    BlockConfiguration getConfiguration();
+    BlockClass getClass();
+    std::string getName();
+    Vector3 getApproachPos();
+    Matrix3 getApproachRotm();
+    Vector3 getLandPos();
+    Matrix3 getLandRotm();
 };
 
 #endif

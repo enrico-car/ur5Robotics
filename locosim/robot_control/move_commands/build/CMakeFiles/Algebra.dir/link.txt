@@ -1,0 +1,1 @@
+/usr/bin/g++-8 -fPIC -g  -shared -Wl,-soname,libAlgebra.so -o devel/lib/libAlgebra.so CMakeFiles/Algebra.dir/src/algebra.cpp.o 

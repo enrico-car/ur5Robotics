@@ -662,6 +662,9 @@ struct Cartesian
     {
         return Cartesian(x + car.x, y + car.y, z + car.z);
     }
+    Vector3 toVector(){
+        return (Vector3() << x,y,z).finished();
+    }
 };
 
 std::ostream &operator<<(std::ostream &o, const Cartesian &a)
