@@ -1,6 +1,10 @@
 #ifndef __JOINT_STATE_PUBLISHER_h__
 #define __JOINT_STATE_PUBLISHER_h__
 
+#include <iostream>
+#include <fstream>
+#include <jsoncpp/json/json.h>
+
 #include <ros/ros.h>
 #include <unistd.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -14,6 +18,7 @@
 #include "gazebo_ros_link_attacher/SetStatic.h"
 #include <gazebo_msgs/GetWorldProperties.h>
 #include <gazebo_msgs/GetModelState.h>
+#include <gazebo_msgs/ModelStates.h>
 #include <vision/vision.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -21,13 +26,14 @@
 #include "kinematic.h"
 #include "block.h"
 
+
 class JointStatePublisher
 {
 private:
     Vector6 q;
     Vector6 jstate;
     Block block;
-    std::vector<Block> presentBlock;
+    std::vector<Block> presentBlocks;
     visualization_msgs::MarkerArray markerArray;
 
     // * Robot configuration
@@ -58,7 +64,7 @@ private:
     ros::ServiceClient getWorldProperties;
     ros::ServiceClient getModelState;
 
-    ros::ServiceClient visionService;
+    
 
     void receiveJstate(const sensor_msgs::JointState &state);
 
@@ -88,6 +94,9 @@ private:
     void gripping(const double &gripperPos);
 
 public:
+
+    ros::ServiceClient visionService;
+
     JointStatePublisher(int argc, char **argv);
 
     void sendDesJState(std::vector<double> qDes, std::vector<double> qDesGripper);
@@ -95,6 +104,19 @@ public:
 
     void moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd = false, const CurveType &curveType = CurveType::BEZIER, const double &vel = 2, const bool &useIK = false);
     void pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy, const double& zOffset=0.0,const bool &attachToTable=true);
+    void rotateBlock(const RPY &newBlockRpy);
+    void setupBlockForRotation();
+    void rotateBlockStandardPosition(double xLandPose, double yLandPose, RPY finalRpy);
+
+    void homingProcedure();
+    void multipleBlocks(Detected d);
+    void castle(Json::Value json);
+
+    Json::Value readJson();
+    double getYaw(double rot);
+    void registerBlocks(const vision::vision &visionResult);
+
+    void updateJstate();
 };
 
 #endif

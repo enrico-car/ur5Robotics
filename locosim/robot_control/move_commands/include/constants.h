@@ -9,8 +9,22 @@
 
 #include <sensor_msgs/JointState.h>
 
+
+typedef Eigen::Matrix<double, 2, 1> Vector2;
+typedef Eigen::Matrix<double, 3, 1> Vector3;
+typedef Eigen::Matrix<double, 4, 1> Vector4;
+typedef Eigen::Matrix<double, 6, 1> Vector6;
+typedef Eigen::Matrix<double, 8, 1> Vector8;
+typedef Eigen::Matrix<double, 9, 1> Vector9;
+typedef Eigen::Matrix<double, 2, 2> Matrix2;
+typedef Eigen::Matrix<double, 3, 3> Matrix3;
+typedef Eigen::Matrix<double, 4, 4> Matrix4;
+typedef Eigen::Matrix<double, 6, 6> Matrix6;
+typedef Eigen::Matrix<double, 6, 8> IKMatrix;
+
 // * params
-const double q0[6] = {-0.32, -0.2, -2.8, -1.63, 0, -1.0};
+// const double q0[6] = {-0.32, -0.2, -2.8, -1.63, 0, -1.0};
+const Vector6 q0 = (Vector6()<<-0.32, -0.2, -2.8, -1.63, 0, -1.0).finished();
 const std::string frameName = "tool0";
 const std::string jointNames[6] = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
 const std::string softGripperJointNames[2] = {"hand_1_joint", "hand_2_joint"};
@@ -40,18 +54,6 @@ const int vel_limits = 3.14;
 
 // * end params
 
-typedef Eigen::Matrix<double, 2, 1> Vector2;
-typedef Eigen::Matrix<double, 3, 1> Vector3;
-typedef Eigen::Matrix<double, 4, 1> Vector4;
-typedef Eigen::Matrix<double, 6, 1> Vector6;
-typedef Eigen::Matrix<double, 8, 1> Vector8;
-typedef Eigen::Matrix<double, 9, 1> Vector9;
-typedef Eigen::Matrix<double, 2, 2> Matrix2;
-typedef Eigen::Matrix<double, 3, 3> Matrix3;
-typedef Eigen::Matrix<double, 4, 4> Matrix4;
-typedef Eigen::Matrix<double, 6, 6> Matrix6;
-typedef Eigen::Matrix<double, 6, 8> IKMatrix;
-
 class Constants
 {
 public:
@@ -79,6 +81,9 @@ public:
 
     static const std::string visionService;
     static const std::string markerPub;
+    
+    static const std::string jsonOutput;
+
 };
 
 const std::string Constants::init_node = "custom_joint_pub_node_cpp";
@@ -96,6 +101,8 @@ const std::string Constants::getModelState = "/gazebo/get_model_state";
 
 const std::string Constants::visionService = "vision_service";
 const std::string Constants::markerPub = "/vis";
+
+const std::string Constants::jsonOutput = "/home/rico/ros_ws/src/castle_build_path/output.json";
 
 const Vector6 Constants::d = (Vector6() << D1, 0, 0, D4, D5, D6).finished();
 const Vector6 Constants::a = (Vector6() << 0, 0, A2, A3, 0, 0).finished();

@@ -223,6 +223,7 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
     {
         trajectory.times[i] += 0.1;
     }
+
     usleep(1000000);
     sendDesTrajectory(trajectory);
     jstate = (Vector6() << finalJstate[0], finalJstate[1], finalJstate[2], finalJstate[3], finalJstate[4], finalJstate[5]).finished();
@@ -236,48 +237,378 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
 
 void JointStatePublisher::pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy, const double &zOffset, const bool &attachToTable)
 {
-    std::pair<double,double> gripperPos = getGripPositions();
-    block.computeApproachAndLandPose(finalP(0),finalP(1),finalRpy,zOffset);
+    std::pair<double, double> gripperPos = getGripPositions();
+    block.computeApproachAndLandPose(finalP(0), finalP(1), finalRpy, zOffset);
 
-    std::cout<<"------- moving to block --------"<<std::endl;
-    moveTo(block.getApproachPos()+(Vector3()<<0,0,0.15).finished(),block.getApproachRotm(),gripperPos.first);
-    moveTo(block.getApproachPos(),block.getApproachRotm(),gripperPos.first,true,CurveType::LINE,0.5);
+    std::cout << "------- moving to block --------" << std::endl;
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
+    moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
 
-    std::cout<<"------- gripping --------"<<std::endl;
-    if(gripper)
+    std::cout << "------- gripping --------" << std::endl;
+    if (gripper)
     {
         gripping(gripperPos.second);
     }
 
-    std::cout<<"------- moving upwards --------"<<std::endl;
-    moveTo(block.getApproachPos()+(Vector3()<<0,0,0.15).finished(),block.getApproachRotm(),gripperPos.second,false,CurveType::LINE);
+    std::cout << "------- moving upwards --------" << std::endl;
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE);
 
-    std::cout<<"------- moving above final position --------"<<std::endl;
-    moveTo(block.getLandPos()+(Vector3()<<0,0,0.10).finished(),block.getLandRotm(),gripperPos.second);
+    std::cout << "------- moving above final position --------" << std::endl;
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.10).finished(), block.getLandRotm(), gripperPos.second);
 
-    std::cout<<"------- moving to final position --------"<<std::endl;
-    moveTo(block.getLandPos(),block.getLandRotm(),gripperPos.second,true,CurveType::LINE,0.3);
+    std::cout << "------- moving to final position --------" << std::endl;
+    moveTo(block.getLandPos(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.3);
 
-    std::cout<<"------- un-gripping --------"<<std::endl;
-    if(gripper)
+    std::cout << "------- un-gripping --------" << std::endl;
+    if (gripper)
     {
         ungripping(gripperPos.first, attachToTable);
     }
 
     block.update();
 
-    std::cout<<"------- moving upwards --------"<<std::endl;
-    moveTo(block.getLandPos()+(Vector3()<<0,0,0.15).finished(),block.getLandRotm(),gripperPos.first,false, CurveType::LINE);
+    std::cout << "------- moving upwards --------" << std::endl;
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.15).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
 
-    if(attachToTable)
+    if (attachToTable)
     {
-        std::cout<<"------- setting block static --------"<<std::endl;
+        std::cout << "------- setting block static --------" << std::endl;
         gazebo_ros_link_attacher::SetStatic set;
         set.request.model_name = block.getName();
         set.request.link_name = "link";
         set.request.set_static = true;
         setStaticSrv.call(set);
     }
+}
+
+void JointStatePublisher::rotateBlock(const RPY &newBlockRpy)
+{
+    std::pair<double, double> gripperPos = getGripPositions();
+    block.computeApproachAndLandPose(block.getPosition().x, block.getPosition().y, newBlockRpy);
+
+    std::cout << "------- moving to block --------" << std::endl;
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first, true);
+    moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
+
+    std::cout << "------- gripping --------" << std::endl;
+    if (gripper)
+    {
+        gripping(gripperPos.second);
+    }
+
+    std::cout << "------- rotating block --------" << std::endl;
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.05).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.05).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::LINE);
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.002).finished(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.5);
+
+    std::cout << "------- ungripping --------" << std::endl;
+    if (gripper)
+    {
+        ungripping(gripperPos.first, false);
+    }
+
+    block.setRpyY(newBlockRpy.y);
+    block.update();
+
+    std::cout << "------- moving up --------" << std::endl;
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
+}
+
+void JointStatePublisher::setupBlockForRotation()
+{
+    if (block.getQuadrant() == 1)
+    {
+        if (block.getRpyY() < 3 / 4 * M_PI || block.getRpyY() > 3 / 2 * M_PI)
+        {
+            std::cout << "------- setup block --------" << std::endl;
+            if (block.getConfiguration() == BlockConfiguration::UP)
+            {
+                rotateBlock(RPY(M_PI / 2, 0, M_PI));
+            }
+            else if (block.getConfiguration() == BlockConfiguration::SIDE)
+            {
+                rotateBlock(RPY(0, M_PI / 2, M_PI));
+            }
+            else
+            {
+                if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                {
+                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                }
+                else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                {
+                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                }
+                else
+                {
+                    rotateBlock(RPY(0, M_PI, M_PI));
+                }
+            }
+        }
+    }
+    else if (block.getQuadrant() == 4)
+    {
+        if (block.getRpyY() < M_PI / 2 - 0.01 || block.getRpyY() > 5 / 4 * M_PI + 0.01)
+        {
+            std::cout << "------- setup block --------" << std::endl;
+            if (block.getClass() == BlockClass::X1_Y1_Z2)
+            {
+                rotateBlock(RPY(M_PI / 2, 0, M_PI));
+            }
+            else if (block.getClass() == BlockClass::X1_Y2_Z1)
+            {
+                rotateBlock(RPY(0, M_PI / 2, M_PI));
+            }
+            else
+            {
+                if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                {
+                    block.setRpy(RPY(0, M_PI, M_PI / 2 + block.getRpyY()));
+                }
+                else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                {
+                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                }
+                else
+                {
+                    rotateBlock(RPY(0, M_PI, 0));
+                }
+            }
+        }
+    }
+}
+
+void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double yLandPose, RPY finalRpy)
+{
+    std::pair<double, double> gripperPos = getGripPositions();
+    setupBlockForRotation();
+    std::cout << "------- moving to block at 45° --------" << std::endl;
+    block.computeApproachAndLandPose(xLandPose, yLandPose, finalRpy, 0.0, 45);
+
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
+    moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.3);
+    std::cout << "------- gripping --------" << std::endl;
+    gripping(gripperPos.second);
+
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
+
+    std::cout << "------- moving block to landing pos --------" << std::endl;
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::BEZIER, 0.5);
+    moveTo(block.getLandPos(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.15);
+
+    usleep(500000);
+
+    std::cout << "------- ungripping --------" << std::endl;
+    ungripping(gripperPos.first, false);
+
+    block.autoUpdate();
+
+    std::cout << "------- moving up --------" << std::endl;
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.22).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE, 0.5);
+}
+
+void JointStatePublisher::homingProcedure()
+{
+    std::cout << "------- homing procedure --------" << std::endl;
+
+    Trajectory trajectory = Kinematic::jcubic(q, q0);
+
+    std::cout << "Jqubic fin" << std::endl;
+
+    if (!realRobot)
+    {
+        if (trajectory.velocities.size() == 0)
+        {
+            for (int i = 0; i < trajectory.positions.size(); i++)
+            {
+                trajectory.positions[i].push_back(qGripper(0));
+                trajectory.positions[i].push_back(qGripper(1));
+            }
+        }
+        else
+        {
+            for (int i = 0; i < trajectory.positions.size(); i++)
+            {
+                trajectory.positions[i].push_back(qGripper(0));
+                trajectory.positions[i].push_back(qGripper(1));
+                trajectory.velocities[i].push_back(qGripper(0));
+                trajectory.velocities[i].push_back(qGripper(1));
+            }
+        }
+    }
+
+    for (int i = 0; i < trajectory.times.size(); i++)
+    {
+        trajectory.times[i] += 0.1;
+    }
+
+    std::cout << "send" << std::endl;
+    usleep(1000000);
+    sendDesTrajectory(trajectory);
+
+    std::cout << "wait" << std::endl;
+    while ((jstate - q).norm() > 0.005)
+        ;
+}
+
+void JointStatePublisher::multipleBlocks(Detected d)
+{
+    std::vector<Block> blocks;
+    for (int i = 0; i < d.n; i++)
+    {
+        Cartesian c(d.xCenter[i], d.yCenter[i], d.zCenter[i]);
+        RPY r(d.roll[i], d.pitch[i], d.yaw[i]);
+        std::string name = "";
+        Block b(name, d.blockClass[i], c, r);
+        blocks.push_back(b);
+    }
+
+    double height = 0.0;
+    Cartesian finalTowerPos(0.8, 0.7, 0.0);
+    RPY finalTowerRpy(0.0, 0.0, 0.0);
+
+    for (int i = 0; i < d.n; i++)
+    {
+        Block current = blocks[i];
+
+        // check if block is not in the standard position
+        if (!(-0.01 < current.getRpy().r && current.getRpy().p < 0.01))
+        {
+            std::cout << "move block to stand position" << std::endl;
+            RPY landRpy(M_PI / 2, 0.0, 0.0);
+            rotateBlockStandardPosition(0.5, 0.75, landRpy);
+        }
+
+        if (!(-0.01 < current.getRpy().r && current.getRpy().r < 0.01))
+        {
+            std::cout << "move block to standard position" << std::endl;
+            RPY landRpy(0.0, 0.0, M_PI / 2);
+            rotateBlockStandardPosition(0.5, 0.75, landRpy);
+        }
+
+        std::cout << "move block to final position" << std::endl;
+        Cartesian finalBlockPos = finalTowerPos + Cartesian(0.0, 0.0, current.getPosition().z + height);
+
+        pickAndPlaceBlock(finalBlockPos.toVector(), finalTowerRpy, height, true);
+        height += BlockDimension.at(current.getClass()).z - 0.0195;
+    }
+    std::cout << "multiple blocks task completed" << std::endl;
+}
+
+void JointStatePublisher::castle(Json::Value json)
+{
+    double xMax = 0.98;
+    double yMax = 0.78;
+
+    int n = json["size"].asInt();
+
+    for (int i = 1; i <= n; i++)
+    {
+        BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
+
+        int index = -1;
+
+        for (int j = 0; j < presentBlocks.size(); j++)
+        {
+            if (presentBlocks[j].getClass() == blockClass && !presentBlocks[j].getProcessed())
+            {
+                index = j;
+                break;
+            }
+        }
+        if (index == -1)
+        {
+            continue;
+        }
+
+        block = presentBlocks[index];
+        block.update();
+
+        double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
+        double xDes = json[std::to_string(i)]["x"].asDouble();
+        double yDes = json[std::to_string(i)]["y"].asDouble();
+        double zDes = json[std::to_string(i)]["z"].asDouble();
+
+        while (block.getConfiguration() == BlockConfiguration::REGULAR)
+        {
+            rotateBlockStandardPosition(block.getPosition().x, block.getPosition().y, block.getFinalRpy());
+        }
+
+        Vector3 finalPos;
+        finalPos << xMax - xDes, yMax - yDes, 0;
+        RPY finalRpy(0, 0, yaw);
+
+        pickAndPlaceBlock(finalPos, finalRpy, zDes);
+        presentBlocks[index].setProcessed(true);
+    }
+}
+
+Json::Value JointStatePublisher::readJson()
+{
+    std::ifstream ifs(Constants::jsonOutput);
+    Json::Reader reader;
+    Json::Value obj;
+    reader.parse(ifs, obj);
+
+    ifs.close();
+
+    return obj;
+}
+
+double JointStatePublisher::getYaw(double rot)
+{
+    if (rot == 0.0)
+    {
+        return 0.0;
+    }
+    else if (rot == 1)
+    {
+        return M_PI / 2;
+    }
+    else if (rot == 2)
+    {
+        return M_PI;
+    }
+    else
+    {
+        return -M_PI / 2;
+    }
+}
+
+void JointStatePublisher::registerBlocks(const vision::vision &visionResult)
+{
+    for (int i = 0; i < visionResult.response.n_res; i++)
+    {
+        Cartesian c(visionResult.response.x_center[i], visionResult.response.y_center[i], 0);
+        RPY r(visionResult.response.roll[i], visionResult.response.pitch[i], visionResult.response.yaw[i]);
+        std::string name = "";
+        Block b(name, (BlockClass)visionResult.response.classe[i], c, r);
+        presentBlocks.push_back(b);
+    }
+
+    gazebo_msgs::ModelStates modelState;
+    modelState = *(ros::topic::waitForMessage<gazebo_msgs::ModelStates>("/gazebo/model_states").get());
+
+    for (int i = 0; i < modelState.name.size(); i++)
+    {
+        if (modelState.name[i].find("brick") != std::string::npos)
+        {
+            for (int j = 0; j < presentBlocks.size(); j++)
+            {
+                if (presentBlocks[j].getPosition().x - 0.1 < modelState.pose[i].position.x &&
+                    modelState.pose[i].position.x < presentBlocks[j].getPosition().x + 0.1 && presentBlocks[j].getPosition().y - 0.1 < modelState.pose[i].position.y &&
+                    modelState.pose[i].position.y < presentBlocks[j].getPosition().y + 0.1)
+                {
+                    presentBlocks[j].setName(modelState.name[i]);
+                }
+            }
+        }
+    }
+}
+
+void JointStatePublisher::updateJstate()
+{
+    jstate = q;
 }
 
 void JointStatePublisher::receiveJstate(const sensor_msgs::JointState &state)

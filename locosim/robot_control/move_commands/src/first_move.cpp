@@ -11,31 +11,44 @@ int main(int argc, char **argv)
     JointStatePublisher joint_state_publisher(argc, argv);
 
     ros::Rate loop_rate(1000);
-
-    Vector6 initial_jstate;
-    initial_jstate << -0.32, -0.2, -2.8, -1.63, 0, -1.0;
-    initial_jstate << -0.32, -0.2, -2.56, -1.63, -1.57, -1.0;
-    Vector3 final_p;
-    final_p << 0.5, 0.6, -0.7;
-    Vector3 temp;
-    temp << -M_PI, 0, 0;
-    Matrix3 final_rotm = Algebra::eul2RotM(temp);
-    usleep(1000000);
-    std::cout<<"sono fermo"<<std::endl;
-    usleep(1000000);
-    Trajectory trajectory = Kinematic::differentialKinematic(initial_jstate, final_p, final_rotm);
-    std::cout << "parto" << std::endl;
-    joint_state_publisher.sendDesTrajectory(trajectory);
-    std::cout << "pubblicato" << std::endl;
-    usleep(5000000);
-
-    while (ros::ok())
+    ros::spinOnce();
+    usleep(500000);
+    
+    ros::spinOnce();
+    std::cout << "Vision Client" << std::endl;
+    vision::vision visionResult;
+    if (joint_state_publisher.visionService.call(visionResult))
     {
-
-        // joint_state_publisher.sendDesJState({M_PI/2,0,0,0,0,0});
-
-        ros::spin();
+        std::cout << "Vision Client | SUCCESS" << std::endl;
+        std::cout << "#n res: " << (int)visionResult.response.n_res << std::endl;
     }
+    else
+    {
+        std::cout << "Vision Client | ERROR" << std::endl;
+        return 1;
+    }
+    usleep(500000);
+    std::cout << "Vision Client | COMPLETED" << std::endl;
+    ros::spinOnce();
+    joint_state_publisher.updateJstate();
+
+    joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.6).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 40.0);
+    usleep(500000);
+
+    std::cout << "Tegister Blocks" << std::endl;
+    ros::spinOnce();
+    joint_state_publisher.registerBlocks(visionResult);
+
+    usleep(500000);
+
+    std::cout << "Make Castle" << std::endl;
+    ros::spinOnce();
+    Json::Value json = joint_state_publisher.readJson();
+    joint_state_publisher.castle(json);
+
+    ros::spin();
+    loop_rate.sleep();
+
     ros::shutdown();
     return 0;
 }

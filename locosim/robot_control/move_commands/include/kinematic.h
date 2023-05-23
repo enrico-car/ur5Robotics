@@ -447,10 +447,29 @@ public:
             trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
         }
 
-        for (auto x : trajectory.times)
+        return trajectory;
+    }
+
+    static Trajectory jcubic(Vector6 qi, Vector6 qf, Vector6 vi = (Vector6() << 0, 0, 0, 0, 0, 0).finished(), Vector6 vf = (Vector6() << 0, 0, 0, 0, 0, 0).finished(), double vmax = 1.0)
+    {
+        Trajectory trajectory;
+        Vector6 h = qf - qi;
+        double dqMax = h.maxCoeff();
+        double T = dqMax / vmax;
+        Matrix2 Tm;
+        Tm << T * T, T * T * T, 2 * T, 3 * T * T;
+        Matrix2 Tinv = Tm.inverse();
+        Vector6 a2 = Tinv(0, 0) * (h - vi * T) + Tinv(0, 1) * (vf - vi);
+        Vector6 a3 = Tinv(1, 0) * (h - vi * T) + Tinv(1, 1) * (vf - vi);
+
+        trajectory.times = Algebra::linspace(0, T, 50);
+
+        for (double t : trajectory.times)
         {
-            std::cout << x << std::endl;
+            trajectory.positions.push_back(Algebra::convert(qi + vi * t + a2 * t * t + a3 * t * t * t));
+            trajectory.velocities.push_back(Algebra::convert(vi + 2 * a2 * t + 3 * a3 * t * t));
         }
+
         return trajectory;
     }
 };
