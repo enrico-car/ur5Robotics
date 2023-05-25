@@ -50,7 +50,8 @@ const int vel_limits = 3.14;
 #define D6 0.27
 #endif
 
-#define DESK_HEIGHT -0.935
+// #define DESK_HEIGHT -0.935
+#define DESK_HEIGHT -0.885
 
 // * end params
 

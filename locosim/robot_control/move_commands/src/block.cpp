@@ -319,3 +319,9 @@ void Block::computeApproachAndLandPose(double xLandPose, double yLandPose, RPY f
     finalPos = landPosNoCorrection;
     fRpy = finalRpy;
 }
+
+void Block::print()
+{
+    std::cout<<"x "<<position.x<<" y "<<position.y<<" Configuraiton "<<configuration
+             <<" roll "<<rpy.r<<" pitch "<<rpy.p<<" yaw "<<rpy.y<<std::endl;
+}

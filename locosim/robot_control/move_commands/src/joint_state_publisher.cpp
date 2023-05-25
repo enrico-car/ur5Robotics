@@ -230,8 +230,9 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
 
     if (waitForEnd)
     {
-        while ((jstate - q).norm() > 0.005)
-            ;
+        while ((jstate - q).norm() > 0.005){
+            ros::spinOnce();
+        }
     }
 }
 
@@ -500,14 +501,28 @@ void JointStatePublisher::castle(Json::Value json)
     double xMax = 0.98;
     double yMax = 0.78;
 
-    int n = json["size"].asInt();
+    // int n = json["size"].asInt();
+    int n = 2;
+    BlockClass bb[] = {BlockClass::X1_Y2_Z2_CHAMFER,BlockClass::X1_Y3_Z2_FILLET};
+    int rr[] = {3,0};
+    double xx[] = {0.06300,0.01575};
+    double yy[] = {0.01575,0.04725};
+    double zz[] = {0,0};
 
-    for (int i = 1; i <= n; i++)
+
+
+    for (int i = 0; i < n; i++)
     {
-        BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
+        // const char idKey[] = std::to_string(i);
+        // const Json::Value obj = *json.find(idKey, idKey+std::strlen(idKey));
+        // std::cout<<obj<<std::endl;s
+        
+        //std::cout<<json[index]["class"].asString()<<std::endl;
+        //std::string classString = json[index]["class"].asString();
+        // BlockClass blockClass = stringToBlockClass();
+        BlockClass blockClass = bb[i];
 
         int index = -1;
-
         for (int j = 0; j < presentBlocks.size(); j++)
         {
             if (presentBlocks[j].getClass() == blockClass && !presentBlocks[j].getProcessed())
@@ -524,12 +539,18 @@ void JointStatePublisher::castle(Json::Value json)
         block = presentBlocks[index];
         block.update();
 
-        double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
-        double xDes = json[std::to_string(i)]["x"].asDouble();
-        double yDes = json[std::to_string(i)]["y"].asDouble();
-        double zDes = json[std::to_string(i)]["z"].asDouble();
+        block.print();
 
-        while (block.getConfiguration() == BlockConfiguration::REGULAR)
+        // double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
+        // double xDes = json[std::to_string(i)]["x"].asDouble();
+        // double yDes = json[std::to_string(i)]["y"].asDouble();
+        // double zDes = json[std::to_string(i)]["z"].asDouble();
+        double yaw = getYaw(rr[i]);
+        double xDes = xx[i];
+        double yDes = yy[i];
+        double zDes = zz[i];
+
+        while (block.getConfiguration() != BlockConfiguration::REGULAR)
         {
             rotateBlockStandardPosition(block.getPosition().x, block.getPosition().y, block.getFinalRpy());
         }
@@ -555,15 +576,16 @@ Json::Value JointStatePublisher::readJson()
     return obj;
 }
 
-double JointStatePublisher::getYaw(double rot)
+// TODO: quando mettiamo a posto il JAVAFX, scambiare i segni di 1 e 3
+double JointStatePublisher::getYaw(int rot)
 {
-    if (rot == 0.0)
+    if (rot == 0)
     {
         return 0.0;
     }
     else if (rot == 1)
     {
-        return M_PI / 2;
+        return -M_PI / 2;
     }
     else if (rot == 2)
     {
@@ -571,7 +593,7 @@ double JointStatePublisher::getYaw(double rot)
     }
     else
     {
-        return -M_PI / 2;
+        return M_PI / 2;
     }
 }
 
@@ -583,6 +605,7 @@ void JointStatePublisher::registerBlocks(const vision::vision &visionResult)
         RPY r(visionResult.response.roll[i], visionResult.response.pitch[i], visionResult.response.yaw[i]);
         std::string name = "";
         Block b(name, (BlockClass)visionResult.response.classe[i], c, r);
+        b.print();
         presentBlocks.push_back(b);
     }
 
@@ -831,6 +854,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
     trajectory.positions.push_back(finalQ);
     trajectory.times.push_back(0.1);
     usleep(500000);
+    sendDesTrajectory(trajectory);
 
     if (attachToTable)
     {
@@ -839,7 +863,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
         attach.request.model_name_1 = "my_ground_plane";
         attach.request.link_name_1 = "link";
         attach.request.model_name_2 = block.getName();
-        attach.request.model_name_2 = "link";
+        attach.request.link_name_2 = "link";
 
         attachSrv.call(attach);
     }
@@ -848,13 +872,15 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
     attach.request.model_name_1 = "ur5";
     attach.request.link_name_1 = "wrist_3_link";
     attach.request.model_name_2 = block.getName();
-    attach.request.model_name_2 = "link";
-    attachSrv.call(attach);
+    attach.request.link_name_2 = "link";
+    detachSrv.call(attach);
 
     std::cout << "waiting to reach gripper position" << std::endl;
 
     while ((qGripper - desiredQGripper).norm() > 0.1)
-        ;
+    {
+        ros::spinOnce();
+    }
 }
 
 void JointStatePublisher::gripping(const double &gripperPos)
@@ -874,15 +900,18 @@ void JointStatePublisher::gripping(const double &gripperPos)
     trajectory.positions.push_back(finalQ);
     trajectory.times.push_back(0.1);
     usleep(500000);
+    sendDesTrajectory(trajectory);
 
     while ((qGripper - desiredQGripper).norm() > 0.005)
-        ;
+    {
+        ros::spinOnce();
+    }
 
     gazebo_ros_link_attacher::Attach attach;
     attach.request.model_name_1 = "ur5";
     attach.request.link_name_1 = "wrist_3_link";
     attach.request.model_name_2 = block.getName();
-    attach.request.model_name_2 = "link";
+    attach.request.link_name_2 = "link";
     attachSrv.call(attach);
     usleep(300000);
 }

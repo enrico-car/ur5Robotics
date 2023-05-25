@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(1000);
     ros::spinOnce();
     usleep(500000);
-    
+
     ros::spinOnce();
     std::cout << "Vision Client" << std::endl;
     vision::vision visionResult;
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
     std::cout << "Make Castle" << std::endl;
     ros::spinOnce();
     Json::Value json = joint_state_publisher.readJson();
+    std::cout<<"ho letto"<<std::endl;
     joint_state_publisher.castle(json);
 
     ros::spin();

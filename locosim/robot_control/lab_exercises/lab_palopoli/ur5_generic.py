@@ -10,6 +10,8 @@ from __future__ import print_function
 import os
 import rospy as ros
 import sys
+sys.path.insert(0, os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim"))
+
 # messages for topic subscribers
 from geometry_msgs.msg import WrenchStamped
 from std_srvs.srv import Trigger, TriggerRequest
@@ -25,6 +27,8 @@ from base_controllers.utils.math_tools import *
 import pinocchio as pin
 from termcolor import colored
 from base_controllers.utils.common_functions import plotJoint, plotEndeff
+from lab_exercises.lab_palopoli.custom_publisher import readJSON
+from robot_control.vision.scripts.SpawnBlocks_temp import spawnBlocks
 import lab_exercises.lab_palopoli.params as conf
 
 # controller manager management
@@ -39,6 +43,7 @@ import tf
 from rospy import Time
 import time
 from base_controllers.components.controller_manager import ControllerManager
+
 
 robotName = "ur5"
 np.set_printoptions(threshold=np.inf, precision=5, linewidth=1000, suppress=True)
@@ -289,6 +294,9 @@ def talker(p):
     if p.control_mode == 'trajectory':
         p.switch_controller(p.available_controllers[1])
 
+    json_file = readJSON()
+    spawnBlocks(json_file=json_file)
+    
     # p.ros_pub.add_marker([0.4, 0.4, -0.7]+p.base_offset, 0.05)
     # p.ros_pub.publishVisual()
 

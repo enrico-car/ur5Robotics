@@ -198,6 +198,8 @@ public:
     void setRpyY(double y);
     void setRpy(RPY newRpy);
     void setName(std::string n);
+
+    void print();
 };
 
 #endif

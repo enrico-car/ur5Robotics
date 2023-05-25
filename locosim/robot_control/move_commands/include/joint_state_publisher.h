@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <jsoncpp/json/json.h>
+#include <ros/ros.h>
 
 #include <ros/ros.h>
 #include <unistd.h>
@@ -113,7 +114,7 @@ public:
     void castle(Json::Value json);
 
     Json::Value readJson();
-    double getYaw(double rot);
+    double getYaw(int rot);
     void registerBlocks(const vision::vision &visionResult);
 
     void updateJstate();
