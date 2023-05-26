@@ -1,11 +1,11 @@
 # ur5Robotics
 
-## introduzione al progetto: scopo, principali problemi da risolvere (cinematica, motion planning, vision)
+#### introduzione al progetto: scopo, principali problemi da risolvere (cinematica, motion planning, vision)
 
 ## Kinematics
-### descrizione generale del concetto di cinematica per un braccio robotico
-### cinematica diretta, cinematica inversa (analitica, differenziale, differenze/pregi/difetti)
-### la nostra implementazione
+#### descrizione generale del concetto di cinematica per un braccio robotico
+#### cinematica diretta, cinematica inversa (analitica, differenziale, differenze/pregi/difetti)
+#### la nostra implementazione
 
 ## Vision
 We developed the vision part as the combination of two main techniques: YOLO and ICP.
@@ -23,5 +23,5 @@ For this project we created pointcloud templates for each object. Everytime an o
 The position of the block is obtained by computing the 3d bounding box of the block's pointcloud and calculating its center.
 
 ## motion planning
-### path planning: come abbiamo fatto, miglioramenti possibili (per es. usando potenziale+discesa lungo il gradiente)
-### trajectory planning: come abbiamo fatto
+#### path planning: come abbiamo fatto, miglioramenti possibili (per es. usando potenziale+discesa lungo il gradiente)
+#### trajectory planning: come abbiamo fatto
