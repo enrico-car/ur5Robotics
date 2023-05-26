@@ -111,7 +111,7 @@ public:
 
     void homingProcedure();
     void multipleBlocks(Detected d);
-    void castle(Json::Value json);
+    void castle();
 
     Json::Value readJson();
     double getYaw(int rot);

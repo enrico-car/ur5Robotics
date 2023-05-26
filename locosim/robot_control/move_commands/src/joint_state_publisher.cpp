@@ -496,31 +496,26 @@ void JointStatePublisher::multipleBlocks(Detected d)
     std::cout << "multiple blocks task completed" << std::endl;
 }
 
-void JointStatePublisher::castle(Json::Value json)
+void JointStatePublisher::castle()
 {
     double xMax = 0.98;
     double yMax = 0.78;
 
-    // int n = json["size"].asInt();
-    int n = 2;
-    BlockClass bb[] = {BlockClass::X1_Y2_Z2_CHAMFER,BlockClass::X1_Y3_Z2_FILLET};
-    int rr[] = {3,0};
-    double xx[] = {0.06300,0.01575};
-    double yy[] = {0.01575,0.04725};
-    double zz[] = {0,0};
+
+    std::ifstream ifs(Constants::jsonOutput);
+    Json::Reader reader;
+    Json::Value json;
+    reader.parse(ifs, json);
+    std::cout<<"json loaded"<<std::endl;
+    ifs.close();
+
+    int n = json["size"].asInt();
 
 
 
     for (int i = 0; i < n; i++)
     {
-        // const char idKey[] = std::to_string(i);
-        // const Json::Value obj = *json.find(idKey, idKey+std::strlen(idKey));
-        // std::cout<<obj<<std::endl;s
-        
-        //std::cout<<json[index]["class"].asString()<<std::endl;
-        //std::string classString = json[index]["class"].asString();
-        // BlockClass blockClass = stringToBlockClass();
-        BlockClass blockClass = bb[i];
+        BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
 
         int index = -1;
         for (int j = 0; j < presentBlocks.size(); j++)
@@ -541,14 +536,10 @@ void JointStatePublisher::castle(Json::Value json)
 
         block.print();
 
-        // double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
-        // double xDes = json[std::to_string(i)]["x"].asDouble();
-        // double yDes = json[std::to_string(i)]["y"].asDouble();
-        // double zDes = json[std::to_string(i)]["z"].asDouble();
-        double yaw = getYaw(rr[i]);
-        double xDes = xx[i];
-        double yDes = yy[i];
-        double zDes = zz[i];
+        double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
+        double xDes = json[std::to_string(i)]["x"].asDouble();
+        double yDes = json[std::to_string(i)]["y"].asDouble();
+        double zDes = json[std::to_string(i)]["z"].asDouble();
 
         while (block.getConfiguration() != BlockConfiguration::REGULAR)
         {
