@@ -230,7 +230,8 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
 
     if (waitForEnd)
     {
-        while ((jstate - q).norm() > 0.005){
+        while ((jstate - q).norm() > 0.005)
+        {
             ros::spinOnce();
         }
     }
@@ -282,10 +283,10 @@ void JointStatePublisher::pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy,
     }
 }
 
-void JointStatePublisher::rotateBlock(const RPY &newBlockRpy)
+void JointStatePublisher::rotateBlock(const RPY &newBlockRpy, Cartesian newBlockPos)
 {
     std::pair<double, double> gripperPos = getGripPositions();
-    block.computeApproachAndLandPose(block.getPosition().x, block.getPosition().y, newBlockRpy);
+    block.computeApproachAndLandPose(newBlockPos.x, newBlockPos.y, newBlockRpy);
 
     std::cout << "------- moving to block --------" << std::endl;
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first, true);
@@ -299,7 +300,7 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy)
 
     std::cout << "------- rotating block --------" << std::endl;
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.05).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
-    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.05).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::LINE);
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.05).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::LINE);
     moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.002).finished(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.5);
 
     std::cout << "------- ungripping --------" << std::endl;
@@ -308,8 +309,7 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy)
         ungripping(gripperPos.first, false);
     }
 
-    block.setRpyY(newBlockRpy.y);
-    block.update();
+    block.autoUpdate();
 
     std::cout << "------- moving up --------" << std::endl;
     moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
@@ -317,62 +317,98 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy)
 
 void JointStatePublisher::setupBlockForRotation()
 {
-    if (block.getQuadrant() == 1)
+    RPY newBlockRpy;
+    if (block.getDistanceFromShoulder() < 0.3)
     {
-        if (block.getRpyY() < 3 / 4 * M_PI || block.getRpyY() > 3 / 2 * M_PI)
+        if (block.getConfiguration() == BlockConfiguration::UP)
         {
-            std::cout << "------- setup block --------" << std::endl;
-            if (block.getConfiguration() == BlockConfiguration::UP)
+            newBlockRpy = RPY(M_PI / 2, 0.0, M_PI);
+        }
+        else if (block.getConfiguration() == BlockConfiguration::SIDE)
+        {
+            newBlockRpy = RPY(0.0, M_PI / 2, M_PI);
+        }
+        else if (block.getConfiguration() == BlockConfiguration::DOWN)
+        {
+            newBlockRpy = RPY(0.0, M_PI, M_PI / 2);
+        }
+
+        Cartesian newBlockPos = findFreeSport();
+        rotateBlock(newBlockRpy, newBlockPos);
+    }
+    else
+    {
+        if (block.getQuadrant() == 1)
+        {
+            if (block.getRpyY() < M_PI / 2 - 0.1 || block.getRpyY() > 3 / 2 * M_PI + 0.1)
             {
-                rotateBlock(RPY(M_PI / 2, 0, M_PI));
-            }
-            else if (block.getConfiguration() == BlockConfiguration::SIDE)
-            {
-                rotateBlock(RPY(0, M_PI / 2, M_PI));
-            }
-            else
-            {
-                if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                std::cout << "------- setup block --------" << std::endl;
+                if (block.getConfiguration() == BlockConfiguration::UP)
                 {
-                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    rotateBlock(RPY(M_PI / 2, 0, M_PI), block.getPosition());
                 }
-                else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                else if (block.getConfiguration() == BlockConfiguration::SIDE)
                 {
-                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    if ((block.getRpyY() < -0.1 || block.getRpyY() > M_PI / 2 + 0.1) && block.getClass() == BlockClass::X1_Y2_Z2_CHAMFER)
+                    {
+                        rotateBlock(RPY(0, M_PI / 2, M_PI / 2), block.getPosition());
+                    }
+                    else if (block.getClass() == BlockClass::X1_Y2_Z2_TWINFILLET || block.getClass() == BlockClass::X1_Y3_Z2_FILLET || block.getClass() == BlockClass::X2_Y2_Z2_FILLET)
+                    {
+                        rotateBlock(RPY(0, M_PI / 2, M_PI), block.getPosition());
+                    }
                 }
-                else
+                else if (block.getConfiguration() == BlockConfiguration::DOWN)
                 {
-                    rotateBlock(RPY(0, M_PI, M_PI));
+                    if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                    {
+                        block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    }
+                    else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                    {
+                        block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    }
+                    else
+                    {
+                        rotateBlock(RPY(0, M_PI, M_PI), block.getPosition());
+                    }
                 }
             }
         }
-    }
-    else if (block.getQuadrant() == 4)
-    {
-        if (block.getRpyY() < M_PI / 2 - 0.01 || block.getRpyY() > 5 / 4 * M_PI + 0.01)
+        else if (block.getQuadrant() == 4)
         {
-            std::cout << "------- setup block --------" << std::endl;
-            if (block.getClass() == BlockClass::X1_Y1_Z2)
+            if (block.getRpyY() < M_PI / 2 - 0.01 || block.getRpyY() > 3 * M_PI / 2 + 0.1)
             {
-                rotateBlock(RPY(M_PI / 2, 0, M_PI));
-            }
-            else if (block.getClass() == BlockClass::X1_Y2_Z1)
-            {
-                rotateBlock(RPY(0, M_PI / 2, M_PI));
-            }
-            else
-            {
-                if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                std::cout << "------- setup block --------" << std::endl;
+                if (block.getConfiguration() == BlockConfiguration::UP)
                 {
-                    block.setRpy(RPY(0, M_PI, M_PI / 2 + block.getRpyY()));
+                    rotateBlock(RPY(M_PI / 2, 0, M_PI), block.getPosition());
                 }
-                else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                else if (block.getConfiguration() == BlockConfiguration::SIDE)
                 {
-                    block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    if ((block.getRpyY() < -0.1 || block.getRpyY() > M_PI / 2 + 0.1) && block.getClass() == BlockClass::X1_Y2_Z2_CHAMFER)
+                    {
+                        rotateBlock(RPY(0, M_PI / 2, M_PI / 2), block.getPosition());
+                    }
+                    else if (block.getClass() == BlockClass::X1_Y2_Z2_TWINFILLET || block.getClass() == BlockClass::X1_Y3_Z2_FILLET || block.getClass() == BlockClass::X2_Y2_Z2_FILLET)
+                    {
+                        rotateBlock(RPY(0, M_PI / 2, M_PI), block.getPosition());
+                    }
                 }
-                else
+                else if (block.getConfiguration() == BlockConfiguration::DOWN)
                 {
-                    rotateBlock(RPY(0, M_PI, 0));
+                    if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
+                    {
+                        block.setRpy(RPY(0, M_PI, M_PI / 2 + block.getRpyY()));
+                    }
+                    else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
+                    {
+                        block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
+                    }
+                    else
+                    {
+                        rotateBlock(RPY(0, M_PI, 0), block.getPosition());
+                    }
                 }
             }
         }
@@ -394,7 +430,7 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
 
     std::cout << "------- moving block to landing pos --------" << std::endl;
-    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::BEZIER, 0.5);
+    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.15).finished(), block.getLandRotm(), gripperPos.second, false, CurveType::BEZIER, 0.5);
     moveTo(block.getLandPos(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.15);
 
     usleep(500000);
@@ -406,6 +442,34 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
 
     std::cout << "------- moving up --------" << std::endl;
     moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.22).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE, 0.5);
+}
+double JointStatePublisher::checkCollision(double x, double y)
+{
+    for (auto b : presentBlocks)
+    {
+        if (b.getName() != block.getName())
+        {
+            double dist = sqrt((x - b.getPosition().x) * (x - b.getPosition().x) + (y - b.getPosition().y) * (y - b.getPosition().y));
+            if (dist < (block.getRadius() + b.getRadius() + 0.07))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+Cartesian JointStatePublisher::findFreeSport(double castleXmin, double castleYmin)
+{
+    double dist, x, y;
+    do
+    {
+        x = ((double)(rand() % 86 + 7) / 100);
+        y = ((double)(rand() % 69 + 4) / 100);
+        dist = sqrt((x - 0.5) * (x - 0.5) + (y - 0.35) * (y - 0.35));
+    } while (dist < 0.4 || (castleXmin < x && x < 1 && castleYmin < x && x < 0.8) || checkCollision(x, y));
+
+    return Cartesian(x, y, 0.0);
 }
 
 void JointStatePublisher::homingProcedure()
@@ -498,25 +562,53 @@ void JointStatePublisher::multipleBlocks(Detected d)
 
 void JointStatePublisher::castle()
 {
-    double xMax = 0.98;
-    double yMax = 0.78;
-
-
+    /* Read Json region*/
     std::ifstream ifs(Constants::jsonOutput);
     Json::Reader reader;
     Json::Value json;
     reader.parse(ifs, json);
-    std::cout<<"json loaded"<<std::endl;
+    std::cout << "json loaded" << std::endl;
     ifs.close();
+    /*End Read Json region*/
+
+    usleep(500000);
 
     int n = json["size"].asInt();
 
+    double xMax = 0.99;
+    double yMax = 0.79;
+    double xMin = 1.0;
+    double yMin = 1.0;
 
-
-    for (int i = 0; i < n; i++)
+    for (int i = 1; i <= n; i++)
     {
         BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
+        Cartesian dim = BlockDimension.at(blockClass);
+        double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
+        double xDes = json[std::to_string(i)]["x"].asDouble() / 100000.0;
+        double yDes = json[std::to_string(i)]["y"].asDouble() / 100000.0;
+        double x = 0.98 - xDes - dim.x * cos(yaw) / 2 - dim.y * sin(yaw) / 2;
+        double y = 0.78 - yDes - dim.y * cos(yaw) / 2 - dim.x * sin(yaw) / 2;
 
+        xMin = std::min(x, xMin);
+        yMin = std::min(y, yMin);
+    }
+
+    for (auto b : presentBlocks)
+    {
+        if (xMin < b.getPosition().x && b.getPosition().x < 1.0 && yMin < b.getPosition().y && b.getPosition().y < 0.8)
+        {
+            block = b;
+            block.update();
+            Cartesian c = findFreeSport(xMin, yMin);
+            rotateBlockStandardPosition(c.x, c.y, block.getFinalRpy());
+        }
+    }
+
+    for (int i = 1; i <= n; i++)
+    {
+
+        BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
         int index = -1;
         for (int j = 0; j < presentBlocks.size(); j++)
         {
@@ -537,9 +629,9 @@ void JointStatePublisher::castle()
         block.print();
 
         double yaw = getYaw(json[std::to_string(i)]["r"].asDouble());
-        double xDes = json[std::to_string(i)]["x"].asDouble();
-        double yDes = json[std::to_string(i)]["y"].asDouble();
-        double zDes = json[std::to_string(i)]["z"].asDouble();
+        double xDes = json[std::to_string(i)]["x"].asDouble() / 100000.0;
+        double yDes = json[std::to_string(i)]["y"].asDouble() / 100000.0;
+        double zDes = json[std::to_string(i)]["z"].asDouble() / 100000.0;
 
         while (block.getConfiguration() != BlockConfiguration::REGULAR)
         {
@@ -553,6 +645,8 @@ void JointStatePublisher::castle()
         pickAndPlaceBlock(finalPos, finalRpy, zDes);
         presentBlocks[index].setProcessed(true);
     }
+
+    std::cout<<"Castle process completed"<<std::endl;
 }
 
 Json::Value JointStatePublisher::readJson()
@@ -676,10 +770,10 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
             class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(70, 72);
+            class2gripsize = std::pair<int, int>(85, 73);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(95, 72);
+            class2gripsize = std::pair<int, int>(95, 73);
             break;
         case X1_Y2_Z2_CHAMFER:
             class2gripsize = std::pair<int, int>(95, 72);
@@ -739,7 +833,7 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
             class2gripsize = std::pair<int, int>(70, 35);
             break;
         case X2_Y2_Z2:
-            class2gripsize = std::pair<int, int>(100, 79);
+            class2gripsize = std::pair<int, int>(100, 83);
             break;
         case X2_Y2_Z2_FILLET:
             class2gripsize = std::pair<int, int>(100, 79);
@@ -778,7 +872,7 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
             class2gripsize = std::pair<int, int>(70, 35);
             break;
         case X2_Y2_Z2:
-            class2gripsize = std::pair<int, int>(100, 90);
+            class2gripsize = std::pair<int, int>(100, 85);
             break;
         case X2_Y2_Z2_FILLET:
             class2gripsize = std::pair<int, int>(100, 78);
@@ -790,34 +884,34 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
         switch (block.getClass())
         {
         case X1_Y1_Z2:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y2_Z2_CHAMFER:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y2_Z2_TWINFILLET:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y3_Z2:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y3_Z2_FILLET:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y4_Z1:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X1_Y4_Z2:
-            class2gripsize = std::pair<int, int>(70, 34);
+            class2gripsize = std::pair<int, int>(70, 33);
             break;
         case X2_Y2_Z2:
-            class2gripsize = std::pair<int, int>(100, 73);
+            class2gripsize = std::pair<int, int>(100, 75);
             break;
         case X2_Y2_Z2_FILLET:
             class2gripsize = std::pair<int, int>(100, 72);
@@ -843,7 +937,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
 
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
-    trajectory.times.push_back(0.1);
+    trajectory.times.push_back(1.0);
     usleep(500000);
     sendDesTrajectory(trajectory);
 
@@ -889,7 +983,7 @@ void JointStatePublisher::gripping(const double &gripperPos)
 
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
-    trajectory.times.push_back(0.1);
+    trajectory.times.push_back(2.0);
     usleep(500000);
     sendDesTrajectory(trajectory);
 

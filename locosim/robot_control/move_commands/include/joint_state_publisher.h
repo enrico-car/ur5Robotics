@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <random>
 #include <jsoncpp/json/json.h>
 #include <ros/ros.h>
 
@@ -91,7 +92,7 @@ private:
     // MoveRealGripper
 
     std::pair<int, int> getGripPositions();
-    void ungripping(const double &gripperPos, const bool &attachToTable);
+    void ungripping(const double &gripperPos, const bool &attachToTable=false);
     void gripping(const double &gripperPos);
 
 public:
@@ -105,9 +106,11 @@ public:
 
     void moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd = false, const CurveType &curveType = CurveType::BEZIER, const double &vel = 2, const bool &useIK = false);
     void pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy, const double& zOffset=0.0,const bool &attachToTable=true);
-    void rotateBlock(const RPY &newBlockRpy);
+    void rotateBlock(const RPY &newBlockRpy, Cartesian newBlockPos);
     void setupBlockForRotation();
     void rotateBlockStandardPosition(double xLandPose, double yLandPose, RPY finalRpy);
+    double checkCollision(double x, double y);
+    Cartesian findFreeSport(double castleXmin=0.75, double castleYmin=0.6);
 
     void homingProcedure();
     void multipleBlocks(Detected d);

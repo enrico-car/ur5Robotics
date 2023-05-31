@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     ros::spinOnce();
     joint_state_publisher.updateJstate();
 
-    joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.6).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 40.0);
+    joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.6).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
     usleep(500000);
 
     std::cout << "Tegister Blocks" << std::endl;

@@ -98,43 +98,43 @@ struct Detected
 
 BlockClass stringToBlockClass(std::string c)
 {
-    if (c == "X1_Y1_Z2")
+    if (c.compare("X1-Y1-Z2") == 0)
     {
         return BlockClass::X1_Y1_Z2;
     }
-    else if (c == "X1_Y2_Z1")
+    else if (c.compare("X1-Y2-Z1") == 0)
     {
         return BlockClass::X1_Y2_Z1;
     }
-    else if (c == "X1_Y2_Z2")
+    else if (c.compare("X1-Y2-Z2") == 0)
     {
         return BlockClass::X1_Y2_Z2;
     }
-    else if (c == "X1_Y2_Z2_CHAMFER")
+    else if (c.compare("X1-Y2-Z2-CHAMFER") == 0)
     {
         return BlockClass::X1_Y2_Z2_CHAMFER;
     }
-    else if (c == "X1_Y2_Z2_TWINFILLET")
+    else if (c.compare("X1-Y2-Z2-TWINFILLET") == 0)
     {
         return BlockClass::X1_Y2_Z2_TWINFILLET;
     }
-    else if (c == "X1_Y3_Z2")
+    else if (c.compare("X1-Y3-Z2") == 0)
     {
         return BlockClass::X1_Y3_Z2;
     }
-    else if (c == "X1_Y3_Z2_FILLET")
+    else if (c.compare("X1-Y3-Z2-FILLET") == 0)
     {
         return BlockClass::X1_Y3_Z2_FILLET;
     }
-    else if (c == "X1_Y4_Z1")
+    else if (c.compare("X1-Y4-Z1") == 0)
     {
         return BlockClass::X1_Y4_Z1;
     }
-    else if (c == "X1_Y4_Z2")
+    else if (c.compare("X1-Y4-Z2") == 0)
     {
         return BlockClass::X1_Y4_Z2;
     }
-    else if (c == "X2_Y2_Z2")
+    else if (c.compare("X2-Y2-Z2") == 0)
     {
         return BlockClass::X2_Y2_Z2;
     }
@@ -156,6 +156,8 @@ private:
     RPY fRpy;
     bool processed;
     double height;
+    double radius;
+    double distanceFromShoulder;
     Cartesian minPosition;
     Cartesian maxPosition;
     double zPos;
@@ -193,8 +195,10 @@ public:
     double getRpyY();
     RPY getRpy();
     bool getProcessed();
-    void setProcessed(bool f);
+    double getDistanceFromShoulder();
+    double getRadius();
 
+    void setProcessed(bool f);
     void setRpyY(double y);
     void setRpy(RPY newRpy);
     void setName(std::string n);
