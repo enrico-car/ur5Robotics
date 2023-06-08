@@ -108,11 +108,11 @@ public:
     void pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy, const double& zOffset=0.0,const bool &attachToTable=true);
     void rotateBlock(const RPY &newBlockRpy, Cartesian newBlockPos);
     void setupBlockForRotation();
-    void rotateBlockStandardPosition(double xLandPose, double yLandPose, RPY finalRpy);
+    void rotateBlockStandardPosition(double xLandPose=-1, double yLandPose=-1, RPY finalRpy=RPY(-1, -1, -1));
     double checkCollision(double x, double y);
-    Cartesian findFreeSport(double castleXmin=0.75, double castleYmin=0.6);
+    Cartesian findFreeSpot(double castleXmin=0.75, double castleYmin=0.6);
 
-    void homingProcedure();
+    void homingProcedure(const Vector6 &final_q=q0);
     void multipleBlocks(Detected d);
     void castle();
 

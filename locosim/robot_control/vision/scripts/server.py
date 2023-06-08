@@ -47,8 +47,10 @@ class Listener:
         self.pitch = []
         self.yaw = []
         self.processed = []
+        self.raw_pcd = None
         self.gazebo_pcd = None
         self.pcd_axis_aligned_bb = None
+        self.pcd_center = None
     
     def savePointCloudTemplate(self):
         print('########## SAVING PCD ##########')
@@ -150,9 +152,10 @@ class Listener:
 
     def getPointcloudInfo(self):
         print('getPointcloudInfo')
-        self.pcd_axis_aligned_bb = self.gazebo_pcd.get_axis_aligned_bounding_box()
+        self.pcd_axis_aligned_bb = self.raw_pcd.get_axis_aligned_bounding_box()
         self.pcd_axis_aligned_bb.color = (1, 0, 0)
         pcd_center = self.pcd_axis_aligned_bb.get_center()
+        self.pcd_center = pcd_center
         print('centro bb: ', pcd_center)
 
         # se un blocco nella stessa posizione è gia stato inserito, salta questo
@@ -215,7 +218,7 @@ class Listener:
             raw_gazebo_pcd.paint_uniform_color([0, 0, 1])
             
             # o3d.visualization.draw_geometries([raw_gazebo_pcd])
-            
+            self.raw_pcd = raw_gazebo_pcd
             gazebo_pcd = raw_gazebo_pcd.voxel_down_sample(voxel_size=0.004)
             gazebo_pcd.paint_uniform_color([0, 0, 1])
 
@@ -239,6 +242,11 @@ class Listener:
         for pc in os.listdir(os.path.join(path_template_pcds, template_dir)):
             template_files.append(pc)
         template_files.sort()
+        
+        x_offset = self.pcd_center[0] - 0.5
+        y_offset = self.pcd_center[1] - float(template_dir.split('_')[1])
+        trans_mat = np.eye(4)
+        trans_mat[0:3, 3] = [x_offset, y_offset, 0]
 
         top_result = ''
         best_transformation = None
@@ -246,8 +254,8 @@ class Listener:
         best_correspondence = 0
         best_rmse = 1.
         for pc in template_files:
-            # pcd BLU -> lettura da yolo (blocco incognito di cui stabilire classe e orientamento)
-            # pcd ROSSA -> pcd template
+            # pcd BLU -> lettura da yolo (blocco incognito di cui stabilire classe e orientazione)
+            # pcd ROSSA -> pcd template (di cui sappiamo classe e orientazione)
             # print(pc)
             
             template_pcd = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, pc))
@@ -256,31 +264,38 @@ class Listener:
             
             ok = False
             if template_dimensions[2]-0.007 < gazebo_pcd_dimensions[2] < template_dimensions[2]+0.0025:
-                if gazebo_pcd_dimensions[1]*0.9 < template_dimensions[1] < gazebo_pcd_dimensions[1]*1.1 or gazebo_pcd_dimensions[0]*0.90 < template_dimensions[0] < gazebo_pcd_dimensions[0]*1.1:
+                if gazebo_pcd_dimensions[1]*0.9 < template_dimensions[1] < gazebo_pcd_dimensions[1]*1.1 or gazebo_pcd_dimensions[0]*0.9 < template_dimensions[0] < gazebo_pcd_dimensions[0]*1.1:
                     ok = True
             
             if not ok:
-                # print(' - dimensioni non adeguate')
                 continue
             
             print(pc)
-            # print(' - gaz-temp pcd dims: ', gazebo_pcd_dimensions, template_dimensions)
             
             template_pcd.paint_uniform_color([1, 0, 0])
 
             source = copy.deepcopy(template_pcd)
+            source.transform(trans_mat)
             target = copy.deepcopy(self.gazebo_pcd)
-
-            trans_init = np.asarray([[1.,0.,0.,0.], [0.,1.,0.,0.], [0.,0.,1.,0.], [0.,0.,0.,1.]])
-            source.transform(trans_init)
+            
+            trans_init = np.eye(4)
 
             threshold = 0.009
             reg_p2p = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init, o3d.pipelines.registration.TransformationEstimationPointToPoint())
-            print('best fitness finora: ', best_fitness)
+
+            # # test con icp point2plane
+            # source.transform(reg_p2p.transformation)
+            # #o3d.visualization.draw_geometries([source, target])
+            # source.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.01, max_nn=30))
+            # target.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.01, max_nn=30))
+            # reg_p2l = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init, o3d.pipelines.registration.TransformationEstimationPointToPlane())
+            # source.transform(reg_p2l.transformation)
+            # #o3d.visualization.draw_geometries([source, target])
             
+            print('best fitness finora: ', best_fitness, best_rmse)
             if reg_p2p.fitness >= best_fitness*0.95:
                 dist = self.bbDistance(source, reg_p2p.transformation)
-                print(dist)
+                # print(dist)
                 if reg_p2p.fitness >= 1. and reg_p2p.inlier_rmse < best_rmse and dist < 0.0075 and len(reg_p2p.correspondence_set) > best_correspondence:
                     best_fitness = reg_p2p.fitness
                     best_rmse = reg_p2p.inlier_rmse
@@ -304,20 +319,40 @@ class Listener:
                         best_transformation = reg_p2p.transformation
 
             print(' - ', reg_p2p.fitness, reg_p2p.inlier_rmse, len(reg_p2p.correspondence_set))
+            # print(' - ', reg_p2l.fitness, reg_p2l.inlier_rmse, len(reg_p2l.correspondence_set))
             print('----------------')
             # source.transform(reg_p2p.transformation)
             # o3d.visualization.draw_geometries([source, target])
 
         if top_result != '':
             print('best pc: ', top_result)
-            pprint(best_transformation)
+            # pprint(best_transformation)
+            # pprint(best_transformation @ best_p2l_trans)
             source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
-            source.transform(best_transformation)
             source.paint_uniform_color([1, 0, 0])
-            # aabb = source.get_axis_aligned_bounding_box()
-            # print(self.bbDistance(aabb))
             
+            print('trasformazione iniziale')
+            s_bb = source.get_axis_aligned_bounding_box()
+            print(s_bb.get_center())
+            pprint(trans_mat)
+            source.transform(trans_mat)
+            s_bb = source.get_axis_aligned_bounding_box()
+            print(s_bb.get_center(), )
+            #o3d.visualization.draw_geometries([source, target])
+            
+            print('best transformation')
+            pprint(best_transformation)
+            source.transform(best_transformation)
+            s_bb = source.get_axis_aligned_bounding_box()
+            t_bb = target.get_axis_aligned_bounding_box()
+            print(s_bb.get_center(), t_bb.get_center())
+            pprint(trans_mat @ best_transformation)
+            #pprint( best_transformation[0:3,0:3] @ np.array(best_transformation[0:3,3].flat) )
             o3d.visualization.draw_geometries([source, target])
+            
+            # print('inv(trasf iniziale) @ best transformation')
+            # source.transform(np.linalg.inv(trans_mat) @ best_transformation)
+            # o3d.visualization.draw_geometries([source, target])
 
             return top_result, best_transformation
         else:
@@ -369,18 +404,10 @@ class Listener:
         temp_x = 0.5
         template_dir = str(temp_x)+'_'+str(temp_y)
 
-        x_offset = 0.5 - pcd_center[0]
-        y_offset = float(temp_y) - pcd_center[1]
-
-        trans_mat = np.eye(4)
-        trans_mat[0:3, 3] = [x_offset, y_offset, 0]
-        self.gazebo_pcd.transform(trans_mat)
-
         top_result, best_transformation = self.getTransformation(pcd_dimensions, template_dir)
-        # center_offset = np.array(best_transformation[0:3, 3].flat)*0.001
+        # print('translation')
         # print(pcd_center)
-        # print(pcd_center+center_offset)
-        # input('...')
+        # input('-')
 
         if top_result is not None and best_transformation is not None:
             roll, pitch, yaw = self.getAngles(best_transformation, top_result)

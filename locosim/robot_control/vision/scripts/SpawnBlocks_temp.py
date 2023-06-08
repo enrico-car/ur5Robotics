@@ -63,85 +63,42 @@ def namedef(cl, posx, posy, r, p, y):
     name = str(cl)+"_"+str(posx)+"_"+str(posy)+"_"+str(np.round(r, 5))+"_"+str(np.round(p, 5))+"_"+str(np.round(y, 5))+".jpg"
     print("name: " + name + "\n")
 
-def spawnBlocks(random_blocks_to_spawn=0, json_file=None):
+def spawnBlocks(json_file):
     spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 
-    if random_blocks_to_spawn==0:
-        if json_file is None:
-            for block in blocks_to_spawn:
-                model_name = block
-                angles = [0, pi/2, pi]
-                w = cos(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-                x = sin(angles[0]/2)*cos(angles[1]/2)*cos(angles[2]/2) - cos(angles[0]/2)*sin(angles[1]/2)*sin(angles[2]/2)
-                y = cos(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2) + sin(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2)
-                z = cos(angles[0]/2)*cos(angles[1]/2)*sin(angles[2]/2) - sin(angles[0]/2)*sin(angles[1]/2)*cos(angles[2]/2)
-                orientation = Quaternion(x, y, z, w)
-                
-                spawn_model_client(
-                    model_name = model_name,
-                    model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',str(blocks_to_spawn[model_name]),'model.sdf'), 'r').read(),
-                    robot_namespace = '',
-                    initial_pose = Pose(position=Point(0.95, 0.35, altezza_tavolo+class2dimensions[block_class][1]/2), orientation=orientation),
-                    reference_frame = 'world'
-                )
-        else:
-            n = json_file["size"]
+    n = json_file["size"]
 
-            for i in range(1, n+1):
-                stl_name = json_file[str(i)]["class"]
-                print('spawning ', stl_name)
-                model_class = block_names.index(stl_name)
-                model_name = 'brick_' + str(i+3) + '_' + stl_name
+    for i in range(1, n+1):
+        stl_name = json_file[str(i)]["class"]
+        print('spawning ', stl_name)
+        model_name = 'brick_' + str(i) + '_' + stl_name
 
-                orientation = randomQuaternion()
+        orientation = randomQuaternion()
 
+        x = random.uniform(0.07, 0.93)
+        y = random.uniform(0.25, 0.73)
+
+        # controllo se sono dentro un raggio di 12cm dalla posizione della base del robot (zona di singolarità di spalla)
+        ok = False
+        while not ok:
+            dist = sqrt((0.5-x)**2 + (0.35-y)**2)
+            
+            if dist > 0.15:
+                ok = True
+            else:
                 x = random.uniform(0.07, 0.93)
-                y = random.uniform(0.25, 0.73)
+                y = random.uniform(0.23, 0.77)
+        
+        position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.03)
 
-                # controllo se sono dentro un raggio di 12cm dalla posizione della base del robot (zona di singolarità di spalla)
-                ok = False
-                while not ok:
-                    dist = sqrt((0.5-x)**2 + (0.35-y)**2)
-                    
-                    if dist > 0.15:
-                        ok = True
-                    else:
-                        x = random.uniform(0.07, 0.93)
-                        y = random.uniform(0.23, 0.77)
-                
-                position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.03)
-
-                spawn_model_client(
-                model_name = model_name,
-                model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',stl_name,'model.sdf'), 'r').read(),
-                robot_namespace = '',
-                initial_pose = Pose(position=position, orientation=orientation),
-                reference_frame = 'world'
+        spawn_model_client(
+            model_name = model_name,
+            model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',stl_name,'model.sdf'), 'r').read(),
+            robot_namespace = '',
+            initial_pose = Pose(position=position, orientation=orientation),
+            reference_frame = 'world'
             )
-    else:
-        for i in range(0, random_blocks_to_spawn):
-            # seleziona una classe a caso
-            #model_class = random.choice([1, 2, 3, 5, 6, 7, 8])
-            model_class = 0
-
-            # crea il nome
-            stl_name = block_names[model_class]
-            model_name = 'brick_' + str(i) + '_' + stl_name
-            
-            orientation = randomQuaternion()
-
-            x = random.uniform(0.07, 0.95)
-            y = random.uniform(0.22, 0.75)
-
-            position = Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.05)
-            
-            spawn_model_client(
-                model_name = model_name,
-                model_xml = open(os.path.join(os.path.expanduser("~"),'ros_ws','src','locosim','ros_impedance_controller','worlds','models',stl_name,'model.sdf'), 'r').read(),
-                robot_namespace = '',
-                initial_pose = Pose(position=position, orientation=orientation),
-                reference_frame = 'world'
-            )
+    
 
 def getBlocksInfo():
     # gazebo service: /gazebo/get_world_properties "{}"

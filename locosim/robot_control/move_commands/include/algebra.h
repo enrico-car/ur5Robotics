@@ -390,6 +390,36 @@ public:
         }
         return mlinspace;
     }
+    static std::vector<Matrix3> slerp(const Matrix3 &rotm_i, const Matrix3 &rotm_f, int n) {
+        Vector4 q_i, q_f, q_m;
+        q_i = rotm2quat(rotm_i);
+        q_f = rotm2quat(rotm_f);
+
+        std::vector<double> ls = linspace(0.0, 1.0, n);
+        std::vector<Matrix3> slerp;
+        Matrix3 rotm_m;
+        std::complex<double> complex(0, 0);
+
+        complex.real(q_i(0)*q_f(0) + q_i(1)*q_f(1) + q_i(2)*q_f(2) + q_i(3)*q_f(3));
+        double angle = acos(complex).real();
+        std::cout << round(angle) << std::endl;
+        double denom = sin(angle);
+
+        for (double t : ls)
+        {
+            if (round(denom) != 0.0)
+            {
+                q_m = (q_i*sin((1-t)*angle) + q_f*sin(t*angle)) / denom;
+                rotm_m = quat2rotm(q_m);
+            }
+            else
+                rotm_m = rotm_f;
+            
+            slerp.push_back(rotm_m);
+        }
+        return slerp;
+    }
+
     static int binomialCoeff(int n, int k)
     {
         return factorial(n) / (factorial(k) * factorial(n - k));
@@ -489,6 +519,53 @@ public:
         Matrix3 res = rotz * roty * rotx;
         round(res);
         return res;
+    }
+    static Vector4 rotm2quat(const Matrix3 &m)
+    {
+        double tr = m(0,0) + m(1,1) + m(2,2), S, qw, qx, qy, qz;
+
+        if (tr > 0)
+        {
+            S = sqrt(tr+1.0) * 2;  // S=4*qw 
+            qw = 0.25 * S;
+            qx = (m(2,1) - m(1,2)) / S;
+            qy = (m(0,2) - m(2,0)) / S;
+            qz = (m(1,0) - m(0,1)) / S;
+        }
+        else if ((m(0,0) > m(1,1)) && (m(0,0) > m(2,2)))
+        {
+            S = sqrt(1.0 + m(0,0) - m(1,1) - m(2,2)) * 2;  // S=4*qx 
+            qw = (m(2,1) - m(1,2)) / S;
+            qx = 0.25 * S;
+            qy = (m(0,1) + m(1,0)) / S;
+            qz = (m(0,2) + m(2,0)) / S;
+        }
+        else if (m(1,1) > m(2,2))
+        {
+            S = sqrt(1.0 + m(1,1) - m(0,0) - m(2,2)) * 2;  // S=4*qy
+            qw = (m(0,2) - m(2,0)) / S;
+            qx = (m(0,1) + m(1,0)) / S;
+            qy = 0.25 * S;
+            qz = (m(1,2) + m(2,1)) / S;
+        }
+        else
+        {
+            S = sqrt(1.0 + m(2,2) - m(0,0) - m(1,1)) * 2;  // S=4*qz
+            qw = (m(1,0) - m(0,1)) / S;
+            qx = (m(0,2) + m(2,0)) / S;
+            qy = (m(1,2) + m(2,1)) / S;
+            qz = 0.25 * S;
+        }
+
+        return (Vector4() << qw, qx, qy, qz).finished();
+    }
+    static Matrix3 quat2rotm(const Vector4 &q)
+    {
+        return (Matrix3() << 
+                q(0)*q(0) + q(1)*q(1) - q(2)*q(2) - q(3)*q(3), 2*(q(1)*q(2) - q(0)*q(3)),                     2*(q(1)*q(3) + q(0)*q(2)),
+                2*(q(1)*q(2) + q(0)*q(3)),                     q(0)*q(0) - q(1)*q(1) + q(2)*q(2) - q(3)*q(3), 2*(q(2)*q(3) - q(0)*q(1)),
+                2*(q(1)*q(3) - q(0)*q(2)),                     2*(q(2)*q(3) + q(0)*q(1)),                     q(0)*q(0) - q(1)*q(1) - q(2)*q(2) + q(3)*q(3)
+                ).finished();
     }
     static Vector3 rotM2Eul(const Matrix3 &r)
     {
@@ -626,6 +703,10 @@ public:
         }
         return res;
     }
+    static Vector6 abs(const Vector6 &v)
+    {
+        return (Vector6()<< std::abs(v(0)),std::abs(v(1)),std::abs(v(2)),std::abs(v(3)),std::abs(v(4)),std::abs(v(5))).finished();
+    }
 
     template <typename T>
     static int sgn(T val)
@@ -700,6 +781,13 @@ struct RPY
     Vector3 toVector()
     {
         return (Vector3() << r, p, y).finished();
+    }
+    bool isNull()
+    {
+        if (r==-1 && p==-1 && y==-1)
+            return true;
+        else
+            return false;
     }
 };
 

@@ -15,6 +15,8 @@ int main(int argc, char **argv)
     usleep(500000);
 
     ros::spinOnce();
+    joint_state_publisher.homingProcedure();
+
     std::cout << "Vision Client" << std::endl;
     vision::vision visionResult;
     if (joint_state_publisher.visionService.call(visionResult))
@@ -32,10 +34,11 @@ int main(int argc, char **argv)
     ros::spinOnce();
     joint_state_publisher.updateJstate();
 
-    joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.6).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
-    usleep(500000);
-
-    std::cout << "Tegister Blocks" << std::endl;
+    //joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.75).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
+    joint_state_publisher.homingProcedure(q_front);
+    usleep(1500000);
+    
+    std::cout << "Register Blocks" << std::endl;
     ros::spinOnce();
     joint_state_publisher.registerBlocks(visionResult);
 

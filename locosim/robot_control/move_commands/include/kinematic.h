@@ -3,6 +3,7 @@
 #include "algebra.h"
 #include <Eigen/Dense>
 #include <cstdlib>
+#include <iostream>
 
 typedef struct
 {
@@ -11,6 +12,18 @@ typedef struct
     std::vector<double> times;
 
 } Trajectory;
+std::ostream &operator<<(std::ostream &o, const Trajectory &T)
+{
+    for ( int i=0; i<T.positions.size(); ++i )
+    {
+        for ( int j=0; j<T.positions[i].size(); ++j )
+            o << T.positions[i][j] << " ";
+        o << T.times[i] << "\n";
+    }
+    o << std::endl;
+
+    return o;
+}
 
 typedef enum CurveType
 {
@@ -25,6 +38,7 @@ private:
     static constexpr double posErrorBoundary = 0.1;
     static constexpr double intermediatePrecision = 0.005;
     static constexpr double finalPrecision = 0.001;
+    static constexpr double max_dq = 0.032;
 
     static Vector6 getDirectionStep(const Matrix4 &actualPose, const Matrix4 &desiredPose)
     {
@@ -312,7 +326,7 @@ public:
         return bestAngles;
     }
 
-    static std::vector<std::vector<double>> inversDifferentialKinematic(const Vector6 &jstate, const Matrix4 &desiredPose, const double precision, const double damping = 0.04, const double maxDelta = 0.032, const double timeScale = 1)
+    static std::vector<std::vector<double>> inversDifferentialKinematic(const Vector6 &jstate, const Matrix4 &desiredPose, const double precision, const double damping = 0.04, const double maxDelta = max_dq, const double timeScale = 1)
     {
         std::vector<std::vector<double>> positions;
 
@@ -363,13 +377,14 @@ public:
         Matrix4 intial_pose = directKinematic(initial_jstate);
         Vector3 initial_p;
         initial_p << intial_pose(0, 3), intial_pose(1, 3), intial_pose(2, 3);
-        Matrix3 intial_rotm = intial_pose.block(0, 0, 3, 3);
+        Matrix3 initial_rotm = intial_pose.block(0, 0, 3, 3);
 
         float ds = 0.05;
         std::vector<Vector3> path;
         std::vector<Matrix3> rotms;
 
-        rotms = Algebra::matrixLinspace(intial_rotm, final_rotm, (int)(1 / ds));
+        // rotms = Algebra::matrixLinspace(initial_rotm, final_rotm, (int)(1 / ds));
+        rotms = Algebra::slerp(initial_rotm, final_rotm, (int)(1/ds));
 
         if (curveType == CurveType::BEZIER)
         {
@@ -454,20 +469,22 @@ public:
     {
         Trajectory trajectory;
         Vector6 h = qf - qi;
-        double dqMax = h.maxCoeff();
+        double dqMax = Algebra::abs(h).maxCoeff();
         double T = dqMax / vmax;
+        int n = (int) (dqMax / max_dq);
+        std::cout << "jcubic: T=" << T << ", n=" << n << std::endl;
         Matrix2 Tm;
         Tm << T * T, T * T * T, 2 * T, 3 * T * T;
         Matrix2 Tinv = Tm.inverse();
         Vector6 a2 = Tinv(0, 0) * (h - vi * T) + Tinv(0, 1) * (vf - vi);
         Vector6 a3 = Tinv(1, 0) * (h - vi * T) + Tinv(1, 1) * (vf - vi);
 
-        trajectory.times = Algebra::linspace(0, T, 50);
+        trajectory.times = Algebra::linspace(0, T, n);
 
         for (double t : trajectory.times)
         {
-            trajectory.positions.push_back(Algebra::convert(qi + vi * t + a2 * t * t + a3 * t * t * t));
-            trajectory.velocities.push_back(Algebra::convert(vi + 2 * a2 * t + 3 * a3 * t * t));
+            trajectory.positions.push_back(Algebra::convert(qi + vi*t + a2*pow(t,2) + a3*pow(t,3)));
+            trajectory.velocities.push_back(Algebra::convert(vi + 2*a2*t + 3*a3*pow(t,2)));
         }
 
         return trajectory;
