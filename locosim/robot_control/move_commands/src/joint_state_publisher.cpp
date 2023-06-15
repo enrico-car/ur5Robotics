@@ -170,16 +170,16 @@ void JointStatePublisher::sendDesTrajectory(const Trajectory &trajectory) const
 
 void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd, const CurveType &curveType, const double &vel, const bool &useIK)
 {
-    std::cout << "!! moveTo: " << finalP[0]<<","<<finalP[1]<<","<<finalP[2]<< " !! " <<  std::endl;
-    std::cout << "starting jstate: "<<jstate(0)<<","<<jstate(1)<<","<<jstate(2)<<","<<jstate(3)<<","<<jstate(4)<<","<<jstate(5)<<"\n";
+    std::cout << "!! moveTo: " << finalP[0] << "," << finalP[1] << "," << finalP[2] << " !! " << std::endl;
+    std::cout << "starting jstate: " << jstate(0) << "," << jstate(1) << "," << jstate(2) << "," << jstate(3) << "," << jstate(4) << "," << jstate(5) << "\n";
     Matrix4 actual_pose = Kinematic::directKinematic(jstate);
     CurveType curve;
-    double dist = sqrt(pow(actual_pose(0,3)-finalP(0)+0.5, 2) + pow(actual_pose(1,3)-finalP(1)+0.35, 2));
-    if ( dist > 0.03 )
+    double dist = sqrt(pow(actual_pose(0, 3) - finalP(0) + 0.5, 2) + pow(actual_pose(1, 3) - finalP(1) + 0.35, 2));
+    if (dist > 0.03)
         curve = CurveType::BEZIER;
     else
         curve = CurveType::LINE;
-    
+
     Trajectory trajectory;
     if (useIK)
     {
@@ -234,7 +234,6 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
     {
         trajectory.times[i] += 0.1;
     }
-
     usleep(1750000);
     sendDesTrajectory(trajectory);
     jstate = (Vector6() << finalJstate[0], finalJstate[1], finalJstate[2], finalJstate[3], finalJstate[4], finalJstate[5]).finished();
@@ -255,8 +254,6 @@ void JointStatePublisher::pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy,
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
 
-    std::string a;
-    std::cin >> a;
     std::cout << "------- gripping --------" << std::endl;
     if (gripper)
         gripping(gripperPos.second);
@@ -293,7 +290,7 @@ void JointStatePublisher::pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy,
 void JointStatePublisher::rotateBlock(const RPY &newBlockRpy, Cartesian newBlockPos)
 {
     std::cout << "!! rotateBlock !!" << std::endl;
-    
+
     std::pair<double, double> gripperPos = getGripPositions();
     block.computeApproachAndLandPose(newBlockPos.x, newBlockPos.y, newBlockRpy);
 
@@ -301,8 +298,6 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy, Cartesian newBlock
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first, true);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
 
-    std::string a;
-    std::cin >> a;
     std::cout << "------- gripping --------" << std::endl;
     if (gripper)
         gripping(gripperPos.second);
@@ -315,13 +310,13 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy, Cartesian newBlock
     std::cout << "------- ungripping --------" << std::endl;
     if (gripper)
         ungripping(gripperPos.first, false);
-    
+
     block.autoUpdate();
     block.print();
 
     std::cout << "------- moving up --------" << std::endl;
     moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
-    
+
     std::cout << std::endl;
 }
 
@@ -333,13 +328,13 @@ void JointStatePublisher::setupBlockForRotation()
     if (block.getDistanceFromShoulder() < 0.3)
     {
         if (block.getConfiguration() == BlockConfiguration::UP)
-            newBlockRpy = RPY(M_PI/2, 0.0, M_PI);
-        
+            newBlockRpy = RPY(M_PI / 2, 0.0, M_PI);
+
         else if (block.getConfiguration() == BlockConfiguration::SIDE)
-            newBlockRpy = RPY(0.0, M_PI/2, M_PI);
-        
+            newBlockRpy = RPY(0.0, M_PI / 2, M_PI);
+
         else if (block.getConfiguration() == BlockConfiguration::DOWN)
-            newBlockRpy = RPY(0.0, M_PI, M_PI/2);
+            newBlockRpy = RPY(0.0, M_PI, M_PI / 2);
 
         Cartesian newBlockPos = findFreeSpot();
         rotateBlock(newBlockRpy, newBlockPos);
@@ -348,7 +343,7 @@ void JointStatePublisher::setupBlockForRotation()
     {
         if (block.getQuadrant() == 1)
         {
-            if (block.getRpyY() < M_PI/2 - 0.1 || block.getRpyY() > 3/2*M_PI + 0.1)
+            if (block.getRpyY() < M_PI / 2 - 0.1 || block.getRpyY() > 3 / 2 * M_PI + 0.1)
             {
                 std::cout << "------- setup block --------" << std::endl;
                 if (block.getConfiguration() == BlockConfiguration::UP)
@@ -360,16 +355,16 @@ void JointStatePublisher::setupBlockForRotation()
                         rotateBlock(RPY(0, M_PI / 2, M_PI / 2), block.getPosition());
 
                     else if (block.getClass() == BlockClass::X1_Y2_Z2_TWINFILLET || block.getClass() == BlockClass::X1_Y3_Z2_FILLET || block.getClass() == BlockClass::X2_Y2_Z2_FILLET)
-                        rotateBlock(RPY(0, M_PI/2, M_PI), block.getPosition());
+                        rotateBlock(RPY(0, M_PI / 2, M_PI), block.getPosition());
                 }
                 else if (block.getConfiguration() == BlockConfiguration::DOWN)
                 {
                     if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
                         block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
-                    
+
                     else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
                         block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
-                
+
                     else
                         rotateBlock(RPY(0, M_PI, M_PI), block.getPosition());
                 }
@@ -382,24 +377,23 @@ void JointStatePublisher::setupBlockForRotation()
                 std::cout << "------- setup block --------" << std::endl;
                 if (block.getConfiguration() == BlockConfiguration::UP)
                     rotateBlock(RPY(M_PI / 2, 0, M_PI), block.getPosition());
-                
+
                 else if (block.getConfiguration() == BlockConfiguration::SIDE)
                 {
                     if ((block.getRpyY() < -0.1 || block.getRpyY() > M_PI / 2 + 0.1) && block.getClass() == BlockClass::X1_Y2_Z2_CHAMFER)
                         rotateBlock(RPY(0, M_PI / 2, M_PI / 2), block.getPosition());
-                
+
                     else if (block.getClass() == BlockClass::X1_Y2_Z2_TWINFILLET || block.getClass() == BlockClass::X1_Y3_Z2_FILLET || block.getClass() == BlockClass::X2_Y2_Z2_FILLET)
                         rotateBlock(RPY(0, M_PI / 2, M_PI), block.getPosition());
-                    
                 }
                 else if (block.getConfiguration() == BlockConfiguration::DOWN)
                 {
                     if (block.getClass() == BlockClass::X1_Y1_Z2 || block.getClass() == BlockClass::X2_Y2_Z2)
                         block.setRpy(RPY(0, M_PI, M_PI / 2 + block.getRpyY()));
-                    
+
                     else if (block.getClass() == BlockClass::X1_Y2_Z1 || block.getClass() == BlockClass::X1_Y2_Z2 | block.getClass() == BlockClass::X1_Y3_Z2 | block.getClass() == BlockClass::X1_Y4_Z1 | block.getClass() == BlockClass::X1_Y4_Z2)
                         block.setRpy(RPY(0, M_PI, M_PI + block.getRpyY()));
-                    
+
                     else
                         rotateBlock(RPY(0, M_PI, 0), block.getPosition());
                 }
@@ -417,7 +411,7 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
     setupBlockForRotation();
 
     std::cout << "------- moving to block at 45° --------" << std::endl;
-    if (xLandPose==-1 && yLandPose==-1 && block.getDistanceFromShoulder() < 0.35)
+    if (xLandPose == -1 && yLandPose == -1 && block.getDistanceFromShoulder() < 0.35)
     {
         Cartesian free_spot = findFreeSpot();
         xLandPose = free_spot.x;
@@ -427,9 +421,7 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
 
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.3);
-    
-    std::string a;
-    std::cin >> a;
+
     std::cout << "------- gripping --------" << std::endl;
     gripping(gripperPos.second);
 
@@ -477,22 +469,26 @@ Cartesian JointStatePublisher::findFreeSpot(double castleXmin, double castleYmin
 
     if (block.getQuadrant() <= 2)
     {
-        xmin = 50; xmax = 93;
-        ymin = 30; ymax = castleYmin - 0.1;
+        xmin = 50;
+        xmax = 93;
+        ymin = 30;
+        ymax = castleYmin - 0.1;
     }
     else
     {
-        xmin = 7;  xmax = 50;
-        ymin = 30; ymax = 73;
+        xmin = 7;
+        xmax = 50;
+        ymin = 30;
+        ymax = 73;
     }
 
     do
     {
-        x = ((double)(rand() % (xmax-xmin) + xmin) / 100);  // x in [7, 50] se q=(1,2)       OPPURE [50, 93] se q=(3,4)
-        y = ((double)(rand() % (ymax-ymin) + ymin) / 100);  // y in [30, area castello - 10] OPPURE [30, 73]
-        dist = sqrt((x - 0.5)*(x - 0.5) + (y - 0.35)*(y - 0.35));
+        x = ((double)(rand() % (xmax - xmin) + xmin) / 100); // x in [7, 50] se q=(1,2)       OPPURE [50, 93] se q=(3,4)
+        y = ((double)(rand() % (ymax - ymin) + ymin) / 100); // y in [30, area castello - 10] OPPURE [30, 73]
+        dist = sqrt((x - 0.5) * (x - 0.5) + (y - 0.35) * (y - 0.35));
     } while (dist < 0.4 || (castleXmin < x && x < 1 && castleYmin < y && y < 0.8) || checkCollision(x, y));
-    
+
     std::cout << std::endl;
     return Cartesian(x, y, 0.0);
 }
@@ -500,11 +496,11 @@ Cartesian JointStatePublisher::findFreeSpot(double castleXmin, double castleYmin
 void JointStatePublisher::homingProcedure(const Vector6 &final_q)
 {
     std::cout << "------- homing procedure --------" << std::endl;
-    
+
     updateJstate();
-    if ((jstate - final_q).norm() < 0.005)  // if the robot is already in the final configuration, do not create the trajectory
+    if ((jstate - final_q).norm() < 0.005) // if the robot is already in the final configuration, do not create the trajectory
         return;
-    
+
     Trajectory trajectory = Kinematic::jcubic(jstate, final_q);
     // std::cout << trajectory << std::endl;
 
@@ -543,51 +539,35 @@ void JointStatePublisher::homingProcedure(const Vector6 &final_q)
     jstate = (Vector6() << final_q[0], final_q[1], final_q[2], final_q[3], final_q[4], final_q[5]).finished();
     while ((jstate - q).norm() > 0.005)
         ros::spinOnce();
-    
+
     std::cout << "position reached" << std::endl;
 }
 
-void JointStatePublisher::multipleBlocks(Detected d)
+void JointStatePublisher::multipleBlocks()
 {
-    std::vector<Block> blocks;
-    for (int i = 0; i < d.n; i++)
+    RPY finalTowerRpy(0.0, 0.0, M_PI / 2);
+    std::vector<double> height(11,0.0);
+
+    for (int i = 0; i < presentBlocks.size(); i++)
     {
-        Cartesian c(d.xCenter[i], d.yCenter[i], d.zCenter[i]);
-        RPY r(d.roll[i], d.pitch[i], d.yaw[i]);
-        std::string name = "";
-        Block b(name, d.blockClass[i], c, r);
-        blocks.push_back(b);
-    }
+        block = presentBlocks[i];
+        Cartesian finalTowerPos = finalPosFromClass(block.getClass());
+        block.update();
 
-    double height = 0.0;
-    Cartesian finalTowerPos(0.8, 0.7, 0.0);
-    RPY finalTowerRpy(0.0, 0.0, 0.0);
+        block.print();
 
-    for (int i = 0; i < d.n; i++)
-    {
-        Block current = blocks[i];
-
-        // check if block is not in the standard position
-        if (!(-0.01 < current.getRpy().r && current.getRpy().p < 0.01))
+        while (block.getConfiguration() != BlockConfiguration::REGULAR)
         {
-            std::cout << "move block to stand position" << std::endl;
-            RPY landRpy(M_PI / 2, 0.0, 0.0);
-            rotateBlockStandardPosition(0.5, 0.75, landRpy);
-        }
-
-        if (!(-0.01 < current.getRpy().r && current.getRpy().r < 0.01))
-        {
-            std::cout << "move block to standard position" << std::endl;
-            RPY landRpy(0.0, 0.0, M_PI / 2);
-            rotateBlockStandardPosition(0.5, 0.75, landRpy);
+            rotateBlockStandardPosition();
         }
 
         std::cout << "move block to final position" << std::endl;
-        Cartesian finalBlockPos = finalTowerPos + Cartesian(0.0, 0.0, current.getPosition().z + height);
-
-        pickAndPlaceBlock(finalBlockPos.toVector(), finalTowerRpy, height, true);
-        height += BlockDimension.at(current.getClass()).z - 0.0195;
+        Cartesian finalBlockPos = finalTowerPos + Cartesian(0.0, 0.0, block.getPosition().z + height[block.getClass()]);
+        std::cout << "final blockPos " << finalBlockPos.x << " " << finalBlockPos.y << std::endl;
+        pickAndPlaceBlock(finalBlockPos.toVector(), finalTowerRpy, height[block.getClass()], true);
+        height[block.getClass()] += BlockDimension.at(block.getClass()).z - 0.0195;
     }
+
     std::cout << "multiple blocks task completed" << std::endl;
 }
 
@@ -610,7 +590,7 @@ void JointStatePublisher::castle()
     double yMax = 0.79;
     double xMin = 1.0;
     double yMin = 1.0;
-    
+
     for (int i = 1; i <= n; i++)
     {
         BlockClass blockClass = stringToBlockClass(json[std::to_string(i)]["class"].asString());
@@ -673,7 +653,7 @@ void JointStatePublisher::castle()
         presentBlocks[index].setProcessed(true);
     }
 
-    std::cout<<"Castle process completed"<<std::endl;
+    std::cout << "Castle process completed" << std::endl;
 }
 
 Json::Value JointStatePublisher::readJson()
@@ -731,6 +711,11 @@ void JointStatePublisher::registerBlocks(const vision::vision &visionResult)
             }
         }
     }
+}
+
+void JointStatePublisher::setBlock(Block b)
+{
+    block = b;
 }
 
 void JointStatePublisher::updateJstate()

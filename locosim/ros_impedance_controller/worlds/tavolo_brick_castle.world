@@ -1,0 +1,110 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <world name="default">
+    <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>
+    <physics type='ode'>
+      <!--gravity>0 0 -9.81</gravity-->
+      <max_step_size>0.001</max_step_size> 
+      <real_time_factor>1</real_time_factor>
+    </physics>
+    <!-- A global light source -->
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>0.2 -0.7 -0.6</direction>
+    </light>
+    <scene>
+      <shadows>0</shadows>
+    </scene>
+    <!-- A ground plane -->
+    <include>
+      <uri>model://ground_plane_custom</uri>
+    </include>
+    <include>
+      <name>tavolo</name>
+      <uri>model://tavolo_castle</uri>
+      <pose>0.0 0.0 0.0 0 0 0</pose>
+    </include>
+   
+   <!--include>
+      <name>brick0_X1-Y3-Z2-FILLET</name>
+      <uri>model://X1-Y3-Z2-FILLET</uri>
+      <pose> 0.8 0.3 0.885 0 1.57 0 </pose>
+    </include>
+    
+    <include>
+      <name>brick1_X1-Y2-Z1</name>
+      <uri>model://X1-Y2-Z1</uri>
+      <pose> 0.1 0.5 0.885 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick2_X1-Y2-Z2</name>
+      <uri>model://X1-Y2-Z2</uri>
+      <pose> 0.1 0.7 0.885 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick3_X1-Y2-Z2-CHAMFER</name>
+      <uri>model://X1-Y2-Z2-CHAMFER</uri>
+      <pose> 0.3 0.7 0.885   0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick4_X1-Y2-Z2-TWINFILLET</name>
+      <uri>model://X1-Y2-Z2-TWINFILLET</uri>
+      <pose> 0.3 0.5 0.925 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick5</name>
+      <uri>model://X1-Y3-Z2</uri>
+      <pose> 0.3 0.2 0.925 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick6</name>
+      <uri>model://X1-Y3-Z2-FILLET</uri>
+      <pose> 0.6 0.2 0.925 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick7</name>
+      <uri>model://X1-Y4-Z1</uri>
+      <pose> 0.6 0.50 0.925   0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick8</name>
+      <uri>model://X1-Y4-Z2</uri>
+      <pose> 0.6 0.7 0.925 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick9_X2-Y2-Z2</name>
+      <uri>model://X2-Y2-Z2</uri>
+      <pose> 0.9 0.7 0.925 0 0 0</pose> 
+    </include>
+    
+    <include>
+      <name>brick10_X2-Y2-Z2-FILLET</name>
+      <uri>model://X2-Y2-Z2-FILLET</uri>
+      <pose> 0.9 0.5 0.925 0 0 0</pose> 
+    </include-->
+    
+    <gui>
+    <camera name="gzclient_camera">
+      <pose>0.5 2 1.2 0 0 -1.57</pose>
+    </camera>
+    </gui>
+
+  </world>
+</sdf>

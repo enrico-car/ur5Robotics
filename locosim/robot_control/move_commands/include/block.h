@@ -144,6 +144,49 @@ BlockClass stringToBlockClass(std::string c)
     }
 };
 
+Cartesian finalPosFromClass(BlockClass c)
+{
+    switch (c)
+    {
+    case BlockClass::X1_Y1_Z2:
+        return Cartesian(0.9655, 0.774, 0.0);
+        break;
+    case BlockClass::X1_Y2_Z1:
+        return Cartesian(0.885, 0.774, 0.0);
+        break;
+    case BlockClass::X1_Y2_Z2:
+        return Cartesian(0.79, 0.774, 0.0);
+        break;
+    case BlockClass::X1_Y2_Z2_CHAMFER:
+        return Cartesian(0.69, 0.774, 0.0);
+        break;
+    case BlockClass::X1_Y2_Z2_TWINFILLET:
+        return Cartesian(0.947, 0.708, 0.0);
+        break;
+    case BlockClass::X1_Y3_Z2:
+        return Cartesian(0.83, 0.708, 0.0);
+        break;
+    case BlockClass::X1_Y3_Z2_FILLET:
+        return Cartesian(0.69, 0.708, 0.0);
+        break;
+    case BlockClass::X1_Y4_Z1:
+        return Cartesian(0.91, 0.65, 0.0);
+        break;
+    case BlockClass::X1_Y4_Z2:
+        return Cartesian(0.72, 0.65, 0.0);
+        break;
+    case BlockClass::X2_Y2_Z2:
+        return Cartesian(0.947, 0.575, 0.0);
+        break;
+    case BlockClass::X2_Y2_Z2_FILLET:
+        return Cartesian(0.85, 0.575, 0.0);
+        break;
+    default:
+        return Cartesian(0.75, 0.58, 0.0);
+        break;
+    }
+}
+
 class Block
 {
 private:

@@ -113,13 +113,14 @@ public:
     Cartesian findFreeSpot(double castleXmin=0.75, double castleYmin=0.6);
 
     void homingProcedure(const Vector6 &final_q=q0);
-    void multipleBlocks(Detected d);
+    void multipleBlocks();
     void castle();
 
     Json::Value readJson();
     double getYaw(int rot);
     void registerBlocks(const vision::vision &visionResult);
 
+    void setBlock(Block b);
     void updateJstate();
 };
 

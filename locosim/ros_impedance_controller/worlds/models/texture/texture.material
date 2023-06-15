@@ -1,0 +1,14 @@
+material texture
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture blocks_texture.png
+        scale 1 1
+      }
+    }
+  }
+}

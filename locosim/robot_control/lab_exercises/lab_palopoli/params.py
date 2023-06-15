@@ -30,7 +30,8 @@ robot_params = {'ur5': {'dt': 0.001,
                         'spawn_x': 0.5,
                         'spawn_y': 0.35,
                         'spawn_z': 1.8,
-                        'world_name': 'tavolo_brick.world' #'empty.world'
+                        'world_name': 'tavolo_brick.world', #'empty.world'
+                        'world_name_castle': 'tavolo_brick_castle.world' #'empty.world'
                         }}
 
 plotting = False

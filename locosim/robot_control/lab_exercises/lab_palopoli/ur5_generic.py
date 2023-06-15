@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on 3 May  2022
@@ -6,51 +7,63 @@ Created on 3 May  2022
 """
 
 from __future__ import print_function
+import json
+from base_controllers.components.controller_manager import ControllerManager
+import time
+from rospy import Time
+import tf
+from base_controllers.base_controller_fixed import BaseControllerFixed
+from gazebo_msgs.srv import SetModelState
+from gazebo_msgs.msg import ContactState, ModelState
+from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64MultiArray
+from controller_manager_msgs.srv import LoadControllerRequest, LoadController
+from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
+import lab_exercises.lab_palopoli.params as conf
+from base_controllers.utils.common_functions import plotJoint, plotEndeff
+from termcolor import colored
+import pinocchio as pin
+from base_controllers.utils.math_tools import *
+import rospkg
+import rosgraph
+import rosnode
+import roslaunch
+from std_srvs.srv import Trigger, TriggerRequest
+from geometry_msgs.msg import WrenchStamped
+from robot_control.vision.scripts.SpawnBlocks_temp import spawnBlocksForCastle, spawnOneBlockBase,spawnOneBlock
 
 import os
 import rospy as ros
 import sys
-sys.path.insert(0, os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim"))
+
+sys.path.insert(0, os.path.join(
+    os.path.expanduser("~"), "ros_ws", "src", "locosim"))
 
 # messages for topic subscribers
-from geometry_msgs.msg import WrenchStamped
-from std_srvs.srv import Trigger, TriggerRequest
 
 # ros utils
-import roslaunch
-import rosnode
-import rosgraph
-import rospkg
 
-#other utils
-from base_controllers.utils.math_tools import *
-import pinocchio as pin
-from termcolor import colored
-from base_controllers.utils.common_functions import plotJoint, plotEndeff
-from lab_exercises.lab_palopoli.custom_publisher import readJSON
-from robot_control.vision.scripts.SpawnBlocks_temp import spawnBlocks
-import lab_exercises.lab_palopoli.params as conf
+# other utils
+# from robot_control.vision.scripts.SpawnBlocks_temp import spawnOneBlock, spawnBlocksForCastle
 
 # controller manager management
-from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
-from controller_manager_msgs.srv import LoadControllerRequest, LoadController
-from std_msgs.msg import Float64MultiArray
-from sensor_msgs.msg import JointState
-from gazebo_msgs.msg import ContactState, ModelState
-from gazebo_msgs.srv import SetModelState
-from base_controllers.base_controller_fixed import BaseControllerFixed
-import tf
-from rospy import Time
-import time
-from base_controllers.components.controller_manager import ControllerManager
 
 
 robotName = "ur5"
-np.set_printoptions(threshold=np.inf, precision=5, linewidth=1000, suppress=True)
+np.set_printoptions(threshold=np.inf, precision=5,
+                    linewidth=1000, suppress=True)
 
+
+def readJSON():
+    json_fd = open(os.path.join(os.path.expanduser("~"),"ros_ws","src","castle_build_path","output.json"))
+    json_file = json_fd.read()
+    json_fd.close()
+    json_file = json.loads(json_file)
+
+    return json_file
 
 class Ur5Generic(BaseControllerFixed):
-    
+
     def __init__(self, robot_name="ur5"):
         super().__init__(robot_name=robot_name)
 
@@ -76,7 +89,7 @@ class Ur5Generic(BaseControllerFixed):
             self.gripper = True
         else:
             self.gripper = False
-        
+
         self.soft_gripper = conf.robot_params[self.robot_name]['soft_gripper']
         self.use_grasp_plugin = conf.robot_params[self.robot_name]['use_grasp_plugin']
 
@@ -84,17 +97,24 @@ class Ur5Generic(BaseControllerFixed):
 
         self.vision = conf.robot_params[self.robot_name]['vision']
 
-        self.controller_manager = ControllerManager(conf.robot_params[self.robot_name])
+        self.controller_manager = ControllerManager(
+            conf.robot_params[self.robot_name])
 
         self.dt = conf.robot_params[self.robot_name]['dt']
         self.q = np.zeros(6)
         self.q_des_q0 = conf.robot_params[self.robot_name]['q_0']
 
-        self.world_name = conf.robot_params[self.robot_name]['world_name']
+        # self.world_name = conf.robot_params[self.robot_name]['world_name']
         # self.world_name = None # only the workbench
         # self.world_name = 'tavolo_brick.world'
         # self.world_name = 'empty.world'
         # self.world_name = 'palopoli.world'
+
+        if (sys.argv[1] == "4"):
+            self.world_name = conf.robot_params[self.robot_name]['world_name_castle']
+        else:
+            self.world_name = conf.robot_params[self.robot_name]['world_name']
+            
 
         print("Initialized ur5 generic controller---------------------------------------------------------------")
 
@@ -116,14 +136,15 @@ class Ur5Generic(BaseControllerFixed):
 
         if (not rosgraph.is_master_online()) or (
                 "/" + self.robot_name + "/ur_hardware_interface" not in rosnode.get_node_names()):
-           pass
-           # print(colored('Launching the ur driver!', 'blue'))
-          #  parent.start()
+            pass
+            # print(colored('Launching the ur driver!', 'blue'))
+           #  parent.start()
 
         # run rviz
         package = 'rviz'
         executable = 'rviz'
-        args = '-d ' + rospkg.RosPack().get_path('ros_impedance_controller') + '/config/operator.rviz'
+        args = '-d ' + rospkg.RosPack().get_path('ros_impedance_controller') + \
+            '/config/operator.rviz'
         node = roslaunch.core.Node(package, executable, args=args)
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
@@ -132,25 +153,34 @@ class Ur5Generic(BaseControllerFixed):
     def loadModelAndPublishers(self, xacro_path):
         super().loadModelAndPublishers(xacro_path)
 
-        self.sub_ftsensor = ros.Subscriber("/" + self.robot_name + "/wrench", WrenchStamped, callback=self._receive_ftsensor, queue_size=1, tcp_nodelay=True)
+        self.sub_ftsensor = ros.Subscriber(
+            "/" + self.robot_name + "/wrench", WrenchStamped, callback=self._receive_ftsensor, queue_size=1, tcp_nodelay=True)
 
-        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState, callback=self._receive_jstate, queue_size=1, buff_size=2 ** 24, tcp_nodelay=True)
+        self.sub_jstate = ros.Subscriber("/" + self.robot_name + "/joint_states", JointState,
+                                         callback=self._receive_jstate, queue_size=1, buff_size=2 ** 24, tcp_nodelay=True)
 
-        self.switch_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/switch_controller", SwitchController)
-        self.load_controller_srv = ros.ServiceProxy("/" + self.robot_name + "/controller_manager/load_controller", LoadController)
+        self.switch_controller_srv = ros.ServiceProxy(
+            "/" + self.robot_name + "/controller_manager/switch_controller", SwitchController)
+        self.load_controller_srv = ros.ServiceProxy(
+            "/" + self.robot_name + "/controller_manager/load_controller", LoadController)
 
         # specific publisher for joint_group_pos_controller that publishes only position
-        self.pub_reduced_des_jstate = ros.Publisher("/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
+        self.pub_reduced_des_jstate = ros.Publisher(
+            "/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
 
-        self.zero_sensor = ros.ServiceProxy("/" + self.robot_name + "/ur_hardware_interface/zero_ftsensor", Trigger)
+        self.zero_sensor = ros.ServiceProxy(
+            "/" + self.robot_name + "/ur_hardware_interface/zero_ftsensor", Trigger)
         self.controller_manager.initPublishers(self.robot_name)
 
         #  different controllers are available from the real robot and in simulation
         if self.real_robot:
-            self.pub_reduced_des_jstate = ros.Publisher("/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
-            self.available_controllers = ["joint_group_pos_controller", "scaled_pos_joint_traj_controller"]
+            self.pub_reduced_des_jstate = ros.Publisher(
+                "/" + self.robot_name + "/joint_group_pos_controller/command", Float64MultiArray, queue_size=10)
+            self.available_controllers = [
+                "joint_group_pos_controller", "scaled_pos_joint_traj_controller"]
         else:
-            self.available_controllers = ["joint_group_pos_controller", "pos_joint_traj_controller"]
+            self.available_controllers = [
+                "joint_group_pos_controller", "pos_joint_traj_controller"]
 
         self.active_controller = self.available_controllers[0]
 
@@ -172,12 +202,13 @@ class Ur5Generic(BaseControllerFixed):
         self.contactMomentW = self.w_R_tool0.dot(contactMomentTool0)
 
     def deregister_node(self):
-        print( "deregistering nodes"     )
+        print("deregistering nodes")
         self.ros_pub.deregister_node()
         if not self.real_robot:
-            os.system(" rosnode kill /"+self.robot_name+"/ros_impedance_controller")
+            os.system(" rosnode kill /"+self.robot_name +
+                      "/ros_impedance_controller")
             os.system(" rosnode kill /gzserver /gzclient")
-                                                                                                                                     
+
     def updateKinematicsDynamics(self):
         # q is continuously updated
         # to compute in the base frame  you should put neutral base
@@ -186,24 +217,29 @@ class Ur5Generic(BaseControllerFixed):
         self.M = self.robot.mass(self.q)
         # bias terms
         self.h = self.robot.nle(self.q, self.qd)
-        #gravity terms
+        # gravity terms
         self.g = self.robot.gravity(self.q)
-        #compute ee position  in the world frame
+        # compute ee position  in the world frame
         frame_name = conf.robot_params[self.robot_name]['ee_frame']
         # this is expressed in the base frame
-        self.x_ee = self.robot.framePlacement(self.q, self.robot.model.getFrameId(frame_name)).translation
-        self.w_R_tool0 = self.robot.framePlacement(self.q, self.robot.model.getFrameId(frame_name)).rotation
+        self.x_ee = self.robot.framePlacement(
+            self.q, self.robot.model.getFrameId(frame_name)).translation
+        self.w_R_tool0 = self.robot.framePlacement(
+            self.q, self.robot.model.getFrameId(frame_name)).rotation
         # compute jacobian of the end effector in the base or world frame (they are aligned so in terms of velocity they are the same)
-        self.J6 = self.robot.frameJacobian(self.q, self.robot.model.getFrameId(frame_name), False, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)                    
-        # take first 3 rows of J6 cause we have a point contact            
-        self.J = self.J6[:3,:] 
+        self.J6 = self.robot.frameJacobian(self.q, self.robot.model.getFrameId(
+            frame_name), False, pin.ReferenceFrame.LOCAL_WORLD_ALIGNED)
+        # take first 3 rows of J6 cause we have a point contact
+        self.J = self.J6[:3, :]
         # broadcast base world TF
-        self.broadcaster.sendTransform(self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
+        self.broadcaster.sendTransform(
+            self.base_offset, (0.0, 0.0, 0.0, 1.0), Time.now(), '/base_link', '/world')
 
     def startupProcedure(self):
         if self.use_torque_control:
             # set joint pdi gains
-            self.pid.setPDjoints( conf.robot_params[self.robot_name]['kp'], conf.robot_params[self.robot_name]['kd'], conf.robot_params[self.robot_name]['ki'])
+            self.pid.setPDjoints(conf.robot_params[self.robot_name]['kp'],
+                                 conf.robot_params[self.robot_name]['kd'], conf.robot_params[self.robot_name]['ki'])
 
         if self.real_robot:
             self.zero_sensor()
@@ -223,10 +259,10 @@ class Ur5Generic(BaseControllerFixed):
         srv = LoadControllerRequest()
         srv.name = target_controller
 
-        self.load_controller_srv(srv)  
-        
+        self.load_controller_srv(srv)
+
         srv = SwitchControllerRequest()
-        srv.stop_controllers = other_controllers 
+        srv.stop_controllers = other_controllers
         srv.start_controllers = [target_controller]
         srv.strictness = SwitchControllerRequest.BEST_EFFORT
         self.switch_controller_srv(srv)
@@ -271,10 +307,12 @@ def talker(p):
         additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 'use_grasp_plugin:='+str(p.use_grasp_plugin),
                            'gui:=true', 'rviz:=true']
         print(additional_args)
-        p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
+        p.startSimulator(world_name=p.world_name,
+                         use_torque_control=p.use_torque_control, additional_args=additional_args)
 
     # specify xacro location
-    xacro_path = rospkg.RosPack().get_path('ur_description') + '/urdf/' + p.robot_name + '.urdf.xacro'
+    xacro_path = rospkg.RosPack().get_path('ur_description') + \
+        '/urdf/' + p.robot_name + '.urdf.xacro'
     p.loadModelAndPublishers(xacro_path)
     p.initVars()
     p.startupProcedure()
@@ -294,9 +332,18 @@ def talker(p):
     if p.control_mode == 'trajectory':
         p.switch_controller(p.available_controllers[1])
 
-    json_file = readJSON()
-    spawnBlocks(json_file=json_file)
-    
+    if (sys.argv[1] == "1"):
+        spawnOneBlockBase(sys.argv[2])
+    if (sys.argv[1] == "2"):
+        for i in range(2,len(sys.argv)):
+            spawnOneBlockBase(sys.argv[i],i)
+    if (sys.argv[1] == "3"):
+        for i in range(2,len(sys.argv)):
+            spawnOneBlock(sys.argv[i],i)
+    if (sys.argv[1] == "4"):
+        json_file = readJSON()
+        spawnBlocksForCastle(json_file=json_file)
+
     # p.ros_pub.add_marker([0.4, 0.4, -0.7]+p.base_offset, 0.05)
     # p.ros_pub.publishVisual()
 

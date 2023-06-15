@@ -24,7 +24,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z2/X1-Y2-Z2_centered.dae</uri>
+            <uri>/X1-Y2-Z2/X1-Y2-Z2_centered.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -52,7 +52,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/carro/ros_ws/src/locosim/ros_impedance_controller/worlds/models/X1-Y2-Z2/X1-Y2-Z2_full.dae</uri>
+            <uri>/X1-Y2-Z2/X1-Y2-Z2_full.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

@@ -18,16 +18,23 @@ catkin_package(
 # # Build talker and listener
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${JSONCPP_INCLUDE_DIRS})
 
-add_executable(first_move src/first_move.cpp)
+add_executable(assignment_123 src/assignment_123.cpp)
+add_executable(assignment_4 src/assignment_4.cpp)
 add_library(JointStatePublisher src/joint_state_publisher.cpp)
 add_library(Kinematic src/kinematic.cpp)
 add_library(Costants src/constants.cpp)
 add_library(Block src/block.cpp)
 add_library(Algebra src/algebra.cpp)
 
-target_link_libraries(first_move Costants JointStatePublisher Kinematic Block Algebra ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
+target_link_libraries(assignment_123 Costants JointStatePublisher Kinematic Block Algebra ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
+target_link_libraries(assignment_4 Costants JointStatePublisher Kinematic Block Algebra ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
-install(TARGETS first_move
+install(TARGETS assignment_123
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(TARGETS assignment_4
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

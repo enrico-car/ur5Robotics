@@ -4,7 +4,6 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.path.expanduser("~"), "ros_ws", "src", "locosim"))
 from lab_exercises.lab_palopoli.kinematics import *
-from robot_control.vision.scripts.SpawnBlocks_temp import spawnBlocks
 import lab_exercises.lab_palopoli.params as conf
 import rospy as ros
 import rospkg
