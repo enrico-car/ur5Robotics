@@ -251,6 +251,7 @@ void JointStatePublisher::pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy,
     block.computeApproachAndLandPose(finalP(0), finalP(1), finalRpy, zOffset);
 
     std::cout << "------- moving to block --------" << std::endl;
+    setGripperContact(false);
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
 
@@ -406,7 +407,7 @@ void JointStatePublisher::setupBlockForRotation()
 void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double yLandPose, RPY finalRpy)
 {
     std::cout << "!! rotateBlockStandardPosition !!" << std::endl;
-
+    setGripperContact(true);
     std::pair<double, double> gripperPos = getGripPositions();
     setupBlockForRotation();
 
@@ -418,13 +419,14 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
         yLandPose = free_spot.y;
     }
     block.computeApproachAndLandPose(xLandPose, yLandPose, finalRpy, 0.0, 45);
-
+    
+    moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm90(), gripperPos.first);
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.3);
 
     std::cout << "------- gripping --------" << std::endl;
     gripping(gripperPos.second);
-
+    
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
 
     std::cout << "------- moving block to landing pos --------" << std::endl;
@@ -604,14 +606,16 @@ void JointStatePublisher::castle()
         xMin = std::min(x, xMin);
         yMin = std::min(y, yMin);
     }
-    for (auto b : presentBlocks)
+    xMin += -0.05; yMin += -0.05;
+    for (auto& b : presentBlocks)
     {
-        if (xMin < b.getPosition().x && b.getPosition().x < 1.0 && yMin < b.getPosition().y && b.getPosition().y < 0.8)
+        if (xMin < b.getPosition().x && yMin < b.getPosition().y)
         {
             block = b;
             block.update();
             Cartesian c = findFreeSpot(xMin, yMin);
             rotateBlockStandardPosition(c.x, c.y, block.getFinalRpy());
+            b = block;
         }
     }
     for (int i = 1; i <= n; i++)
@@ -668,7 +672,6 @@ Json::Value JointStatePublisher::readJson()
     return obj;
 }
 
-// TODO: quando mettiamo a posto il JAVAFX, scambiare i segni di 1 e 3
 double JointStatePublisher::getYaw(int rot)
 {
     if (rot == 0)
@@ -890,31 +893,31 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
         switch (block.getClass())
         {
         case X1_Y1_Z2:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y2_Z2_CHAMFER:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y2_Z2_TWINFILLET:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y3_Z2:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y3_Z2_FILLET:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y4_Z1:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X1_Y4_Z2:
-            class2gripsize = std::pair<int, int>(70, 33);
+            class2gripsize = std::pair<int, int>(70, 31.5);
             break;
         case X2_Y2_Z2:
             class2gripsize = std::pair<int, int>(100, 75);

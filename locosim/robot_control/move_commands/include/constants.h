@@ -104,7 +104,7 @@ const std::string Constants::getModelState = "/gazebo/get_model_state";
 const std::string Constants::visionService = "vision_service";
 const std::string Constants::markerPub = "/vis";
 
-const std::string Constants::jsonOutput = "/home/rico/ros_ws/src/castle_build_path/output.json";
+const std::string Constants::jsonOutput = "/home/carro/ros_ws/src/castle_build_path/output.json";
 
 const Vector6 Constants::d = (Vector6() << D1, 0, 0, D4, D5, D6).finished();
 const Vector6 Constants::a = (Vector6() << 0, 0, A2, A3, 0, 0).finished();

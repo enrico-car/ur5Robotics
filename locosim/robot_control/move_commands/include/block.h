@@ -209,7 +209,8 @@ private:
      * Position on the desk
      */
     int quadrant;
-
+    
+    Matrix3 approachRotm90;
     Matrix3 approachRotm;
     Cartesian approachPos;
     Matrix3 landRotm;
@@ -231,6 +232,7 @@ public:
     std::string getName();
     Cartesian getPosition();
     Vector3 getApproachPos();
+    Matrix3 getApproachRotm90();
     Matrix3 getApproachRotm();
     Vector3 getLandPos();
     Matrix3 getLandRotm();

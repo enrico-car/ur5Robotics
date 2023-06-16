@@ -119,7 +119,19 @@ public:
     Json::Value readJson();
     double getYaw(int rot);
     void registerBlocks(const vision::vision &visionResult);
-
+    void setGripperContact(bool set)
+    {
+        gazebo_ros_link_attacher::SetStatic req;
+        req.request.model_name = "ur5";
+        req.request.link_name = "hand_1_link";
+        req.request.set_static = set;
+        setStaticSrv.call(req);
+        req.request.model_name = "ur5";
+        req.request.link_name = "hand_2_link";
+        req.request.set_static = set;
+        setStaticSrv.call(req);
+    }
+    
     void setBlock(Block b);
     void updateJstate();
 };

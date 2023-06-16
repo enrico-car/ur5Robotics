@@ -34,9 +34,10 @@ int main(int argc, char **argv)
     ros::spinOnce();
     joint_state_publisher.updateJstate();
 
-    //joint_state_publisher.moveTo((Vector3() << 0.5, 0.7, -0.75).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
     joint_state_publisher.homingProcedure(q_front);
     usleep(1500000);
+    
+    //joint_state_publisher.moveTo((Vector3() << 0.35, 0.35, -0.85).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
     
     std::cout << "Register Blocks" << std::endl;
     ros::spinOnce();

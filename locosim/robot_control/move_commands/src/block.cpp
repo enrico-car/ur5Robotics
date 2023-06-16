@@ -45,6 +45,11 @@ Vector3 Block::getApproachPos()
     return approachPos.toVector();
 }
 
+Matrix3 Block::getApproachRotm90()
+{
+    return approachRotm90;
+}
+
 Matrix3 Block::getApproachRotm()
 {
     return approachRotm;
@@ -281,8 +286,8 @@ void Block::computeApproachAndLandPose(double xLandPose, double yLandPose, RPY f
         double landZPos;
         double theta = M_PI / 4;
 
-        Matrix3 apprachRotm90 = Algebra::eul2RotM(approachRPY.toVector());
-        approachRotm = apprachRotm90 * Algebra::rotY(theta);
+        approachRotm90 = Algebra::eul2RotM(approachRPY.toVector());
+        approachRotm = approachRotm90 * Algebra::rotY(theta);
 
         if (configuration == BlockConfiguration::UP)
         {
@@ -345,8 +350,8 @@ void Block::computeApproachAndLandPose(double xLandPose, double yLandPose, RPY f
         approachPos = position + correctionApproach45;
         std::cout << "APPROACH POS: " << approachPos << " !!!!!!!!!!!!!!!\n";
 
-        apprachRotm90 = Algebra::eul2RotM(approachRPY.toVector());
-        approachRotm = apprachRotm90 * Algebra::rotY(theta);
+        approachRotm90 = Algebra::eul2RotM(approachRPY.toVector());
+        approachRotm = approachRotm90 * Algebra::rotY(theta);
 
         if (xLandPose == -1 && yLandPose == -1)
             landPosNoCorrection = Cartesian(position.x, position.y, landZPos);

@@ -399,10 +399,16 @@ public:
         std::vector<Matrix3> slerp;
         Matrix3 rotm_m;
         std::complex<double> complex(0, 0);
-
+        
         complex.real(q_i(0)*q_f(0) + q_i(1)*q_f(1) + q_i(2)*q_f(2) + q_i(3)*q_f(3));
+
+        if (complex.real() < 0)
+        {
+            q_f(0)=-q_f(0); q_f(1)=-q_f(1); q_f(2)=-q_f(2); q_f(3)=-q_f(3);
+            complex.real(-complex.real());
+        }
+
         double angle = acos(complex).real();
-        std::cout << round(angle) << std::endl;
         double denom = sin(angle);
 
         for (double t : ls)

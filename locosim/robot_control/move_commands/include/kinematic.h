@@ -454,12 +454,12 @@ public:
         trajectory.positions = temPosition;
 
         trajectory.times.push_back(0.0);
-        trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
+        // trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
         for (int i = 1; i < trajectory.positions.size(); i++)
         {
             dtheta = Algebra::diff(trajectory.positions[i], trajectory.positions[i - 1]);
             trajectory.times.push_back(trajectory.times[i - 1] + Algebra::max(Algebra::abs(dtheta)) / vel);
-            trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
+            // trajectory.velocities.push_back({vel, vel, vel, vel, vel, vel});
         }
 
         return trajectory;

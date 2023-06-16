@@ -327,7 +327,7 @@ def talker(p):
     p.switch_controller(p.available_controllers[0])
     # homing procedure
     if p.homing_flag:
-        p.homing_procedure(p.dt, 0.5, p.q_des, rate)
+        p.homing_procedure(p.dt, 1, p.q_des, rate)
 
     if p.control_mode == 'trajectory':
         p.switch_controller(p.available_controllers[1])
