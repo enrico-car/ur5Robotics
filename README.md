@@ -246,4 +246,4 @@ Students: [Daniele Carraro](https://github.com/d-aniele-carrar-o) - [Annachiara 
 
 Project of course **Fondamenti di robotica [145831]** - [PALOPOLI LUIGI](https://webapps.unitn.it/du/it/Persona/PER0002392/Curriculum) - [SEBE NICULAE](https://webapps.unitn.it/du/it/Persona/PER0051994/Curriculum) - [FOCCHI MICHELE](https://webapps.unitn.it/du/it/Persona/PER0221571/Didattica) - [FALQUETO PLACIDO](https://webapps.unitn.it/du/it/Persona/PER0230044/Curriculum)
 
-[![img](/home/rico/assets/unitn_logo.png)](https://www.unitn.it/)
+[![img](assets/unitn_logo.png)](https://www.unitn.it/)
