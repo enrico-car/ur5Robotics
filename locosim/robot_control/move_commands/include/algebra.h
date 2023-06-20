@@ -481,7 +481,6 @@ public:
 
         // asse z6 e origine frame 6
         Matrix4 t06 = t05 * T56(th(5));
-        // ! questa matrice ha un solo valore leggermente errato
         round(t06);
         Vector3 z6;
         Vector3 p6;
