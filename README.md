@@ -13,7 +13,7 @@ $ cd ros_ws
 $ catkin_make install
 ```
 
-Remove the `CATKIN_IGNORE` file inside the `ros_ws/src/locosim/robot_control/move_commands` folder and run the previous command again. Because some of the requirements needed by the move_commands scripts are created with the first compilation.
+Remove the `CATKIN_IGNORE` file inside the `ros_ws/src/locosim/robot_control/move_commands` folder and run the previous command again, because some of the requirements needed by the move_commands scripts are created with the first compilation.
 
 At the end, modify the absolute path inside `ros_ws/src/locosim/robot_control/move_commands/header/constants.h` with the path of the `output.json` inside the `castle_build_path` directory.
 
@@ -45,7 +45,7 @@ const std::string Constants::jsonOutput = "path/to/output.json";
 
 ```
 
-The `movement_commands` contain all the scripts for moving the robot and the scripts for communicating with the ros topic.
+The `movement_commands` contain all the scripts to move the robot and  communicate with the ros topic.
 
 In the `constants.h` file are defined all the constant variables, such as ros topics and robot size.
 
@@ -146,7 +146,7 @@ This simple javaFx project allow an easy way to write the `.json` file for the c
 |      X1-Y2-Z1       |  ![1](assets/1.jpg)  |
 |      X1-Y2-Z2       |  ![2](assets/2.jpg)  |
 |  X1-Y2-Z2-CHAMFER   |  ![3](assets/3.jpg)  |
-| X1-Y2-Z2-TWINFILLET |                      |
+| X1-Y2-Z2-TWINFILLET |  ![4](assets/4.jpg)  |
 |      X1-Y3-Z2       |  ![5](assets/5.jpg)  |
 |   X1-Y3-Z2-FILLET   |  ![6](assets/6.jpg)  |
 |      X1-Y4-Z1       |  ![7](assets/7.jpg)  |
