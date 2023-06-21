@@ -505,7 +505,9 @@ public:
 
         return J;
     }
-
+    /// @brief Convert the euler angles in the rotation matrix
+    /// @param euler_angles 3x1 Vector
+    /// @return 3x3 Matrix
     static Matrix3 eul2RotM(const Vector3 &euler_angles)
     {
         Matrix3 rotx;
@@ -525,6 +527,9 @@ public:
         round(res);
         return res;
     }
+    /// @brief Convert the rotation matrix in the quaternion angles
+    /// @param m 3x3 Matrix
+    /// @return 4x1 Vector
     static Vector4 rotm2quat(const Matrix3 &m)
     {
         double tr = m(0,0) + m(1,1) + m(2,2), S, qw, qx, qy, qz;
@@ -564,6 +569,9 @@ public:
 
         return (Vector4() << qw, qx, qy, qz).finished();
     }
+    /// @brief Convert the quaternion angles in the rotation matrix
+    /// @param q 4x1 Vector
+    /// @return 3x3 Matrix
     static Matrix3 quat2rotm(const Vector4 &q)
     {
         return (Matrix3() << 
@@ -572,6 +580,9 @@ public:
                 2*(q(1)*q(3) - q(0)*q(2)),                     2*(q(2)*q(3) + q(0)*q(1)),                     q(0)*q(0) - q(1)*q(1) - q(2)*q(2) + q(3)*q(3)
                 ).finished();
     }
+    /// @brief Convert the rotation matrix in the euler angles
+    /// @param m 3x3 Matrix
+    /// @return 3x1 Vector
     static Vector3 rotM2Eul(const Matrix3 &r)
     {
         double sy = sqrt(r(0, 0) * r(0, 0) + r(1, 0) * r(1, 0));
@@ -610,6 +621,7 @@ public:
         return (Vector3() << mat(2, 1), mat(0, 2), mat(1, 0)).finished();
     }
 
+
     static Vector3 bezierEquation(const std::vector<Vector3> &p, int n, double t)
     {
         Vector3 b = Vector3().setZero();
@@ -622,6 +634,11 @@ public:
 
         return b;
     }
+    /// @brief Calculate the bezier path from the given start and end points
+    /// @param start_p start point
+    /// @param end_p end point
+    /// @param n number of points of the path
+    /// @return return the tree dimentional points of all the path
     static std::vector<Vector3> bezierPath(const Vector3 &start_p, const Vector3 &end_p, int n)
     {
 
@@ -643,11 +660,16 @@ public:
 
         return points;
     }
+    /// @brief Calculate the line path from the given start and end points
+    /// @param start_p start point
+    /// @param end_p end point
+    /// @param n number of points of the path
+    /// @return return the tree dimentional points of all the path 
     static std::vector<Vector3> linePath(const Vector3 &start_p, const Vector3 &end_p, int n)
     {
         return linspace(start_p, end_p, n);
     };
-
+    /// @brief Convert the 6x1 vector to a std::vector
     static std::vector<double> convert(const Vector6 &vec)
     {
         std::vector<double> res;
@@ -720,9 +742,7 @@ public:
     }
 };
 
-/*
- * Cartesian coordinates
- */
+/// @brief Cartesian coordinates
 struct Cartesian
 {
     Cartesian()
@@ -758,6 +778,7 @@ std::ostream &operator<<(std::ostream &o, const Cartesian &a)
     return o << "[" << a.x << "," << a.y << "," << a.z << "]";
 }
 
+/// @brief Roll Pitch Yaw angles
 struct RPY
 {
     RPY()
@@ -795,7 +816,7 @@ struct RPY
             return false;
     }
 };
-
+/// @brief Quaternion angles
 struct Quaternion
 {
     Quaternion(double _x, double _y, double _z, double _w)

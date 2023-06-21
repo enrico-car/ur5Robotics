@@ -6,9 +6,7 @@
 #include <map>
 #include "algebra.h"
 
-/*
- * Orientation of the blocks
- */
+/// @brief Orientation of the blocks
 enum BlockConfiguration
 {
     UP,
@@ -16,9 +14,8 @@ enum BlockConfiguration
     DOWN,
     REGULAR
 };
-/*
- * Classification of the blocks
- */
+
+/// @brief Classes of the blocks
 enum BlockClass
 {
     X1_Y1_Z2,
@@ -34,9 +31,7 @@ enum BlockClass
     X2_Y2_Z2_FILLET
 };
 
-/*
- * Definitions of the block dimension for each class
- */
+/// @brief Definitions of the block dimension for each class
 const std::map<int, Cartesian> BlockDimension = {
     {0, Cartesian(0.031, 0.031, 0.057)},
     {1, Cartesian(0.031, 0.063, 0.039)},
@@ -49,51 +44,6 @@ const std::map<int, Cartesian> BlockDimension = {
     {8, Cartesian(0.031, 0.127, 0.057)},
     {9, Cartesian(0.063, 0.063, 0.057)},
     {10, Cartesian(0.063, 0.063, 0.057)},
-};
-
-struct Detected
-{
-    Detected()
-    {
-        n = 0;
-        xCenter.clear();
-        yCenter.clear();
-        zCenter.clear();
-        roll.clear();
-        pitch.clear();
-        yaw.clear();
-    };
-    int n;
-    std::vector<BlockClass> blockClass;
-    std::vector<double> xCenter;
-    std::vector<double> yCenter;
-    std::vector<double> zCenter;
-    std::vector<double> roll;
-    std::vector<double> pitch;
-    std::vector<double> yaw;
-
-    int findFirst(BlockClass c)
-    {
-        for (int i = 0; i < n; i++)
-        {
-            if (blockClass[i] == c)
-                return i;
-        }
-        std::cout << "block not found" << std::endl;
-        return -1;
-    }
-
-    void remove(int i)
-    {
-        n--;
-        blockClass.erase(blockClass.begin() + i - 1);
-        xCenter.erase(xCenter.begin() + i - 1);
-        yCenter.erase(yCenter.begin() + i - 1);
-        zCenter.erase(zCenter.begin() + i - 1);
-        roll.erase(roll.begin() + i - 1);
-        pitch.erase(pitch.begin() + i - 1);
-        yaw.erase(yaw.begin() + i - 1);
-    }
 };
 
 BlockClass stringToBlockClass(std::string c)
@@ -144,6 +94,7 @@ BlockClass stringToBlockClass(std::string c)
     }
 };
 
+/// @brief Final position of blocks in their coloured rectangle on the table
 Cartesian finalPosFromClass(BlockClass c)
 {
     switch (c)
@@ -187,6 +138,7 @@ Cartesian finalPosFromClass(BlockClass c)
     }
 }
 
+/// @brief Class to manage the block positions and orientation during the procedures
 class Block
 {
 private:
@@ -205,9 +157,6 @@ private:
     Cartesian maxPosition;
     double zPos;
     double top;
-    /*
-     * Position on the desk
-     */
     int quadrant;
     
     Matrix3 approachRotm90;
@@ -221,11 +170,18 @@ public:
     Block(std::string name, BlockClass blockClass, Cartesian position, RPY rpy);
     Block(std::string name, BlockClass blockClass, Cartesian position, Quaternion orientation);
 
+    /// @brief Compute the approach and land pose for the end effector
+    /// @param xLandPose x coordinate of final position
+    /// @param yLandPose y coordinate of final position
+    /// @param finalRpy final orientation
+    /// @param zOffset offset of the z axe
+    /// @param yApproachAngle angle of end effector during the approach pose
     void computeApproachAndLandPose(double xLandPose, double yLandPose, RPY finalRpy, double zOffset = 0.0, int yApproachAngle = 90);
 
+    /// @brief Update the block params
     void update();
     void autoUpdate();
-    RPY getFinalRpy();
+    
 
     BlockConfiguration getConfiguration();
     BlockClass getClass();
@@ -236,6 +192,7 @@ public:
     Matrix3 getApproachRotm();
     Vector3 getLandPos();
     Matrix3 getLandRotm();
+    RPY getFinalRpy();
     int getQuadrant();
     double getRpyY();
     RPY getRpy();

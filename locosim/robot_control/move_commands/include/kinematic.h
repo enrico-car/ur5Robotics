@@ -5,13 +5,15 @@
 #include <cstdlib>
 #include <iostream>
 
-typedef struct
+/// @brief params for the ros trajectory topic
+typedef struct Trajectory
 {
     std::vector<std::vector<double>> positions;
     std::vector<std::vector<double>> velocities;
     std::vector<double> times;
 
 } Trajectory;
+
 std::ostream &operator<<(std::ostream &o, const Trajectory &T)
 {
     for ( int i=0; i<T.positions.size(); ++i )
@@ -32,6 +34,7 @@ typedef enum CurveType
 
 } CurveType;
 
+/// @brief Class to handle the kinematic interpolation
 class Kinematic
 {
 private:
@@ -68,6 +71,8 @@ private:
     }
 
 public:
+    /// @brief Direct kinematic, return position and orientation of end effector from the joint angles
+    /// @param angles joints angles
     static Matrix4 directKinematic(Vector6 angles)
     {
         Matrix4 res = Algebra::T01(angles(0)) * Algebra::T12(angles(1)) * Algebra::T23(angles(2)) *
@@ -75,6 +80,10 @@ public:
         Algebra::round(res);
         return res;
     }
+    /// @brief Inverse kinematic, return joint angles from end effector position and orientation 
+    /// @param des_position_usd desire position of end effector
+    /// @param des_orientation_usd desire orientation of end effector
+    /// @param refAngles initial joints angles
     static Vector6 inverseKinematic(const Vector3 &des_position_usd, const Matrix3 &des_orientation_usd, const Vector6 &refAngles)
     {
 
@@ -465,6 +474,12 @@ public:
         return trajectory;
     }
 
+    /// @brief create a trajectory in the joints space with a cubic interpolation
+    /// @param qi initial joints positions
+    /// @param qf final joints positions
+    /// @param vi initial velocities
+    /// @param vf final velocities 
+    /// @param vmax max velocities
     static Trajectory jcubic(Vector6 qi, Vector6 qf, Vector6 vi = (Vector6() << 0, 0, 0, 0, 0, 0).finished(), Vector6 vf = (Vector6() << 0, 0, 0, 0, 0, 0).finished(), double vmax = 1.0)
     {
         Trajectory trajectory;
