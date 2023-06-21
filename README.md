@@ -189,7 +189,7 @@ $ rosrun move_commands assignment_123
 First launch the environment with one of the block class `<block-class-n>` defined in the table above, by running:
 
 ```bash
-$ ./launchWorld 2 <block-class-1> <block-class1> ...
+$ ./launchWorld 2 <block-class-1> <block-class-2> ...
 ```
 
 When the block is spawned run:
@@ -209,7 +209,7 @@ $ rosrun move_commands assignment_123
 First launch the environment with one of the block class `<block-class-n>` defined in the table above, by running:
 
 ```bash
-$ ./launchWorld 3 <block-class-1> <block-class1> ...
+$ ./launchWorld 3 <block-class-1> <block-class-2> ...
 ```
 
 When the block is spawned run:
