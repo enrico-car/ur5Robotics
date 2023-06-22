@@ -138,6 +138,12 @@ std::cout << "Vision Client" << std::endl;
 
 This simple javaFx project allow an easy way to write the `.json` file for the castle configuration use in the assignment 4.
 
+By running the `CastleBuildPath.java` file a grid will appear. It is possible to place a block by click one of the left buttons and move the block with the `w-a-s-d` keys and rotate the block with  `r` key.
+
+It is possible to change the `z` position of the block by clicking the `up` and `down` buttons.
+
+To save the blocks configurations, click the `end` button and the `output.json` file will be written.
+
 ## Block classes available
 
 |     class name      |      block type      |
@@ -239,6 +245,12 @@ When the block is spawned run:
 ```bash
 $ rosrun move_commands assignment_4
 ```
+
+## Materials
+
+[Report](report.pdf)
+
+[Presentation]()
 
 ## Acknowledgments
 
