@@ -335,6 +335,11 @@ public:
         return bestAngles;
     }
 
+    /// @brief Inverse differential kinematic
+    /// @param jstate joint angles of the current position
+    /// @param desiredPose desired position to achieve
+    /// @param precision delta precision of end effector compared to the desired position
+    /// @param damping damping factor for the singularity correction
     static std::vector<std::vector<double>> inversDifferentialKinematic(const Vector6 &jstate, const Matrix4 &desiredPose, const double precision, const double damping = 0.04, const double maxDelta = max_dq, const double timeScale = 1)
     {
         std::vector<std::vector<double>> positions;
@@ -361,7 +366,7 @@ public:
             if (minSingVal < 0.001)
             {
                 dtheta = J.transpose() * (J * J.transpose() + (damping * damping * Matrix6().setIdentity())).inverse() * step;
-                std::cout << "Correzione di singolarità" << std::endl;
+                std::cout << "singularity correction" << std::endl;
             }
             else
             {
@@ -380,6 +385,12 @@ public:
         return positions;
     }
 
+    /// @brief Differential kinematic
+    /// @param initial_jstate joint angles of the initial position
+    /// @param final_p final desired position
+    /// @param final_rotm final desired orientation
+    /// @param curveType [Bezier, Line]
+    /// @param vel velocity
     static Trajectory differentialKinematic(const Vector6 &initial_jstate, const Vector3 &final_p, const Matrix3 &final_rotm, const CurveType &curveType = CurveType::BEZIER, const double &vel = 1)
     {
         Trajectory trajectory;
@@ -405,7 +416,7 @@ public:
         }
         else
         {
-            std::cout << "Curva non disponibile!" << std::endl;
+            std::cout << "Curve type not available!" << std::endl;
             return trajectory;
         }
 

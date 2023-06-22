@@ -168,7 +168,7 @@ void JointStatePublisher::sendDesTrajectory(const Trajectory &trajectory) const
     pubTrajJstate.publish(jt);
 }
 
-void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd, const CurveType &curveType, const double &vel, const bool &useIK)
+void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd, const CurveType &curveType, const double &vel)
 {
     std::cout << "!! moveTo: " << finalP[0] << "," << finalP[1] << "," << finalP[2] << " !! " << std::endl;
     std::cout << "starting jstate: " << jstate(0) << "," << jstate(1) << "," << jstate(2) << "," << jstate(3) << "," << jstate(4) << "," << jstate(5) << "\n";
@@ -181,14 +181,9 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
         curve = CurveType::LINE;
 
     Trajectory trajectory;
-    if (useIK)
-    {
-        // use IK trajectory
-    }
-    else
-    {
-        trajectory = Kinematic::differentialKinematic(jstate, finalP + (Vector3() << -0.5, -0.35, 0).finished(), finalRotm, curve, vel);
-    }
+
+    trajectory = Kinematic::differentialKinematic(jstate, finalP + (Vector3() << -0.5, -0.35, 0).finished(), finalRotm, curve, vel);
+
     trajectory.velocities.clear();
 
     std::vector<double> finalJstate = trajectory.positions.back();
@@ -419,14 +414,14 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
         yLandPose = free_spot.y;
     }
     block.computeApproachAndLandPose(xLandPose, yLandPose, finalRpy, 0.0, 45);
-    
+
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm90(), gripperPos.first);
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
     moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.3);
 
     std::cout << "------- gripping --------" << std::endl;
     gripping(gripperPos.second);
-    
+
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.second, false, CurveType::LINE, 0.5);
 
     std::cout << "------- moving block to landing pos --------" << std::endl;
@@ -548,7 +543,7 @@ void JointStatePublisher::homingProcedure(const Vector6 &final_q)
 void JointStatePublisher::multipleBlocks()
 {
     RPY finalTowerRpy(0.0, 0.0, M_PI / 2);
-    std::vector<double> height(11,0.0);
+    std::vector<double> height(11, 0.0);
 
     for (int i = 0; i < presentBlocks.size(); i++)
     {
@@ -606,8 +601,9 @@ void JointStatePublisher::castle()
         xMin = std::min(x, xMin);
         yMin = std::min(y, yMin);
     }
-    xMin += -0.05; yMin += -0.05;
-    for (auto& b : presentBlocks)
+    xMin += -0.05;
+    yMin += -0.05;
+    for (auto &b : presentBlocks)
     {
         if (xMin < b.getPosition().x && yMin < b.getPosition().y)
         {

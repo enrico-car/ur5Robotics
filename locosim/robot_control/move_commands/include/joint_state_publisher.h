@@ -52,7 +52,7 @@ private:
     Vector3 qGripper;
 #endif
 
-    // * Ros topic
+    // * Ros topics
     ros::Publisher pubDesJstate;
     ros::Publisher pubTrajJstate;
     ros::Publisher markerPub;
@@ -67,7 +67,7 @@ private:
     ros::ServiceClient getModelState;
 
     
-
+    /// @brief Callback called from the joint subscriber
     void receiveJstate(const sensor_msgs::JointState &state);
 
 #ifdef SOFT_GRIPPER
@@ -92,32 +92,56 @@ private:
     // MoveRealGripper
 
     std::pair<int, int> getGripPositions();
+    /// @brief Procudedure to attach block, only in simulation environment
     void ungripping(const double &gripperPos, const bool &attachToTable=false);
+    /// @brief Procudedure to detach block, only in simulation environment
     void gripping(const double &gripperPos);
 
 public:
-
+    /// @brief vision service client
     ros::ServiceClient visionService;
 
     JointStatePublisher(int argc, char **argv);
 
+    /// @brief Send joints angles to the ros topic
+    /// @param qDes joint angles
+    /// @param qDesGripper gripper angles
     void sendDesJState(std::vector<double> qDes, std::vector<double> qDesGripper);
+    /// @brief sends joints trajectory to the ros topic
+    /// @param trajectory desired trajectory
     void sendDesTrajectory(const Trajectory &trajectory) const;
 
-    void moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd = false, const CurveType &curveType = CurveType::BEZIER, const double &vel = 2, const bool &useIK = false);
+    /// @brief Move the robot to a desired position using differential kinematic and ros trajectory topic
+    /// @param finalP final desired position
+    /// @param finalRotm final desired orientation
+    /// @param gripperPos gripper desired position
+    /// @param waitForEnd [true] wait the robot to reach the desired position
+    /// @param curveType differential kinematic curve type
+    void moveTo(const Vector3 &finalP, const Matrix3 &finalRotm, double gripperPos, const bool &waitForEnd = false, const CurveType &curveType = CurveType::BEZIER, const double &vel = 2);
+    /// @brief Procedure to pick and place block to a desired position
+    /// @param finalP final desired position
+    /// @param finalRpy final desired orientation
     void pickAndPlaceBlock(const Vector3 &finalP, RPY finalRpy, const double& zOffset=0.0,const bool &attachToTable=true);
+    /// @brief Procedure to rotate block
     void rotateBlock(const RPY &newBlockRpy, Cartesian newBlockPos);
     void setupBlockForRotation();
+    /// @brief Procedure to rotate block to the stand position
     void rotateBlockStandardPosition(double xLandPose=-1, double yLandPose=-1, RPY finalRpy=RPY(-1, -1, -1));
     double checkCollision(double x, double y);
     Cartesian findFreeSpot(double castleXmin=0.75, double castleYmin=0.6);
 
+    /// @brief move robot in the joint space
+    /// Only use to reach homing position
     void homingProcedure(const Vector6 &final_q=q0);
+    /// @brief Procedure to pick and place every blocks in the final position defined in [finalPosFromClass]
     void multipleBlocks();
+    /// @brief Prodedure to create the castle specified in the [output.json] file
     void castle();
 
     Json::Value readJson();
     double getYaw(int rot);
+    /// @brief Create a [Block] instance for each block detect from vision service
+    /// @param visionResult 
     void registerBlocks(const vision::vision &visionResult);
     void setGripperContact(bool set)
     {
@@ -131,8 +155,10 @@ public:
         req.request.set_static = set;
         setStaticSrv.call(req);
     }
-    
+    /// @brief set the current block to handle
+    /// @param b 
     void setBlock(Block b);
+    /// @brief upadate current joints angles get from subscriber
     void updateJstate();
 };
 
