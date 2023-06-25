@@ -164,11 +164,22 @@ namespace gazebo
     }
 
     ROS_DEBUG_STREAM("Setting is_static for link " << link << " of model " << model << " to " << std::boolalpha << set_static);
-    m->SetStatic(true);
-    l->SetCollideMode("none");
-    m->SetCollideMode("none");
-    //m->SetGravityMode(false);
-    //m->ResetPhysicsStates();
+    if (link == "hand_1_link" || link == "hand_2_link")
+    {
+      if (set_static)
+      	l->SetCollideMode("none");
+      else
+      	l->SetCollideMode("all");
+    }
+    else
+    {
+      ROS_DEBUG_STREAM("Setting is_static for link " << link << " of model " << model << " to " << std::boolalpha << set_static);
+      m->SetStatic(true);
+      l->SetCollideMode("none");
+      m->SetCollideMode("none");
+      //m->SetGravityMode(false);
+      //m->ResetPhysicsStates();
+    }
 
     return true;
   }

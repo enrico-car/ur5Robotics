@@ -151,12 +151,12 @@ class Listener:
         return template_x, template_y
 
     def getPointcloudInfo(self):
-        print('getPointcloudInfo')
+        # print('getPointcloudInfo')
         self.pcd_axis_aligned_bb = self.raw_pcd.get_axis_aligned_bounding_box()
         self.pcd_axis_aligned_bb.color = (1, 0, 0)
         pcd_center = self.pcd_axis_aligned_bb.get_center()
         self.pcd_center = pcd_center
-        print('centro bb: ', pcd_center)
+        # print('centro bb: ', pcd_center)
 
         # se un blocco nella stessa posizione è gia stato inserito, salta questo
         for xc, yc in zip(self.x_tavolo, self.y_tavolo):
@@ -167,12 +167,12 @@ class Listener:
         self.y_tavolo.append(np.round(pcd_center[1], 4))
 
         pcd_dimensions = self.pcd_axis_aligned_bb.get_extent()
-        print('dimensions of bb: ', pcd_dimensions)
+        # print('dimensions of bb: ', pcd_dimensions)
 
         return pcd_center, pcd_dimensions
 
     def prepareGazeboPointCloud(self, xmin, ymin, xmax, ymax):
-        print('prepareGazeboPointCloud')
+        # print('prepareGazeboPointCloud')
         # calcolo il centro del bb di yolo e leggo la pointcloud in quel punto per ottenere una posizione approssimativa del blocco
         raw_pointcloud = rospy.wait_for_message("/ur5/zed_node/point_cloud/cloud_registered", PointCloud2, timeout=None)
         field_names = [field.name for field in raw_pointcloud.fields]
@@ -193,6 +193,9 @@ class Listener:
         ok = False
         while not ok:
             ok, xmin, ymin, xmax, ymax = self.checkTemplate(cv_image, xmin, ymin, xmax, ymax)
+        # cv2.imshow('.', cv_image[ymin:ymax, xmin:xmax])
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
         
         # calcolo più preciso del centro del blocco (attraverso la poincloud)
         # xmin, ymin, xmax, ymax = 770, 520, 830, 600 # blocco sx
@@ -270,7 +273,7 @@ class Listener:
             if not ok:
                 continue
             
-            print(pc)
+            # print(pc)
             
             template_pcd.paint_uniform_color([1, 0, 0])
 
@@ -292,7 +295,7 @@ class Listener:
             # source.transform(reg_p2l.transformation)
             # #o3d.visualization.draw_geometries([source, target])
             
-            print('best fitness finora: ', best_fitness, best_rmse)
+            # print('best fitness finora: ', best_fitness, best_rmse)
             if reg_p2p.fitness >= best_fitness*0.95:
                 dist = self.bbDistance(source, reg_p2p.transformation)
                 # print(dist)
@@ -318,37 +321,38 @@ class Listener:
                         top_result = pc
                         best_transformation = reg_p2p.transformation
 
-            print(' - ', reg_p2p.fitness, reg_p2p.inlier_rmse, len(reg_p2p.correspondence_set))
+            # print(' - ', reg_p2p.fitness, reg_p2p.inlier_rmse, len(reg_p2p.correspondence_set))
             # print(' - ', reg_p2l.fitness, reg_p2l.inlier_rmse, len(reg_p2l.correspondence_set))
-            print('----------------')
+            # print('----------------')
             # source.transform(reg_p2p.transformation)
             # o3d.visualization.draw_geometries([source, target])
 
         if top_result != '':
-            print('best pc: ', top_result)
+            #print('best pc: ', top_result)
             # pprint(best_transformation)
             # pprint(best_transformation @ best_p2l_trans)
             source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
             source.paint_uniform_color([1, 0, 0])
             
-            print('trasformazione iniziale')
+            #print('trasformazione iniziale')
             s_bb = source.get_axis_aligned_bounding_box()
-            print(s_bb.get_center())
-            pprint(trans_mat)
+            #print(s_bb.get_center())
+            #pprint(trans_mat)
             source.transform(trans_mat)
             s_bb = source.get_axis_aligned_bounding_box()
-            print(s_bb.get_center(), )
+            #print(s_bb.get_center(), )
             #o3d.visualization.draw_geometries([source, target])
             
-            print('best transformation')
-            pprint(best_transformation)
+            #print('best transformation')
+            #pprint(best_transformation)
             source.transform(best_transformation)
             s_bb = source.get_axis_aligned_bounding_box()
             t_bb = target.get_axis_aligned_bounding_box()
-            print(s_bb.get_center(), t_bb.get_center())
-            pprint(trans_mat @ best_transformation)
+            #print(s_bb.get_center(), t_bb.get_center())
+            #pprint(trans_mat @ best_transformation)
             #pprint( best_transformation[0:3,0:3] @ np.array(best_transformation[0:3,3].flat) )
-            o3d.visualization.draw_geometries([source, target])
+            
+            # o3d.visualization.draw_geometries([source, target])
             
             # print('inv(trasf iniziale) @ best transformation')
             # source.transform(np.linalg.inv(trans_mat) @ best_transformation)
@@ -389,7 +393,7 @@ class Listener:
         return roll, pitch, yaw
 
     def call(self, xmin, xmax, ymin, ymax, classe=None):
-        print("----------------------getting gazebo pointcloud----------------------")
+        # print("----------------------getting gazebo pointcloud----------------------")
         ok = self.prepareGazeboPointCloud(xmin, ymin, xmax, ymax)
 
         if not ok:
@@ -399,7 +403,7 @@ class Listener:
         if pcd_center is None and pcd_dimensions is None:
             return False
 
-        print('-------- running ICP --------')
+        #print('-------- running ICP --------')
         temp_x, temp_y = self.getTemplatePosition(pcd_center[0], pcd_center[1])
         temp_x = 0.5
         template_dir = str(temp_x)+'_'+str(temp_y)
@@ -415,14 +419,14 @@ class Listener:
             info = top_result.split('_')
             classe = info[0]
             
-            print('------------------------------------')
-            print(top_result)
-            print('classe: ', classe, ' - roll: ', roll, ' - pitch: ', pitch, ' - yaw: ', yaw)
+            # print('------------------------------------')
+            # print(top_result)
+            # print('classe: ', classe, ' - roll: ', roll, ' - pitch: ', pitch, ' - yaw: ', yaw)
             self.cl.append(int(classe))
             self.roll.append(roll)
             self.pitch.append(pitch)
             self.yaw.append(yaw)
-            print('-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-')
+            # print('-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-')
             return True
         
         return False
@@ -431,7 +435,7 @@ class Listener:
 def presenceControl(arr, xmin, ymin, xmax, ymax):
     for xmin1, ymin1, xmax1, ymax1, _, _ in arr:
         if (xmin1-5 < xmin < xmin1+5 and ymin1-5 < ymin < ymin1+5) or (xmax1-5 < xmax < xmax1+5 and ymax1-5 < ymax < ymax1+5):
-            print('detection multipla')
+            # print('detection multipla')
             return True
     return False
 
@@ -449,12 +453,12 @@ def dataProcessing():
         l = Listener()
 
         for xmin, ymin, xmax, ymax, confidence, classe in det_res:
-            print('considering [', xmin, ymin, xmax, ymax, confidence, classe, ']')
+            # print('considering [', xmin, ymin, xmax, ymax, confidence, classe, ']')
             if ymax < 420:
                 continue
             
             block_presence = presenceControl(blocks_info, xmin, ymin, xmax, ymax)
-            print('blocco presente?: ', block_presence)
+            # print('blocco presente?: ', block_presence)
             pprint(blocks_info)
 
             if not block_presence:

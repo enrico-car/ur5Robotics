@@ -50,8 +50,7 @@ sys.path.insert(0, os.path.join(
 
 
 robotName = "ur5"
-np.set_printoptions(threshold=np.inf, precision=5,
-                    linewidth=1000, suppress=True)
+np.set_printoptions(threshold=np.inf, precision=5, linewidth=1000, suppress=True)
 
 
 def readJSON():
@@ -304,15 +303,13 @@ def talker(p):
     if p.real_robot:
         p.startRealRobot()
     else:
-        additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 'use_grasp_plugin:='+str(p.use_grasp_plugin),
-                           'gui:=true', 'rviz:=true']
+        additional_args = ['gripper:='+str(p.gripper), 'soft_gripper:='+str(p.soft_gripper), 'vision:='+str(p.vision), 
+                           'use_grasp_plugin:='+str(p.use_grasp_plugin), 'gui:=true', 'rviz:=true']
         print(additional_args)
-        p.startSimulator(world_name=p.world_name,
-                         use_torque_control=p.use_torque_control, additional_args=additional_args)
+        p.startSimulator(world_name=p.world_name, use_torque_control=p.use_torque_control, additional_args=additional_args)
 
     # specify xacro location
-    xacro_path = rospkg.RosPack().get_path('ur_description') + \
-        '/urdf/' + p.robot_name + '.urdf.xacro'
+    xacro_path = rospkg.RosPack().get_path('ur_description') + '/urdf/' + p.robot_name + '.urdf.xacro'
     p.loadModelAndPublishers(xacro_path)
     p.initVars()
     p.startupProcedure()
@@ -325,6 +322,7 @@ def talker(p):
 
     p.q_des = np.copy(p.q_des_q0)
     p.switch_controller(p.available_controllers[0])
+    
     # homing procedure
     if p.homing_flag:
         p.homing_procedure(p.dt, 1, p.q_des, rate)
@@ -344,31 +342,9 @@ def talker(p):
         json_file = readJSON()
         spawnBlocksForCastle(json_file=json_file)
 
-    # p.ros_pub.add_marker([0.4, 0.4, -0.7]+p.base_offset, 0.05)
-    # p.ros_pub.publishVisual()
-
-    gripper_on = 0
-
     while not ros.is_shutdown():
-
-        # p.updateKinematicsDynamics()
-
-        # test gripper
-        # in Simulation remember to set gripper_sim : True in params.yaml!
-        # if p.time > 5.0 and gripper_on == 0:
-        #     print("gripper 30")
-        #     p.controller_manager.gm.move_gripper(0)
-        #     gripper_on = 1
-        # if gripper_on == 1 and p.time > 10.0:
-        #     print("gripper 100")
-        #     p.controller_manager.gm.move_gripper(100)
-        #     gripper_on = 2
-        # # need to uncomment this to be able to send joints references (leave it commented if you have an external node setting them)
-        # p.controller_manager.sendReference(p.q_des, p.qd_des, p.h)
-
-        # wait for synconization of the control loop
         rate.sleep()
-        p.time = np.round(p.time + np.array([p.dt]),  3)
+        # p.time = np.round(p.time + np.array([p.dt]),  3)
 
 
 if __name__ == '__main__':
