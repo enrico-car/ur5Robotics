@@ -323,6 +323,7 @@ public:
     {
         return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
     }
+    /// @brief generate a list of double [num] element evenly distributed from [start] to [end]
     static std::vector<double> linspace(const double &start, const double &end, const int &num)
     {
 
@@ -348,6 +349,7 @@ public:
 
         return linspaced;
     }
+    ///@brief generate a list of vector 3x1 with [num] element evenly distributed from [start] to [end]
     static std::vector<Vector3> linspace(const Vector3 &start, const Vector3 &end, const int &num)
     {
         std::vector<Vector3> linspaced;
@@ -372,6 +374,7 @@ public:
 
         return linspaced;
     }
+    ///@brief generate a list of matrix 3x3 with [n] element evenly distributed from [rotm_i] to [rotm_f]
     static std::vector<Matrix3> matrixLinspace(const Matrix3 &rotm_i, const Matrix3 &rotm_f, int n)
     {
         std::vector<Vector3> x_dir, y_dir, z_dir;
@@ -390,6 +393,10 @@ public:
         }
         return mlinspace;
     }
+    /// @brief slerp function for the spherical linear interpolation
+    /// @param rotm_i initial rotation
+    /// @param rotm_f final rotation
+    /// @param n number of elemets
     static std::vector<Matrix3> slerp(const Matrix3 &rotm_i, const Matrix3 &rotm_f, int n) {
         Vector4 q_i, q_f, q_m;
         q_i = rotm2quat(rotm_i);
@@ -431,6 +438,7 @@ public:
         return factorial(n) / (factorial(k) * factorial(n - k));
     }
 
+    /// @brief jacobian matrix for the kinematic functions
     static Matrix6 jacobian(const Vector6 &th)
     {
         // Jacobiana dell'ur5 in posizione "a testa in giù", derivata dalla DK customizzata

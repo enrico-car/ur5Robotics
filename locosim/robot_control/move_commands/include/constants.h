@@ -23,7 +23,6 @@ typedef Eigen::Matrix<double, 6, 6> Matrix6;
 typedef Eigen::Matrix<double, 6, 8> IKMatrix;
 
 // * params
-// const double q0[6] = {-0.32, -0.2, -2.8, -1.63, 0, -1.0};
 const Vector6 q0 = (Vector6() << -0.32, -0.2, -2.8, -1.63, 0, -1.0).finished();
 const Vector6 q_front = (Vector6() << -1.1779, -1.17091, -2.10355, -1.43792, -1.5708, -0.392893).finished();
 const std::string frameName = "tool0";

@@ -180,6 +180,7 @@ public:
 
     /// @brief Update the block params
     void update();
+    /// @brief set position and rpy before calling [update] function
     void autoUpdate();
     
 

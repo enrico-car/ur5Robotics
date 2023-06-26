@@ -137,12 +137,14 @@ public:
     void multipleBlocks();
     /// @brief Prodedure to create the castle specified in the [output.json] file
     void castle();
-
+    /// @brief parse json file and return the json object
     Json::Value readJson();
+    /// @brief convert the json rotation to the yaw rotation
     double getYaw(int rot);
     /// @brief Create a [Block] instance for each block detect from vision service
     /// @param visionResult 
     void registerBlocks(const vision::vision &visionResult);
+    /// @brief active and disable gripper contact with object
     void setGripperContact(bool set)
     {
         gazebo_ros_link_attacher::SetStatic req;
