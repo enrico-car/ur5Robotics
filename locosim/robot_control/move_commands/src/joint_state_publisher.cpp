@@ -310,8 +310,8 @@ void JointStatePublisher::rotateBlock(const RPY &newBlockRpy, Cartesian newBlock
     block.autoUpdate();
     block.print();
 
-    std::cout << "------- moving up --------" << std::endl;
-    moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
+    // std::cout << "------- moving up --------" << std::endl;
+    // moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.1).finished(), block.getLandRotm(), gripperPos.first, false, CurveType::LINE);
 
     std::cout << std::endl;
 }
@@ -941,7 +941,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
 
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
-    trajectory.times.push_back(0.5);
+    trajectory.times.push_back(0.25);
     usleep(200000);
     sendDesTrajectory(trajectory);
 
@@ -988,7 +988,7 @@ void JointStatePublisher::gripping(const double &gripperPos)
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
     trajectory.times.push_back(1.0);
-    usleep(200000);
+    usleep(400000);
     sendDesTrajectory(trajectory);
 
     while ((qGripper - desiredQGripper).norm() > 0.005)

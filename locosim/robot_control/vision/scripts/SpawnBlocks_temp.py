@@ -86,6 +86,7 @@ def readBlocks():
             # print(models.pose[i].orientation)
             # print(rpy)
             # print(block.radius)
+            # input('')
 
 def checkCollision(block):
     for b in blocks_spawned:
@@ -94,7 +95,7 @@ def checkCollision(block):
             return True
     return False
 
-def getPosition(block):
+def getPosition(block, isCastle=False):
     x = random.uniform(0.04, 0.96)
     y = random.uniform(0.23, 0.76)
 
@@ -105,7 +106,9 @@ def getPosition(block):
 
         dist = sqrt((x-0.5)**2 + (y-0.35)**2)
         
-        if dist > 0.15 and not (x > 0.6 and y > 0.5) and not checkCollision(block):
+        if not isCastle and dist > 0.15 and not (x > 0.6 and y > 0.5) and not checkCollision(block):
+            ok = True
+        elif isCastle and dist > 0.15 and not checkCollision(block):
             ok = True
         else:
             x = random.uniform(0.07, 0.93)
@@ -152,12 +155,12 @@ def spawnOneBlock(stl_name, i=1):
         )
 
 def spawnBlocksForCastle(json_file):
-    readBlocks()
     spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 
     n = json_file["size"]
 
     for i in range(1, n+1):
+        readBlocks()
         stl_name = json_file[str(i)]["class"]
         print('spawning ', stl_name)
         model_name = 'brick_' + str(i) + '_' + stl_name

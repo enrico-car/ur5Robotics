@@ -1,8 +1,0 @@
-prefix=/home/rico/ros_ws/src/locosim/robot_control/move_commands/build/devel
-
-Name: move_commands
-Description: Description of move_commands
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib -lmove_commands
-Requires: 

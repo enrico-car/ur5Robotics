@@ -1,1 +1,0 @@
-/usr/bin/g++-8 -fPIC -g  -shared -Wl,-soname,libBlock.so -o devel/lib/libBlock.so CMakeFiles/Block.dir/src/block.cpp.o 

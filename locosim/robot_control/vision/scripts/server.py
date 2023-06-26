@@ -163,9 +163,6 @@ class Listener:
             if xc-0.01 < pcd_center[0] < xc+0.01 and yc-0.01 < pcd_center[1] < yc+0.01:
                 return None, None
 
-        self.x_tavolo.append(np.round(pcd_center[0], 4))
-        self.y_tavolo.append(np.round(pcd_center[1], 4))
-
         pcd_dimensions = self.pcd_axis_aligned_bb.get_extent()
         # print('dimensions of bb: ', pcd_dimensions)
 
@@ -331,23 +328,23 @@ class Listener:
             #print('best pc: ', top_result)
             # pprint(best_transformation)
             # pprint(best_transformation @ best_p2l_trans)
-            source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
-            source.paint_uniform_color([1, 0, 0])
+            # source = o3d.io.read_point_cloud(os.path.join(path_template_pcds, template_dir, top_result))
+            # source.paint_uniform_color([1, 0, 0])
             
             #print('trasformazione iniziale')
-            s_bb = source.get_axis_aligned_bounding_box()
+            # s_bb = source.get_axis_aligned_bounding_box()
             #print(s_bb.get_center())
             #pprint(trans_mat)
-            source.transform(trans_mat)
-            s_bb = source.get_axis_aligned_bounding_box()
+            # source.transform(trans_mat)
+            # s_bb = source.get_axis_aligned_bounding_box()
             #print(s_bb.get_center(), )
             #o3d.visualization.draw_geometries([source, target])
             
             #print('best transformation')
             #pprint(best_transformation)
-            source.transform(best_transformation)
-            s_bb = source.get_axis_aligned_bounding_box()
-            t_bb = target.get_axis_aligned_bounding_box()
+            # source.transform(best_transformation)
+            # s_bb = source.get_axis_aligned_bounding_box()
+            # t_bb = target.get_axis_aligned_bounding_box()
             #print(s_bb.get_center(), t_bb.get_center())
             #pprint(trans_mat @ best_transformation)
             #pprint( best_transformation[0:3,0:3] @ np.array(best_transformation[0:3,3].flat) )
@@ -426,6 +423,8 @@ class Listener:
             self.roll.append(roll)
             self.pitch.append(pitch)
             self.yaw.append(yaw)
+            self.x_tavolo.append(np.round(pcd_center[0], 4))
+            self.y_tavolo.append(np.round(pcd_center[1], 4))
             # print('-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-')
             return True
         

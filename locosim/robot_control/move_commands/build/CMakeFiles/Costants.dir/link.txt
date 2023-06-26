@@ -1,1 +1,0 @@
-/usr/bin/g++-8 -fPIC -g  -shared -Wl,-soname,libCostants.so -o devel/lib/libCostants.so CMakeFiles/Costants.dir/src/constants.cpp.o 

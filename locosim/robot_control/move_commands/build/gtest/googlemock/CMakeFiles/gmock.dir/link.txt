@@ -1,1 +1,0 @@
-/usr/bin/g++-8 -fPIC -g  -shared -Wl,-soname,libgmockd.so -o ../lib/libgmockd.so CMakeFiles/gmock.dir/src/gmock-all.cc.o  -Wl,-rpath,/home/rico/ros_ws/src/locosim/robot_control/move_commands/build/gtest/lib ../lib/libgtestd.so -lpthread 
