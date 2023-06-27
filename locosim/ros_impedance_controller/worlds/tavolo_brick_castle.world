@@ -102,7 +102,7 @@
     
     <gui>
     <camera name="gzclient_camera">
-      <pose>0.3 1.7 1.8 0 0.5 -1.57</pose>
+      <pose>0.5 2 1.2 0 0 -1.57</pose>
     </camera>
     </gui>
 

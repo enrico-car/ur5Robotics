@@ -10,6 +10,8 @@ int main(int argc, char **argv)
 {
     JointStatePublisher joint_state_publisher(argc, argv);
 
+    // example: ./launchWorld.sh 3 X1-Y1-Z2 X2-Y2-Z2 X1-Y2-Z1 X1-Y3-Z2-FILLET X1-Y4-Z2 X1-Y2-Z1
+
     ros::Rate loop_rate(1000);
     ros::spinOnce();
     usleep(500000);
@@ -35,9 +37,6 @@ int main(int argc, char **argv)
     joint_state_publisher.updateJstate();
 
     joint_state_publisher.homingProcedure(q_front);
-    usleep(1500000);
-    
-    //joint_state_publisher.moveTo((Vector3() << 0.35, 0.35, -0.85).finished(), Algebra::eul2RotM((Vector3() << M_PI, 0.0, 0.0).finished()), 60.0);
     
     std::cout << "Register Blocks" << std::endl;
     ros::spinOnce();
@@ -48,9 +47,6 @@ int main(int argc, char **argv)
     std::cout << "Move block" << std::endl;
     ros::spinOnce();
     joint_state_publisher.multipleBlocks();
-
-    // ros::spin();
-    // loop_rate.sleep();
 
     ros::shutdown();
     return 0;

@@ -498,7 +498,6 @@ public:
         double dqMax = Algebra::abs(h).maxCoeff();
         double T = dqMax / vmax;
         int n = (int) (dqMax / max_dq);
-        std::cout << "jcubic: T=" << T << ", n=" << n << std::endl;
         Matrix2 Tm;
         Tm << T * T, T * T * T, 2 * T, 3 * T * T;
         Matrix2 Tinv = Tm.inverse();

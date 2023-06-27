@@ -229,7 +229,7 @@ void JointStatePublisher::moveTo(const Vector3 &finalP, const Matrix3 &finalRotm
     {
         trajectory.times[i] += 0.1;
     }
-    usleep(1750000);
+    usleep(1500000);
     sendDesTrajectory(trajectory);
     jstate = (Vector6() << finalJstate[0], finalJstate[1], finalJstate[2], finalJstate[3], finalJstate[4], finalJstate[5]).finished();
     if (waitForEnd)
@@ -417,7 +417,7 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
     
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm90(), gripperPos.first);
     moveTo(block.getApproachPos() + (Vector3() << 0, 0, 0.15).finished(), block.getApproachRotm(), gripperPos.first);
-    moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.3);
+    moveTo(block.getApproachPos(), block.getApproachRotm(), gripperPos.first, true, CurveType::LINE, 0.5);
 
     std::cout << "------- gripping --------" << std::endl;
     gripping(gripperPos.second);
@@ -426,7 +426,7 @@ void JointStatePublisher::rotateBlockStandardPosition(double xLandPose, double y
 
     std::cout << "------- moving block to landing pos --------" << std::endl;
     moveTo(block.getLandPos() + (Vector3() << 0, 0, 0.15).finished(), block.getLandRotm(), gripperPos.second, false);
-    moveTo(block.getLandPos(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.15);
+    moveTo(block.getLandPos(), block.getLandRotm(), gripperPos.second, true, CurveType::LINE, 0.3);
 
     // usleep(500000);
 
@@ -492,16 +492,13 @@ Cartesian JointStatePublisher::findFreeSpot(double castleXmin, double castleYmin
 
 void JointStatePublisher::homingProcedure(const Vector6 &final_q)
 {
-    std::cout << "------- homing procedure --------" << std::endl;
-
+    std::cout << "------ homing procedure ------" << std::endl;
     updateJstate();
-    if ((jstate - final_q).norm() < 0.005) // if the robot is already in the final configuration, do not create the trajectory
+    // if the robot is already in the final configuration, do not create the trajectory
+    if ((jstate - final_q).norm() < 0.005) 
         return;
 
     Trajectory trajectory = Kinematic::jcubic(jstate, final_q);
-    // std::cout << trajectory << std::endl;
-
-    std::cout << "Jcubic fin" << std::endl;
 
     if (!realRobot)
     {
@@ -526,18 +523,14 @@ void JointStatePublisher::homingProcedure(const Vector6 &final_q)
     }
 
     for (int i = 0; i < trajectory.times.size(); i++)
-    {
         trajectory.times[i] += 0.1;
-    }
 
-    usleep(1500000);
+    usleep(1000000);
     sendDesTrajectory(trajectory);
 
     jstate = (Vector6() << final_q[0], final_q[1], final_q[2], final_q[3], final_q[4], final_q[5]).finished();
-    while ((jstate - q).norm() > 0.005)
+    while ((jstate - q).norm() > 0.05)
         ros::spinOnce();
-
-    std::cout << "position reached" << std::endl;
 }
 
 void JointStatePublisher::multipleBlocks()
@@ -687,7 +680,6 @@ void JointStatePublisher::registerBlocks(const vision::vision &visionResult)
         RPY r(visionResult.response.roll[i], visionResult.response.pitch[i], visionResult.response.yaw[i]);
         std::string name = "";
         Block b(name, (BlockClass)visionResult.response.classe[i], c, r);
-        b.print();
         presentBlocks.push_back(b);
     }
 
@@ -700,12 +692,9 @@ void JointStatePublisher::registerBlocks(const vision::vision &visionResult)
         {
             for (int j = 0; j < presentBlocks.size(); j++)
             {
-                if (presentBlocks[j].getPosition().x - 0.1 < modelState.pose[i].position.x &&
-                    modelState.pose[i].position.x < presentBlocks[j].getPosition().x + 0.1 && presentBlocks[j].getPosition().y - 0.1 < modelState.pose[i].position.y &&
-                    modelState.pose[i].position.y < presentBlocks[j].getPosition().y + 0.1)
-                {
+                if (   presentBlocks[j].getPosition().x - 0.05 < modelState.pose[i].position.x && modelState.pose[i].position.x < presentBlocks[j].getPosition().x + 0.05 
+                        && presentBlocks[j].getPosition().y - 0.05 < modelState.pose[i].position.y && modelState.pose[i].position.y < presentBlocks[j].getPosition().y + 0.05 )
                     presentBlocks[j].setName(modelState.name[i]);
-                }
             }
         }
     }
@@ -733,9 +722,7 @@ void JointStatePublisher::receiveJstate(const sensor_msgs::JointState &state)
         for (int j = 0; j < 6; j++)
         {
             if (jointNames[j] == state.name.at(i))
-            {
                 q(j) = state.position.at(i);
-            }
         }
         if (gripper)
         {
@@ -744,9 +731,7 @@ void JointStatePublisher::receiveJstate(const sensor_msgs::JointState &state)
                 for (int j = 0; j < 2; j++)
                 {
                     if (softGripperJointNames[j] == state.name.at(i))
-                    {
                         qGripper(j) = state.position.at(i);
-                    }
                 }
             }
             else
@@ -754,9 +739,7 @@ void JointStatePublisher::receiveJstate(const sensor_msgs::JointState &state)
                 for (int j = 0; j < 3; j++)
                 {
                     if (gripperJointNames[j] == state.name.at(i))
-                    {
                         qGripper(j) = state.position.at(i);
-                    }
                 }
             }
         }
@@ -810,31 +793,31 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
         switch (block.getClass())
         {
         case X1_Y1_Z2:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y2_Z2_CHAMFER:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y2_Z2_TWINFILLET:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y3_Z2:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y3_Z2_FILLET:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y4_Z1:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X1_Y4_Z2:
-            class2gripsize = std::pair<int, int>(60, 35);
+            class2gripsize = std::pair<int, int>(50, 35);
             break;
         case X2_Y2_Z2:
             class2gripsize = std::pair<int, int>(100, 83);
@@ -849,31 +832,31 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
         switch (block.getClass())
         {
         case X1_Y1_Z2:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(70, 36);
+            class2gripsize = std::pair<int, int>(60, 36);
             break;
         case X1_Y2_Z2_CHAMFER:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y2_Z2_TWINFILLET:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y3_Z2:
-            class2gripsize = std::pair<int, int>(70, 36);
+            class2gripsize = std::pair<int, int>(60, 36);
             break;
         case X1_Y3_Z2_FILLET:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y4_Z1:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X1_Y4_Z2:
-            class2gripsize = std::pair<int, int>(70, 35);
+            class2gripsize = std::pair<int, int>(60, 35);
             break;
         case X2_Y2_Z2:
             class2gripsize = std::pair<int, int>(100, 85);
@@ -888,31 +871,31 @@ std::pair<int, int> JointStatePublisher::getGripPositions()
         switch (block.getClass())
         {
         case X1_Y1_Z2:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y2_Z1:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y2_Z2:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y2_Z2_CHAMFER:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y2_Z2_TWINFILLET:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y3_Z2:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y3_Z2_FILLET:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y4_Z1:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X1_Y4_Z2:
-            class2gripsize = std::pair<int, int>(70, 31.5);
+            class2gripsize = std::pair<int, int>(50, 31);
             break;
         case X2_Y2_Z2:
             class2gripsize = std::pair<int, int>(100, 75);
@@ -942,7 +925,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
     trajectory.times.push_back(0.25);
-    usleep(200000);
+    usleep(300000);
     sendDesTrajectory(trajectory);
 
     if (attachToTable)
@@ -967,9 +950,7 @@ void JointStatePublisher::ungripping(const double &gripperPos, const bool &attac
     std::cout << "waiting to reach gripper position" << std::endl;
 
     while ((qGripper - desiredQGripper).norm() > 0.1)
-    {
         ros::spinOnce();
-    }
 }
 
 void JointStatePublisher::gripping(const double &gripperPos)
@@ -988,13 +969,11 @@ void JointStatePublisher::gripping(const double &gripperPos)
     Trajectory trajectory;
     trajectory.positions.push_back(finalQ);
     trajectory.times.push_back(1.0);
-    usleep(400000);
+    usleep(500000);
     sendDesTrajectory(trajectory);
 
     while ((qGripper - desiredQGripper).norm() > 0.005)
-    {
         ros::spinOnce();
-    }
 
     gazebo_ros_link_attacher::Attach attach;
     attach.request.model_name_1 = "ur5";

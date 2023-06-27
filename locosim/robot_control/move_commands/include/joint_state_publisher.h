@@ -128,7 +128,7 @@ public:
     /// @brief Procedure to rotate block to the stand position
     void rotateBlockStandardPosition(double xLandPose=-1, double yLandPose=-1, RPY finalRpy=RPY(-1, -1, -1));
     double checkCollision(double x, double y);
-    Cartesian findFreeSpot(double castleXmin=0.75, double castleYmin=0.6);
+    Cartesian findFreeSpot(double castleXmin=0.6, double castleYmin=0.5);
 
     /// @brief move robot in the joint space
     /// Only use to reach homing position

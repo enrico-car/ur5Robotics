@@ -6,9 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <Eigen/Dense>
-
 #include <sensor_msgs/JointState.h>
-
 
 typedef Eigen::Matrix<double, 2, 1> Vector2;
 typedef Eigen::Matrix<double, 3, 1> Vector3;
@@ -24,7 +22,7 @@ typedef Eigen::Matrix<double, 6, 8> IKMatrix;
 
 // * params
 const Vector6 q0 = (Vector6() << -0.32, -0.2, -2.8, -1.63, 0, -1.0).finished();
-const Vector6 q_front = (Vector6() << -1.1779, -1.17091, -2.10355, -1.43792, -1.5708, -0.392893).finished();
+const Vector6 q_front = (Vector6() << -1.0052, -0.8784, -2.4885, -1.3454, -1.5708, -0.5654).finished();
 const std::string frameName = "tool0";
 const std::string jointNames[6] = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
 const std::string softGripperJointNames[2] = {"hand_1_joint", "hand_2_joint"};
@@ -103,7 +101,7 @@ const std::string Constants::getModelState = "/gazebo/get_model_state";
 const std::string Constants::visionService = "vision_service";
 const std::string Constants::markerPub = "/vis";
 
-const std::string Constants::jsonOutput = "/home/carro/ros_ws/src/castle_build_path/output.json";
+const std::string Constants::jsonOutput = "/home/user/ros_ws/src/castle_build_path/output.json";
 
 const Vector6 Constants::d = (Vector6() << D1, 0, 0, D4, D5, D6).finished();
 const Vector6 Constants::a = (Vector6() << 0, 0, A2, A3, 0, 0).finished();

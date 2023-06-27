@@ -5,7 +5,6 @@ import numpy as np
 from gazebo_msgs.srv import SpawnModel
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Pose, Point, Quaternion
-from pprint import pprint
 import random
 from math import pi as pi
 from math import cos as cos
@@ -13,21 +12,14 @@ from math import sin as sin
 from math import atan2 as atan2
 from math import sqrt as sqrt
 from cmath import asin
-from cmath import acos
 import json
 import os
-import cv2
 from gazebo_ros_link_attacher.srv import *
 np.set_printoptions(precision=5, suppress=True)
 
-block_class=0
-
-global name
-name = ""
-
 altezza_tavolo = 1.8-0.935
-block_names = [ 'X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET',
-                'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET' ]
+block_names = [ 'X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 
+                'X1-Y3-Z2-FILLET', 'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET' ]
 name2class = { block_names[0]: 0, block_names[1]: 1, block_names[2]: 2, block_names[3]: 3, block_names[4]: 4, block_names[5]: 5, 
                block_names[6]: 6, block_names[7]: 7, block_names[8]: 8, block_names[9]: 9, block_names[10]: 10 }
 class2dimensions = { 0: [0.031, 0.031, 0.057], 1: [0.031, 0.063, 0.039], 2: [0.031, 0.063, 0.057], 3: [0.031, 0.063, 0.057],
@@ -114,7 +106,7 @@ def getPosition(block, isCastle=False):
             x = random.uniform(0.07, 0.93)
             y = random.uniform(0.27, 0.73)
 
-    return Point(x, y, altezza_tavolo + class2dimensions[block_class][1]/2 + 0.05)
+    return Point(x, y, altezza_tavolo + class2dimensions[block.classe][1]/2 + 0.03)
 
 def spawnOneBlockBase(stl_name, i=1):
     readBlocks()
@@ -212,13 +204,9 @@ def randomQuaternionOnYaw():
 
     return orientation, angles
 
+# helper node that spawns required blocks in random position and orientation on the table
 def talker():
     rospy.init_node('block_spawner_node', anonymous=True)
-
-    # blocks_to_spawn = ['X1-Y3-Z2', 'X1-Y4-Z2', 'X1-Y4-Z1', 'X1-Y1-Z2', 'X1-Y3-Z2', 'X1-Y4-Z2', 'X1-Y4-Z1', 'X1-Y1-Z2']
-    # for i, b in enumerate(blocks_to_spawn):
-    #     spawnOneBlock(b, i)
-    #     input('...')
 
     json_fd = open(os.path.join(os.path.expanduser("~"),"ros_ws","src","castle_build_path","output.json"))
     json_file = json_fd.read()

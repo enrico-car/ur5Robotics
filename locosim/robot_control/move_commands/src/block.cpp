@@ -239,7 +239,6 @@ RPY Block::getFinalRpy()
 
 void Block::computeApproachAndLandPose(double xLandPose, double yLandPose, RPY finalRpy, double zOffset, int yApproachAngle)
 {
-    std::cout << "compute AaL: " << xLandPose << " - " << yLandPose << std::endl;
     RPY approachRPY(M_PI, 0.0, rpy.y + M_PI / 2);
 
     if (finalRpy.isNull())

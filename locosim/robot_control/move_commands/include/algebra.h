@@ -629,7 +629,6 @@ public:
         return (Vector3() << mat(2, 1), mat(0, 2), mat(1, 0)).finished();
     }
 
-
     static Vector3 bezierEquation(const std::vector<Vector3> &p, int n, double t)
     {
         Vector3 b = Vector3().setZero();
