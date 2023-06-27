@@ -205,7 +205,7 @@ When the block is spawned run:
 ```bash
 $ rosrun move_commands assignment_123
 ```
-
+![vid1](assets/assignment_2_2.mp4)
 <video src="assets/assignment_2_2.mp4" height="400"></video>
 
 ### Assignment 3
@@ -258,8 +258,7 @@ $ rosrun move_commands assignment_4
 
 [Report](report.pdf)
 
-[Presentation](https://docs.google.com/presentation/d/1JyFYiXMonm4g-7YWPQ-
-7adeU57kF14Oo8nyBMW297a4/edit?usp=sharing)
+[Presentation](https://docs.google.com/presentation/d/1JyFYiXMonm4g-7YWPQ-7adeU57kF14Oo8nyBMW297a4/edit?pli=1#slide=id.g25515ecc202_0_12))
 
 ## Acknowledgments
 
