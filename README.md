@@ -185,7 +185,7 @@ When the block is spawned run:
 $ rosrun move_commands assignment_123
 ```
 
-![assignment_1_1](/home/rico/ur5Robotics/assets/assignment_1_1.gif)
+![assignment_1_1](assets/assignment_1_1.gif)
 
 ### Assignment 2
 
@@ -205,7 +205,7 @@ When the block is spawned run:
 ```bash
 $ rosrun move_commands assignment_123
 ```
-![assignment_2_2](/home/rico/ur5Robotics/assets/assignment_2_2.gif)
+![assignment_2_2](assets/assignment_2_2.gif)
 
 ### Assignment 3
 
@@ -227,7 +227,7 @@ When the block is spawned run:
 $ rosrun move_commands assignment_123
 ```
 
-![assignment_3_1](/home/rico/ur5Robotics/assets/assignment_3_1.gif)
+![assignment_3_1](assets/assignment_3_1.gif)
 
 ### Assignment 4
 
@@ -251,7 +251,7 @@ When the block is spawned run:
 $ rosrun move_commands assignment_4
 ```
 
-![castle](/home/rico/ur5Robotics/assets/castle.gif)
+![castle](assets/castle.gif)
 
 ## Materials
 
