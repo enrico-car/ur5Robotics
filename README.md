@@ -45,13 +45,13 @@ const std::string Constants::jsonOutput = "path/to/output.json";
 
 ```
 
-The `movement_commands` contain all the scripts to move the robot and  communicate with the ros topic.
+The `movement_commands` contains all the scripts to move the robot and  communicate with the ros topic.
 
 In the `constants.h` file are defined all the constant variables, such as ros topics and robot size.
 
 The `ALgebra.h` file contains the rotation matrices and conversion functions to be used in the `kinematic.h` file, where functions for direct, inverse and differential kinematics are defined.
 
-The `Block.h` file contain all the classes and methods to handle the block position and rotations during the 
+The `Block.h` file contains all the classes and methods to handle the block position and rotation, as well as methods to compute the apporach and landing poses.
 
 The file `joint_state_publisher.h` groups functions for communicating with the topics and the procedures for the path planning.
 
