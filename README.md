@@ -186,6 +186,7 @@ $ rosrun move_commands assignment_123
 ```
 
 ![assignment_1_1](assets/assignment_1_1.gif)
+![complete video](assets/assignment_1_1.mp4)
 
 ### Assignment 2
 
@@ -206,6 +207,8 @@ When the block is spawned run:
 $ rosrun move_commands assignment_123
 ```
 ![assignment_2_2](assets/assignment_2_2.gif)
+![complete video 1](assets/assignment_2_1.mp4)
+![complete video 2](assets/assignment_2_2.mp4)
 
 ### Assignment 3
 
@@ -228,6 +231,7 @@ $ rosrun move_commands assignment_123
 ```
 
 ![assignment_3_1](assets/assignment_3_1.gif)
+![complete video](assets/assignment_3_1.mp4)
 
 ### Assignment 4
 
@@ -252,6 +256,8 @@ $ rosrun move_commands assignment_4
 ```
 
 ![castle](assets/castle.gif)
+![complete video 1](assets/castle.mp4)
+![complete video 2](assets/castle1.mp4)
 
 ## Materials
 
